@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <view class="header">
-      <button class="btn-start" @click="startNew">+ 开始新面试</button>
+      <button class="btn-start" @click="startNew">+ Start New Interview</button>
     </view>
 
     <view class="list" v-if="interviews.length > 0">
@@ -9,20 +9,20 @@
         <view class="card-header">
           <text class="position">{{ item.positionName }}</text>
           <view :class="['status-badge', item.status.toLowerCase()]">
-            <text>{{ item.status === 'COMPLETED' ? '已完成' : '进行中' }}</text>
+            <text>{{ item.status === 'COMPLETED' ? 'Completed' : 'Ongoing' }}</text>
           </view>
         </view>
         <view class="card-body">
           <view class="info-row">
-            <text class="label">难度:</text>
+            <text class="label">Difficulty:</text>
             <text class="value">{{ item.difficulty }}</text>
           </view>
           <view class="info-row" v-if="item.finalScore">
-            <text class="label">评分:</text>
+            <text class="label">Score:</text>
             <text class="value score">{{ item.finalScore }}</text>
           </view>
           <view class="info-row">
-            <text class="label">时间:</text>
+            <text class="label">Time:</text>
             <text class="value">{{ formatDate(item.startedAt) }}</text>
           </view>
         </view>
@@ -31,8 +31,8 @@
 
     <view class="empty" v-else>
       <text class="empty-icon">💼</text>
-      <text class="empty-text">还没有面试记录</text>
-      <button class="btn-primary" @click="startNew">开始第一次面试</button>
+      <text class="empty-text">No interview history yet</text>
+      <button class="btn-primary" @click="startNew">Start your first interview</button>
     </view>
   </view>
 </template>
@@ -62,7 +62,7 @@ const viewDetail = (item: Interview) => {
   if (item.status === 'ONGOING') {
     uni.navigateTo({ url: `/pages/interview/chat?interviewId=${item.interviewId}` });
   } else {
-    uni.showToast({ title: '面试已结束', icon: 'none' });
+    uni.showToast({ title: 'Interview ended', icon: 'none' });
   }
 };
 

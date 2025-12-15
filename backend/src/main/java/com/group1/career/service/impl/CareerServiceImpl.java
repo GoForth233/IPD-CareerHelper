@@ -109,66 +109,66 @@ public class CareerServiceImpl implements CareerService {
             return;
         }
 
-        // 创建 Java 后端工程师路径
+        // Create Java Backend Engineer Path
         CareerPath javaPath = pathRepository.save(CareerPath.builder()
                 .code("java-backend")
-                .name("Java后端工程师")
-                .description("成为一名优秀的Java后端开发工程师，掌握Spring Boot、微服务、数据库等核心技能")
+                .name("Java Backend Engineer")
+                .description("Become an excellent Java backend developer, mastering core skills such as Spring Boot, microservices, and databases.")
                 .build());
 
-        // 创建节点
+        // Create nodes
         CareerNode node1 = nodeRepository.save(CareerNode.builder()
                 .pathId(javaPath.getPathId())
-                .name("Java 基础")
+                .name("Java Basics")
                 .level(1)
                 .parentId(0L)
                 .build());
 
         CareerNode node2 = nodeRepository.save(CareerNode.builder()
                 .pathId(javaPath.getPathId())
-                .name("Spring Boot 入门")
+                .name("Spring Boot Intro")
                 .level(2)
                 .parentId(node1.getNodeId())
                 .build());
 
         nodeRepository.save(CareerNode.builder()
                 .pathId(javaPath.getPathId())
-                .name("数据库设计")
+                .name("Database Design")
                 .level(2)
                 .parentId(node1.getNodeId())
                 .build());
 
         nodeRepository.save(CareerNode.builder()
                 .pathId(javaPath.getPathId())
-                .name("Spring Cloud 微服务")
+                .name("Spring Cloud Microservices")
                 .level(3)
                 .parentId(node2.getNodeId())
                 .build());
 
-        // 创建前端工程师路径
+        // Create Frontend Engineer Path
         CareerPath frontendPath = pathRepository.save(CareerPath.builder()
                 .code("frontend-engineer")
-                .name("前端工程师")
-                .description("成为一名现代化前端开发工程师，掌握Vue、React、TypeScript等前端技术栈")
+                .name("Frontend Engineer")
+                .description("Become a modern frontend developer, mastering tech stacks like Vue, React, and TypeScript.")
                 .build());
 
         CareerNode fe1 = nodeRepository.save(CareerNode.builder()
                 .pathId(frontendPath.getPathId())
-                .name("HTML/CSS 基础")
+                .name("HTML/CSS Basics")
                 .level(1)
                 .parentId(0L)
                 .build());
 
         CareerNode fe2 = nodeRepository.save(CareerNode.builder()
                 .pathId(frontendPath.getPathId())
-                .name("JavaScript 核心")
+                .name("JavaScript Core")
                 .level(2)
                 .parentId(fe1.getNodeId())
                 .build());
 
         nodeRepository.save(CareerNode.builder()
                 .pathId(frontendPath.getPathId())
-                .name("Vue.js 框架")
+                .name("Vue.js Framework")
                 .level(3)
                 .parentId(fe2.getNodeId())
                 .build());

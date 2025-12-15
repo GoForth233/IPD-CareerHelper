@@ -2,35 +2,35 @@
   <view class="container">
     <view class="header">
       <text class="title">Career Platform</text>
-      <text class="subtitle">开启你的职业发展之旅</text>
+      <text class="subtitle">Start your career development journey</text>
     </view>
 
     <view class="card">
       <view class="tabs">
         <view :class="['tab', isLogin ? 'active' : '']" @click="isLogin = true">
-          <text>登录</text>
+          <text>Login</text>
         </view>
         <view :class="['tab', !isLogin ? 'active' : '']" @click="isLogin = false">
-          <text>注册</text>
+          <text>Register</text>
         </view>
       </view>
 
       <view class="form">
         <view class="form-item" v-if="!isLogin">
-          <text class="label">昵称</text>
-          <input class="input" v-model="form.nickname" placeholder="请输入昵称" />
+          <text class="label">Nickname</text>
+          <input class="input" v-model="form.nickname" placeholder="Enter nickname" />
         </view>
         <view class="form-item">
-          <text class="label">{{ isLogin ? '用户名/手机号' : '手机号' }}</text>
-          <input class="input" v-model="form.identifier" placeholder="请输入手机号" />
+          <text class="label">{{ isLogin ? 'Username/Phone' : 'Phone Number' }}</text>
+          <input class="input" v-model="form.identifier" placeholder="Enter phone number" />
         </view>
         <view class="form-item">
-          <text class="label">密码</text>
-          <input class="input" type="password" v-model="form.credential" placeholder="请输入密码" />
+          <text class="label">Password</text>
+          <input class="input" type="password" v-model="form.credential" placeholder="Enter password" />
         </view>
 
         <button class="btn-primary" @click="handleSubmit" :loading="loading">
-          {{ isLogin ? '登录' : '注册' }}
+          {{ isLogin ? 'Login' : 'Register' }}
         </button>
       </view>
     </view>
@@ -52,19 +52,19 @@ const form = ref({
 
 const handleSubmit = async () => {
   if (!form.value.identifier || !form.value.credential) {
-    uni.showToast({ title: '请填写完整信息', icon: 'none' });
+    uni.showToast({ title: 'Please fill in all information', icon: 'none' });
     return;
   }
 
   if (!isLogin.value && !form.value.nickname) {
-    uni.showToast({ title: '请输入昵称', icon: 'none' });
+    uni.showToast({ title: 'Please enter nickname', icon: 'none' });
     return;
   }
 
   loading.value = true;
   try {
     if (isLogin.value) {
-      // 登录
+      // Login
       const user = await loginApi({
         identityType: 'PASSWORD',
         identifier: form.value.identifier,
@@ -73,13 +73,13 @@ const handleSubmit = async () => {
       
       uni.setStorageSync('userId', user.userId);
       uni.setStorageSync('userInfo', user);
-      uni.showToast({ title: '登录成功', icon: 'success' });
+      uni.showToast({ title: 'Login successful', icon: 'success' });
       
       setTimeout(() => {
         uni.switchTab({ url: '/pages/user/profile' });
       }, 1000);
     } else {
-      // 注册
+      // Register
       const user = await registerApi({
         nickname: form.value.nickname,
         identityType: 'PASSWORD',
@@ -89,7 +89,7 @@ const handleSubmit = async () => {
       
       uni.setStorageSync('userId', user.userId);
       uni.setStorageSync('userInfo', user);
-      uni.showToast({ title: '注册成功', icon: 'success' });
+      uni.showToast({ title: 'Registration successful', icon: 'success' });
       
       setTimeout(() => {
         uni.switchTab({ url: '/pages/user/profile' });

@@ -7,7 +7,7 @@
           <text class="nickname">{{ userInfo.nickname }}</text>
           <view class="badge-row">
             <text class="vip-badge" v-if="userInfo.isVip">VIP</text>
-            <text class="points">积分: {{ userInfo.points || 0 }}</text>
+            <text class="points">Points: {{ userInfo.points || 0 }}</text>
           </view>
         </view>
       </view>
@@ -17,29 +17,29 @@
     </view>
 
     <view class="card" v-if="!userInfo">
-      <text class="empty-text">请先登录</text>
-      <button class="btn-primary" @click="goLogin">去登录</button>
+      <text class="empty-text">Please login first</text>
+      <button class="btn-primary" @click="goLogin">Login</button>
     </view>
 
     <view class="menu-list" v-if="userInfo">
       <view class="menu-item" @click="goToResumes">
         <text class="menu-icon">📄</text>
-        <text class="menu-text">我的简历</text>
+        <text class="menu-text">My Resume</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="goToInterviews">
         <text class="menu-icon">💼</text>
-        <text class="menu-text">面试历史</text>
+        <text class="menu-text">Interview History</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="goToProgress">
         <text class="menu-icon">📈</text>
-        <text class="menu-text">学习进度</text>
+        <text class="menu-text">Learning Progress</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="handleLogout">
         <text class="menu-icon">🚪</text>
-        <text class="menu-text">退出登录</text>
+        <text class="menu-text">Logout</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
@@ -81,14 +81,14 @@ const goToProgress = () => {
 
 const handleLogout = () => {
   uni.showModal({
-    title: '提示',
-    content: '确定要退出登录吗？',
+    title: 'Notice',
+    content: 'Are you sure you want to logout?',
     success: (res) => {
       if (res.confirm) {
         uni.removeStorageSync('userId');
         uni.removeStorageSync('userInfo');
         userInfo.value = null;
-        uni.showToast({ title: '已退出登录', icon: 'success' });
+        uni.showToast({ title: 'Logged out successfully', icon: 'success' });
       }
     }
   });

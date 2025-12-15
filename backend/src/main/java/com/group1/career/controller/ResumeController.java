@@ -25,7 +25,7 @@ public class ResumeController {
     @Operation(summary = "Create Resume (MySQL + MongoDB)")
     @PostMapping
     public Result<ResumeVO> createResume(@RequestBody CreateResumeRequest request) {
-        // 1. 调用 Service 创建简历
+        // 1. Call Service to create resume
         Resume resume = resumeService.createResume(
                 request.getUserId(),
                 request.getTitle(),
@@ -34,20 +34,20 @@ public class ResumeController {
                 request.getDetail()
         );
 
-        // 2. 构造返回包含 Detail 的完整对象
+        // 2. Construct complete object with Detail for return
         return Result.success(convertToVO(resume, request.getDetail()));
     }
 
     @Operation(summary = "Get Resume Info (MySQL + Mongo Detail)")
     @GetMapping("/{resumeId}")
     public Result<ResumeVO> getResume(@PathVariable Long resumeId) {
-        // 1. 获取 MySQL 基础信息
+        // 1. Get MySQL basic info
         Resume resume = resumeService.getResumeWithDetailCheck(resumeId);
 
-        // 2. 获取 MongoDB 详情信息
+        // 2. Get MongoDB detail info
         ResumeDocument detail = resumeService.getResumeDetail(resume.getMongoDocId());
 
-        // 3. 合并返回
+        // 3. Merge and return
         return Result.success(convertToVO(resume, detail));
     }
 
@@ -56,12 +56,12 @@ public class ResumeController {
     public Result<List<ResumeVO>> getUserResumes(@PathVariable Long userId) {
         List<Resume> resumes = resumeService.getUserResumes(userId);
 
-        // 注意：列表接口如果需要详情，会循环查库，可能会有性能问题。
-        // 这里为了匹配前端接口定义，我们暂时做简单聚合。
-        // 如果列表不需要显示详情，建议前端修改 Interface 或后端返回 null detail
+        // Note: If the list interface needs details, it will loop through the database query, which may cause performance issues.
+        // Here, to match the frontend interface definition, we temporarily do simple aggregation.
+        // If the list does not need to show details, it is recommended that the frontend modify the Interface or the backend return null detail
         List<ResumeVO> resumeVOs = resumes.stream().map(resume -> {
-            // 这里为了性能，列表页暂时不查 Mongo Detail，如果前端列表点击详情时会单独调 getResume
-            // 或者如果前端强制需要，可以解开下面注释，但建议仅在详情页获取 detail
+            // Here for performance, the list page temporarily does not check Mongo Detail. If the frontend list clicks on details, getResume will be called separately.
+            // Or if the frontend requires it, you can uncomment the below, but it is recommended to get detail only on the detail page.
             // ResumeDocument detail = resumeService.getResumeDetail(resume.getMongoDocId());
             // return convertToVO(resume, detail);
             return convertToVO(resume, null);
@@ -74,8 +74,8 @@ public class ResumeController {
 
     private ResumeVO convertToVO(Resume resume, ResumeDocument detail) {
         ResumeVO vo = new ResumeVO();
-        BeanUtils.copyProperties(resume, vo); // 复制 MySQL 字段
-        vo.setDetail(detail);                 // 设置 Mongo 字段
+        BeanUtils.copyProperties(resume, vo); // Copy MySQL fields
+        vo.setDetail(detail);                 // Set Mongo fields
         return vo;
     }
 

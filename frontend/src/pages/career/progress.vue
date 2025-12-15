@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <view class="header">
-      <text class="title">我的学习进度</text>
+      <text class="title">My Learning Progress</text>
     </view>
 
     <view class="node-list" v-if="nodes.length > 0">
@@ -23,8 +23,8 @@
 
     <view class="empty" v-else>
       <text class="empty-icon">📚</text>
-      <text class="empty-text">还没有学习记录</text>
-      <button class="btn-primary" @click="goToPaths">查看职业路径</button>
+      <text class="empty-text">No learning records yet</text>
+      <button class="btn-primary" @click="goToPaths">View Career Paths</button>
     </view>
   </view>
 </template>
@@ -44,7 +44,7 @@ onMounted(async () => {
 
   const userId = uni.getStorageSync('userId');
   if (!userId) {
-    uni.showToast({ title: '请先登录', icon: 'none' });
+    uni.showToast({ title: 'Please login first', icon: 'none' });
     return;
   }
 
@@ -66,11 +66,11 @@ const getStatusText = (nodeId?: number) => {
   const status = getNodeStatus(nodeId);
   switch (status) {
     case 'COMPLETED':
-      return '已完成';
+      return 'Completed';
     case 'UNLOCKED':
-      return '进行中';
+      return 'In Progress';
     default:
-      return '未解锁';
+      return 'Locked';
   }
 };
 
