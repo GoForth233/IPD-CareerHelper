@@ -131,14 +131,14 @@ public class CareerServiceImpl implements CareerService {
                 .parentId(node1.getNodeId())
                 .build());
 
-        CareerNode node3 = nodeRepository.save(CareerNode.builder()
+        nodeRepository.save(CareerNode.builder()
                 .pathId(javaPath.getPathId())
                 .name("数据库设计")
                 .level(2)
                 .parentId(node1.getNodeId())
                 .build());
 
-        CareerNode node4 = nodeRepository.save(CareerNode.builder()
+        nodeRepository.save(CareerNode.builder()
                 .pathId(javaPath.getPathId())
                 .name("Spring Cloud 微服务")
                 .level(3)
@@ -166,7 +166,7 @@ public class CareerServiceImpl implements CareerService {
                 .parentId(fe1.getNodeId())
                 .build());
 
-        CareerNode fe3 = nodeRepository.save(CareerNode.builder()
+        nodeRepository.save(CareerNode.builder()
                 .pathId(frontendPath.getPathId())
                 .name("Vue.js 框架")
                 .level(3)
