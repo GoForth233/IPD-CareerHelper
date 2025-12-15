@@ -1,16 +1,82 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "Sprint 2 Demo"
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录/注册"
+			}
+		},
+		{
+			"path": "pages/user/profile",
+			"style": {
+				"navigationBarTitleText": "用户中心"
+			}
+		},
+		{
+			"path": "pages/interview/start",
+			"style": {
+				"navigationBarTitleText": "开始面试"
+			}
+		},
+		{
+			"path": "pages/interview/chat",
+			"style": {
+				"navigationBarTitleText": "面试对话"
+			}
+		},
+		{
+			"path": "pages/interview/history",
+			"style": {
+				"navigationBarTitleText": "面试历史"
+			}
+		},
+		{
+			"path": "pages/career/paths",
+			"style": {
+				"navigationBarTitleText": "职业路径"
+			}
+		},
+		{
+			"path": "pages/career/progress",
+			"style": {
+				"navigationBarTitleText": "学习进度"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarTitleText": "Career Platform",
+		"navigationBarBackgroundColor": "#667eea",
+		"backgroundColor": "#f5f7fa"
+	},
+	"tabBar": {
+		"color": "#999",
+		"selectedColor": "#667eea",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/interview/history",
+				"text": "面试"
+			},
+			{
+				"pagePath": "pages/career/paths",
+				"text": "职业"
+			},
+			{
+				"pagePath": "pages/user/profile",
+				"text": "我的"
+			}
+		]
 	}
 }

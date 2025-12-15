@@ -1,7 +1,5 @@
 package com.group1.career.service.impl;
 
-import com.group1.career.common.ErrorCode;
-import com.group1.career.common.Result;
 import com.group1.career.model.entity.User;
 import com.group1.career.model.entity.UserAuth;
 import com.group1.career.repository.UserAuthRepository;
