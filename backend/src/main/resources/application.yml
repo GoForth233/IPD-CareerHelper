@@ -43,8 +43,32 @@ spring:
       database: 0
       # password:  # 如果你本地 Redis 没设密码，这就注释掉
 
+  # 文件上传限制
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 # 接口文档工具配置
 knife4j:
   enable: true
   setting:
     language: en
+
+# ==============================
+# 4. Aliyun OSS 配置
+# ==============================
+aliyun:
+  oss:
+    endpoint: oss-cn-chengdu.aliyuncs.com
+    access-key-id: ${OSS_ACCESS_KEY_ID}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET}
+    bucket-name: career-resume-store
+
+  # ==============================
+  # 5. Aliyun AI (Qwen) 配置
+  # ==============================
+  ai:
+    # Auto-detected from legacy_sprint1
+    api-key: ${ALIYUN_AI_API_KEY:sk-d1a79240645449428802d0755537479c}
+    model: qwen-max
