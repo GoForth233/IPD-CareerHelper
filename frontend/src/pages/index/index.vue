@@ -217,6 +217,16 @@ const handleSubmit = async () => {
     return;
   }
 
+  // Validate file upload
+  if (!form.value.fileUrl) {
+    uni.showToast({ 
+      title: 'Please upload resume file first!', 
+      icon: 'none',
+      duration: 2000 
+    });
+    return;
+  }
+
   loading.value = true;
   try {
     // Construct Payload
@@ -224,7 +234,7 @@ const handleSubmit = async () => {
       userId: 1, // Mock User ID
       title: form.value.title,
       targetJob: form.value.targetJob,
-      fileUrl: form.value.fileUrl || 'http://mock.url/resume.pdf', // Use OSS URL if available
+      fileUrl: form.value.fileUrl, // Use OSS URL (validated above)
       detail: {
         skills: skillInput.value.split(',').map(s => s.trim()),
         education: [{ school: 'Demo University', degree: 'Bachelor' }], // Mock Data

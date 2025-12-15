@@ -1,5 +1,6 @@
 package com.group1.career.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,9 +47,11 @@ public class Interview {
 
     @CreationTimestamp
     @Column(name = "started_at", updatable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startedAt;
 
     @Column(name = "ended_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endedAt;
 
     @Column(name = "duration_seconds")

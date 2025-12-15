@@ -18,15 +18,34 @@
       <view class="form">
         <view class="form-item" v-if="!isLogin">
           <text class="label">Nickname</text>
-          <input class="input" v-model="form.nickname" placeholder="Enter nickname" />
+          <input 
+            class="input" 
+            v-model="form.nickname" 
+            placeholder="Enter nickname"
+            :focus="false"
+            confirm-type="next"
+          />
         </view>
         <view class="form-item">
           <text class="label">{{ isLogin ? 'Username/Phone' : 'Phone Number' }}</text>
-          <input class="input" v-model="form.identifier" placeholder="Enter phone number" />
+          <input 
+            class="input" 
+            v-model="form.identifier" 
+            placeholder="Enter phone number"
+            :focus="false"
+            confirm-type="next"
+          />
         </view>
         <view class="form-item">
           <text class="label">Password</text>
-          <input class="input" type="password" v-model="form.credential" placeholder="Enter password" />
+          <input 
+            class="input" 
+            type="password" 
+            v-model="form.credential" 
+            placeholder="Enter password"
+            :focus="false"
+            confirm-type="done"
+          />
         </view>
 
         <button class="btn-primary" @click="handleSubmit" :loading="loading">
@@ -155,11 +174,15 @@ const handleSubmit = async () => {
   color: #667eea;
   font-weight: bold;
   border-bottom: 3px solid #667eea;
-  margin-bottom: -2px;
+}
+
+.form {
+  /* Remove any positioning that might interfere */
 }
 
 .form-item {
   margin-bottom: 20px;
+  /* Ensure each form item is separate */
 }
 
 .label {
@@ -170,22 +193,29 @@ const handleSubmit = async () => {
 }
 
 .input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 44px;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 12px;
-  font-size: 14px;
   background-color: #f9f9f9;
-  width: 100%;
   box-sizing: border-box;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  border-radius: 8px;
+  width: 100%;
+  height: 44px;
   margin-top: 20px;
+  padding: 0;
   font-size: 16px;
   font-weight: bold;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  border-radius: 8px;
+  line-height: 44px;
 }
 </style>
 
