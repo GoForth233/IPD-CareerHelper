@@ -31,7 +31,7 @@ public class UserControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    @DisplayName("API Test: Register Success") // [新增]
+    @DisplayName("API Test: Register Success") // [Added]
     public void testRegister_Success() throws Exception {
         UserController.RegisterRequest request = new UserController.RegisterRequest();
         request.setNickname("NewUser");
@@ -76,7 +76,7 @@ public class UserControllerTest {
     }
 
     @Test
-    @DisplayName("API Test: Get User Info") // [新增]
+    @DisplayName("API Test: Get User Info") // [Added]
     public void testGetUser_Success() throws Exception {
         Long userId = 1L;
         User mockUser = new User();

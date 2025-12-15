@@ -1,8 +1,8 @@
 <template>
   <view class="container">
     <view class="header">
-      <text class="title">职业发展路径</text>
-      <text class="subtitle">选择适合你的职业方向</text>
+      <text class="title">Career Development Paths</text>
+      <text class="subtitle">Choose your career path</text>
     </view>
 
     <view class="path-list">
@@ -17,8 +17,8 @@
     </view>
 
     <view class="empty" v-if="paths.length === 0 && !loading">
-      <text class="empty-text">暂无职业路径</text>
-      <button class="btn-primary" @click="initializePaths">初始化路径</button>
+      <text class="empty-text">No career paths available</text>
+      <button class="btn-primary" @click="initializePaths">Initialize Paths</button>
     </view>
   </view>
 </template>
@@ -49,7 +49,7 @@ const initializePaths = async () => {
   loading.value = true;
   try {
     await initializeCareerPathsApi();
-    uni.showToast({ title: '初始化成功', icon: 'success' });
+    uni.showToast({ title: 'Initialization successful', icon: 'success' });
     await loadPaths();
   } catch (error) {
     console.error('Failed to initialize paths:', error);

@@ -92,9 +92,9 @@ function showToast(type = 'default') {
     toast.className = `toast ${type === 'success' ? 'toast-success' : type === 'error' ? 'toast-error' : ''}`;
     
     const messages = {
-        default: '这是一条普通提示消息',
-        success: '操作成功！',
-        error: '操作失败，请重试'
+        default: 'This is a normal message',
+        success: 'Operation successful!',
+        error: 'Operation failed, please try again'
     };
     
     toast.textContent = messages[type] || messages.default;
@@ -112,13 +112,13 @@ function showModal() {
     const modalHTML = `
         <div class="modal-overlay" onclick="closeModal(event)">
             <div class="modal" onclick="event.stopPropagation()">
-                <div class="modal-header">确认操作</div>
+                <div class="modal-header">Confirm Operation</div>
                 <div class="modal-body">
-                    您确定要执行此操作吗？此操作将不可撤销。
+                    Are you sure you want to perform this operation? This action cannot be undone.
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-                    <button class="btn btn-primary" onclick="closeModal()">确认</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="closeModal()">Confirm</button>
                 </div>
             </div>
         </div>

@@ -57,7 +57,7 @@ public class ResumeControllerTest {
     }
 
     @Test
-    @DisplayName("API Test: Get Resume Detail") // [新增]
+    @DisplayName("API Test: Get Resume Detail") // [Added]
     public void testGetResume_Success() throws Exception {
         Long resumeId = 100L;
         String mongoId = "mongo_abc";
@@ -82,7 +82,7 @@ public class ResumeControllerTest {
     }
 
     @Test
-    @DisplayName("API Test: Get User Resumes List") // [新增]
+    @DisplayName("API Test: Get User Resumes List") // [Added]
     public void testGetUserResumes_Success() throws Exception {
         Long userId = 1L;
         Resume resume1 = new Resume();

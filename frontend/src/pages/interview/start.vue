@@ -1,22 +1,22 @@
 <template>
   <view class="container">
     <view class="header">
-      <text class="title">开始模拟面试</text>
-      <text class="subtitle">选择职位和难度，开始你的面试准备</text>
+      <text class="title">Start Mock Interview</text>
+      <text class="subtitle">Select position and difficulty to start your preparation</text>
     </view>
 
     <view class="card">
       <view class="form-item">
-        <text class="label">目标职位</text>
+        <text class="label">Target Position</text>
         <picker :range="positions" @change="onPositionChange">
           <view class="picker">
-            {{ selectedPosition || '请选择职位' }}
+            {{ selectedPosition || 'Select Position' }}
           </view>
         </picker>
       </view>
 
       <view class="form-item">
-        <text class="label">面试难度</text>
+        <text class="label">Difficulty</text>
         <view class="difficulty-options">
           <view 
             v-for="item in difficulties" 
@@ -30,7 +30,7 @@
       </view>
 
       <button class="btn-primary" @click="startInterview" :loading="loading">
-        开始面试
+        Start Interview
       </button>
     </view>
   </view>
@@ -40,14 +40,14 @@
 import { ref } from 'vue';
 import { startInterviewApi } from '@/api/interview';
 
-const positions = ['Java后端工程师', '前端工程师', '全栈工程师', '产品经理', '数据分析师'];
+const positions = ['Java Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer', 'Product Manager', 'Data Analyst'];
 const selectedPosition = ref('');
 const selectedPositionIndex = ref(0);
 
 const difficulties = [
-  { label: '简单', value: 'Easy' },
-  { label: '中等', value: 'Normal' },
-  { label: '困难', value: 'Hard' }
+  { label: 'Easy', value: 'Easy' },
+  { label: 'Medium', value: 'Normal' },
+  { label: 'Hard', value: 'Hard' }
 ];
 const selectedDifficulty = ref('Normal');
 const loading = ref(false);
@@ -59,13 +59,13 @@ const onPositionChange = (e: any) => {
 
 const startInterview = async () => {
   if (!selectedPosition.value) {
-    uni.showToast({ title: '请选择职位', icon: 'none' });
+    uni.showToast({ title: 'Please select a position', icon: 'none' });
     return;
   }
 
   const userId = uni.getStorageSync('userId');
   if (!userId) {
-    uni.showToast({ title: '请先登录', icon: 'none' });
+    uni.showToast({ title: 'Please login first', icon: 'none' });
     setTimeout(() => {
       uni.navigateTo({ url: '/pages/login/login' });
     }, 1000);
@@ -80,7 +80,7 @@ const startInterview = async () => {
       difficulty: selectedDifficulty.value
     });
 
-    uni.showToast({ title: '面试已开始', icon: 'success' });
+    uni.showToast({ title: 'Interview started', icon: 'success' });
     setTimeout(() => {
       uni.navigateTo({
         url: `/pages/interview/chat?interviewId=${interview.interviewId}`

@@ -2,7 +2,7 @@
   <view class="container">
     <view class="interview-info" v-if="interview">
       <text class="position">{{ interview.positionName }}</text>
-      <text class="difficulty">难度: {{ interview.difficulty }}</text>
+      <text class="difficulty">Difficulty: {{ interview.difficulty }}</text>
     </view>
 
     <scroll-view scroll-y class="chat-area" :scroll-top="99999" :scroll-with-animation="true">
@@ -13,7 +13,7 @@
       </view>
       <view v-if="aiTyping" class="message ai">
         <view class="msg-content typing">
-          <text>AI正在思考...</text>
+          <text>AI is thinking...</text>
         </view>
       </view>
     </scroll-view>
@@ -22,16 +22,16 @@
       <input 
         class="chat-input" 
         v-model="inputText" 
-        placeholder="输入你的回答..." 
+        placeholder="Type your answer..." 
         @confirm="sendMessage"
       />
       <button class="btn-send" @click="sendMessage" :disabled="aiTyping || !inputText.trim()">
-        发送
+        Send
       </button>
     </view>
 
     <view class="action-bar">
-      <button class="btn-end" @click="endInterview">结束面试</button>
+      <button class="btn-end" @click="endInterview">End Interview</button>
     </view>
   </view>
 </template>
@@ -57,7 +57,7 @@ onMounted(async () => {
       interview.value = await getInterviewByIdApi(interviewId.value);
       messages.value = await getInterviewMessagesApi(interviewId.value);
       
-      // 如果没有消息，发送欢迎语
+      // If no messages, send welcome message
       if (messages.value.length === 0) {
         aiTyping.value = true;
         const response = await sendInterviewMessageApi(interviewId.value, 'Hello, I am ready for the interview.');
@@ -74,7 +74,7 @@ const sendMessage = async () => {
   const text = inputText.value.trim();
   if (!text || aiTyping.value) return;
 
-  // 添加用户消息到界面
+  // Add user message to UI
   messages.value.push({
     interviewId: interviewId.value,
     role: 'USER',
@@ -86,7 +86,7 @@ const sendMessage = async () => {
   try {
     const response = await sendInterviewMessageApi(interviewId.value, text);
     
-    // 添加 AI 响应
+    // Add AI response
     messages.value.push({
       interviewId: interviewId.value,
       role: 'AI',
@@ -94,7 +94,7 @@ const sendMessage = async () => {
     });
   } catch (error) {
     console.error('Failed to send message:', error);
-    uni.showToast({ title: '发送失败', icon: 'none' });
+    uni.showToast({ title: 'Send failed', icon: 'none' });
   } finally {
     aiTyping.value = false;
   }
@@ -102,16 +102,16 @@ const sendMessage = async () => {
 
 const endInterview = () => {
   uni.showModal({
-    title: '结束面试',
-    content: '确定要结束面试吗？',
+    title: 'End Interview',
+    content: 'Are you sure you want to end the interview?',
     success: async (res) => {
       if (res.confirm) {
         try {
-          // 简单评分逻辑：根据消息数量
+          // Simple scoring logic: based on message count
           const score = Math.min(messages.value.filter(m => m.role === 'USER').length * 10, 100);
           await endInterviewApi(interviewId.value, score);
           
-          uni.showToast({ title: `面试结束，得分: ${score}`, icon: 'success' });
+          uni.showToast({ title: `Interview ended, Score: ${score}`, icon: 'success' });
           setTimeout(() => {
             uni.navigateBack();
           }, 1500);

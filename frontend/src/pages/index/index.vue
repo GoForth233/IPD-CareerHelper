@@ -269,16 +269,16 @@ const handleSendChat = async () => {
   const message = chatInput.value.trim();
   if (!message || chatLoading.value) return;
 
-  // 添加用户消息到历史
+  // Add user message to history
   chatHistory.value.push({ role: 'user', content: message });
   chatInput.value = '';
   chatLoading.value = true;
 
   try {
-    // 调用 AI API
+    // Call AI API
     const response = await chatAiApi(chatHistory.value as any);
     
-    // 添加 AI 响应到历史
+    // Add AI response to history
     chatHistory.value.push({ role: 'assistant', content: response });
   } catch (error: any) {
     console.error('AI Chat Error:', error);
