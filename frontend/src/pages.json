@@ -9,43 +9,43 @@
 		{
 			"path": "pages/login/login",
 			"style": {
-				"navigationBarTitleText": "登录/注册"
+				"navigationBarTitleText": "Login/Register"
 			}
 		},
 		{
 			"path": "pages/user/profile",
 			"style": {
-				"navigationBarTitleText": "用户中心"
+				"navigationBarTitleText": "User Profile"
 			}
 		},
 		{
 			"path": "pages/interview/start",
 			"style": {
-				"navigationBarTitleText": "开始面试"
+				"navigationBarTitleText": "Start Interview"
 			}
 		},
 		{
 			"path": "pages/interview/chat",
 			"style": {
-				"navigationBarTitleText": "面试对话"
+				"navigationBarTitleText": "Interview Chat"
 			}
 		},
 		{
 			"path": "pages/interview/history",
 			"style": {
-				"navigationBarTitleText": "面试历史"
+				"navigationBarTitleText": "Interview History"
 			}
 		},
 		{
 			"path": "pages/career/paths",
 			"style": {
-				"navigationBarTitleText": "职业路径"
+				"navigationBarTitleText": "Career Paths"
 			}
 		},
 		{
 			"path": "pages/career/progress",
 			"style": {
-				"navigationBarTitleText": "学习进度"
+				"navigationBarTitleText": "Learning Progress"
 			}
 		}
 	],
@@ -63,19 +63,19 @@
 		"list": [
 			{
 				"pagePath": "pages/index/index",
-				"text": "首页"
+				"text": "Home"
 			},
 			{
 				"pagePath": "pages/interview/history",
-				"text": "面试"
+				"text": "Interview"
 			},
 			{
 				"pagePath": "pages/career/paths",
-				"text": "职业"
+				"text": "Career"
 			},
 			{
 				"pagePath": "pages/user/profile",
-				"text": "我的"
+				"text": "Profile"
 			}
 		]
 	}
