@@ -134,7 +134,8 @@ public class CareerControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Node unlocked successfully"));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value("Node unlocked successfully"));
     }
 
     @Test
@@ -152,7 +153,8 @@ public class CareerControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Node completed successfully"));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value("Node completed successfully"));
     }
 
     @Test
@@ -164,7 +166,8 @@ public class CareerControllerTest {
         // Execute & Verify
         mockMvc.perform(post("/api/careers/initialize"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Career paths initialized successfully"));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value("Career paths initialized successfully"));
     }
 }
 

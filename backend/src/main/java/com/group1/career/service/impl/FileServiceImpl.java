@@ -41,11 +41,7 @@ public class FileServiceImpl implements FileService {
         String fileName = folder + "/" + UUID.randomUUID().toString() + extension;
 
         // 2. Create OSS Client
-        OSS ossClient = new OSSClientBuilder().build(
-                ossConfig.getEndpoint(),
-                ossConfig.getAccessKeyId(),
-                ossConfig.getAccessKeySecret()
-        );
+        OSS ossClient = createOssClient();
 
         try {
             // 3. Upload
@@ -65,6 +61,17 @@ public class FileServiceImpl implements FileService {
                 ossClient.shutdown();
             }
         }
+    }
+
+    /**
+     * Create OSS client - extracted for testability
+     */
+    protected OSS createOssClient() {
+        return new OSSClientBuilder().build(
+                ossConfig.getEndpoint(),
+                ossConfig.getAccessKeyId(),
+                ossConfig.getAccessKeySecret()
+        );
     }
 }
 

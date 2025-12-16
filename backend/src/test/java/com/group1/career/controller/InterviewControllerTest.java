@@ -3,6 +3,7 @@ package com.group1.career.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
+import com.group1.career.service.AiService;
 import com.group1.career.service.InterviewService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,9 @@ public class InterviewControllerTest {
 
     @MockitoBean
     private InterviewService interviewService;
+
+    @MockitoBean
+    private AiService aiService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -72,13 +76,23 @@ public class InterviewControllerTest {
         request.setContent("Tell me about yourself");
 
         // Mock the service to save user message and generate AI response
-        when(interviewService.getInterviewById(interviewId)).thenReturn(Interview.builder().interviewId(interviewId).build());
+        Interview mockInterview = Interview.builder()
+                .interviewId(interviewId)
+                .positionName("Java Developer")
+                .build();
+        
+        when(interviewService.getInterviewById(interviewId)).thenReturn(mockInterview);
+        when(interviewService.getInterviewMessages(interviewId)).thenReturn(Arrays.asList());
+        when(aiService.chat(anyList())).thenReturn("Thank you for sharing. Can you tell me about your experience with Java?");
 
         // Execute & Verify
         mockMvc.perform(post("/api/interviews/{interviewId}/message", interviewId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.userMessage").value("Tell me about yourself"))
+                .andExpect(jsonPath("$.data.aiMessage").exists());
     }
 
     @Test
