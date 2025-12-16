@@ -104,7 +104,8 @@ public class UserIntegrationTest {
         mockMvc.perform(post("/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is5xxServerError()); // Should fail
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500)); // Expect 200 OK but with error code 500 in body
     }
 }
 

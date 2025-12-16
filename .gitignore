@@ -24,3 +24,4 @@ AI-Career-Mini-Program/
 # Documentation (Ignore all md except README)
 *.md
 !README.md
+backend/test_output.log
