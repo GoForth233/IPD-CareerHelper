@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { clearAuthState, requireAuth } from '@/utils/auth';
 
 type FeedItem = {
   tag: string;
@@ -176,7 +177,7 @@ const handleAvatarClick = () => {
       if (res.tapIndex === 0) {
         uni.switchTab({ url: '/pages/user/index' });
       } else if (res.tapIndex === 1) {
-        uni.removeStorageSync('userInfo');
+        clearAuthState();
         uni.reLaunch({ url: '/pages/login/login' });
       }
     },
@@ -184,6 +185,8 @@ const handleAvatarClick = () => {
 };
 
 onMounted(() => {
+  if (!requireAuth('reLaunch')) return;
+
   const info = uni.getStorageSync('userInfo');
   if (info) userInfo.value = info;
 
