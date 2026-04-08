@@ -1,82 +1,131 @@
 {
-	"pages": [
-		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationBarTitleText": "Sprint 2 Demo"
-			}
-		},
-		{
-			"path": "pages/login/login",
-			"style": {
-				"navigationBarTitleText": "Login/Register"
-			}
-		},
-		{
-			"path": "pages/user/profile",
-			"style": {
-				"navigationBarTitleText": "User Profile"
-			}
-		},
-		{
-			"path": "pages/interview/start",
-			"style": {
-				"navigationBarTitleText": "Start Interview"
-			}
-		},
-		{
-			"path": "pages/interview/chat",
-			"style": {
-				"navigationBarTitleText": "Interview Chat"
-			}
-		},
-		{
-			"path": "pages/interview/history",
-			"style": {
-				"navigationBarTitleText": "Interview History"
-			}
-		},
-		{
-			"path": "pages/career/paths",
-			"style": {
-				"navigationBarTitleText": "Career Paths"
-			}
-		},
-		{
-			"path": "pages/career/progress",
-			"style": {
-				"navigationBarTitleText": "Learning Progress"
-			}
-		}
-	],
-	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "Career Platform",
-		"navigationBarBackgroundColor": "#667eea",
-		"backgroundColor": "#f5f7fa"
-	},
-	"tabBar": {
-		"color": "#999",
-		"selectedColor": "#667eea",
-		"backgroundColor": "#ffffff",
-		"borderStyle": "black",
-		"list": [
-			{
-				"pagePath": "pages/index/index",
-				"text": "Home"
-			},
-			{
-				"pagePath": "pages/interview/history",
-				"text": "Interview"
-			},
-			{
-				"pagePath": "pages/career/paths",
-				"text": "Career"
-			},
-			{
-				"pagePath": "pages/user/profile",
-				"text": "Profile"
-			}
-		]
-	}
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/messages/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/assistant/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/resume/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/user/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "Sprint 2 Demo"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "Login/Register"
+      }
+    },
+    {
+      "path": "pages/user/profile",
+      "style": {
+        "navigationBarTitleText": "User Profile"
+      }
+    },
+    {
+      "path": "pages/interview/start",
+      "style": {
+        "navigationBarTitleText": "Start Interview"
+      }
+    },
+    {
+      "path": "pages/interview/chat",
+      "style": {
+        "navigationBarTitleText": "Interview Chat"
+      }
+    },
+    {
+      "path": "pages/interview/history",
+      "style": {
+        "navigationBarTitleText": "Interview History"
+      }
+    },
+    {
+      "path": "pages/career/paths",
+      "style": {
+        "navigationBarTitleText": "Career Paths"
+      }
+    },
+    {
+      "path": "pages/career/progress",
+      "style": {
+        "navigationBarTitleText": "Learning Progress"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Career Platform",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f8fafc"
+  },
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "Home",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/messages/index",
+        "text": "Messages",
+        "iconPath": "static/tabbar/messages.png",
+        "selectedIconPath": "static/tabbar/messages-active.png"
+      },
+      {
+        "pagePath": "pages/assistant/index",
+        "text": "Assistant",
+        "iconPath": "static/tabbar/assistant.png",
+        "selectedIconPath": "static/tabbar/assistant-active.png"
+      },
+      {
+        "pagePath": "pages/resume/index",
+        "text": "Resume",
+        "iconPath": "static/tabbar/resume.png",
+        "selectedIconPath": "static/tabbar/resume-active.png"
+      },
+      {
+        "pagePath": "pages/user/index",
+        "text": "Profile",
+        "iconPath": "static/tabbar/user.png",
+        "selectedIconPath": "static/tabbar/user-active.png"
+      }
+    ]
+  }
 }
