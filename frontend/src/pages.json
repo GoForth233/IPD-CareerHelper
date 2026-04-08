@@ -36,6 +36,34 @@
       }
     },
     {
+      "path": "pages/assessment/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/assessment/quiz",
+      "style": {
+        "navigationBarTitleText": "职业测评",
+        "navigationBarBackgroundColor": "#f5f5f7"
+      }
+    },
+    {
+      "path": "pages/assessment/result",
+      "style": {
+        "navigationBarTitleText": "测评结果",
+        "navigationBarBackgroundColor": "#f5f5f7"
+      }
+    },
+    {
+      "path": "pages/map/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "Sprint 2 Demo"
