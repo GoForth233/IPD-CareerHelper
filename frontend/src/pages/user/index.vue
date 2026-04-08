@@ -106,6 +106,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { clearAuthState } from '@/utils/auth';
 
 interface LocalUserInfo {
   nickname?: string;
@@ -188,8 +189,7 @@ const handleLogout = () => {
     confirmColor: '#ef4444',
     success: (res) => {
       if (res.confirm) {
-        uni.removeStorageSync('userId');
-        uni.removeStorageSync('userInfo');
+        clearAuthState();
         userId.value = '';
         userInfo.value = { nickname: '', avatarUrl: '', school: '', major: '', gradYear: '' };
         uni.showToast({ title: '已退出登录', icon: 'success' });
