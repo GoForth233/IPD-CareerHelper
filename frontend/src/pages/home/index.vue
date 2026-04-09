@@ -1,151 +1,195 @@
 <template>
-  <view class="home-page">
+  <view class="home-page" :class="{ 'is-dark': darkPref }">
+    <!-- Status bar spacer -->
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
+    <!-- Top bar: search + avatar -->
     <view class="top-bar">
       <view class="search-bar">
-        <text class="search-icon">🔍</text>
+        <view class="search-icon-wrap" @click="onSearch">
+          <text class="search-icon-svg">🔍</text>
+        </view>
         <input
           class="search-input"
           v-model="searchQuery"
-          placeholder="搜索岗位、公司、关键词"
+          placeholder="Search videos, topics..."
           placeholder-class="search-ph"
           @confirm="onSearch"
         />
-        <text v-if="searchQuery" class="clear-icon" @click="clearSearch">×</text>
+        <view class="search-clear" v-if="searchQuery" @click="clearSearch">
+          <text class="clear-icon">×</text>
+        </view>
       </view>
-      <view class="avatar" @click="handleAvatarClick">
-        <text class="avatar-text">{{ displayInitial }}</text>
-      </view>
+      <image
+        class="user-avatar"
+        :src="userInfo.avatarUrl || '/static/default-avatar.png'"
+        mode="aspectFill"
+        @click="handleAvatarClick"
+      />
     </view>
 
+    <!-- Greeting -->
     <view class="greeting-row">
-      <text class="greeting">Hello，{{ userInfo.nickname || '体验用户' }}</text>
+      <text class="greeting-text">Hello, {{ userInfo.nickname || 'Guest' }}</text>
     </view>
 
+    <!-- Core feature grid -->
     <view class="feature-grid">
       <view class="feature-item" @click="navTo('/pages/assessment/index')">
-        <view class="feature-icon assess">🧭</view>
-        <text class="feature-label">职业测评</text>
+        <view class="feature-icon icon-assess">
+          <text class="fi-char">&#x1F9ED;</text>
+        </view>
+        <text class="feature-label">Assessment</text>
       </view>
       <view class="feature-item" @click="navTo('/pages/map/index')">
-        <view class="feature-icon map">🗺️</view>
-        <text class="feature-label">技能地图</text>
+        <view class="feature-icon icon-map">
+          <text class="fi-char">&#x1F5FA;</text>
+        </view>
+        <text class="feature-label">Skill Map</text>
       </view>
       <view class="feature-item" @click="navTo('/pages/resume-ai/index')">
-        <view class="feature-icon ai">✨</view>
-        <text class="feature-label">AI简历诊断</text>
+        <view class="feature-icon icon-ai">
+          <text class="fi-char">&#x2728;</text>
+        </view>
+        <text class="feature-label">AI Resume</text>
       </view>
       <view class="feature-item" @click="navTo('/pages/interview/index')">
-        <view class="feature-icon interview">🎤</view>
-        <text class="feature-label">模拟面试</text>
+        <view class="feature-icon icon-interview">
+          <text class="fi-char">&#x1F3A4;</text>
+        </view>
+        <text class="feature-label">Mock Interview</text>
       </view>
     </view>
 
-    <view class="section">
-      <view class="section-header">
-        <text class="section-title">职场加油站</text>
+    <!-- Search empty state -->
+    <view class="empty-state" v-if="(searchQuery && filteredFeedList.length === 0 && filteredTopicList.length === 0)">
+      <text class="empty-icon">🔍</text>
+      <text class="empty-text">No results found for "{{ searchQuery }}"</text>
+      <button class="btn-clear" @click="clearSearch">Clear Search</button>
+    </view>
+
+    <!-- Feed section -->
+    <view class="feed-section" v-if="filteredFeedList.length > 0">
+      <view class="feed-header">
+        <text class="feed-title">Career Insights</text>
+        <text class="feed-more" v-if="!searchQuery" @click="showAllFeed = !showAllFeed">
+          {{ showAllFeed ? 'Show Less ›' : 'View All ›' }}
+        </text>
       </view>
-      <scroll-view class="card-scroll" scroll-x :show-scrollbar="false">
-        <view class="card-track">
-          <view class="info-card" v-for="(item, idx) in filteredFeed" :key="idx" @click="openLink(item.url)">
-            <view class="info-cover" :style="{ background: item.cover }"></view>
-            <view class="info-body">
-              <text class="info-tag">{{ item.tag }}</text>
-              <text class="info-title">{{ item.title }}</text>
+
+      <view v-if="showAllFeed || searchQuery" class="feed-grid">
+        <view class="feed-card grid-card" v-for="(item, idx) in filteredFeedList" :key="idx" @click="openLink(item.url, item.title)">
+          <view class="card-cover">
+            <image class="card-cover-img" :src="item.thumbnail" mode="aspectFill" />
+            <view class="cover-overlay">
+              <text class="cover-tag">{{ item.tag }}</text>
+            </view>
+            <view class="play-icon-wrap">
+              <text class="play-icon">▶</text>
             </view>
           </view>
+          <view class="card-body">
+            <text class="card-title">{{ item.title }}</text>
+            <view class="card-meta-row">
+              <text class="card-meta">{{ item.views }} views</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <scroll-view v-else class="feed-scroll" scroll-x :show-scrollbar="false">
+        <view class="feed-track">
+          <SlCard class="feed-card" v-for="(item, idx) in filteredFeedList" :key="idx" @click="openLink(item.url, item.title)">
+            <view class="card-cover">
+              <image class="card-cover-img" :src="item.thumbnail" mode="aspectFill" />
+              <view class="cover-overlay">
+                <text class="cover-tag">{{ item.tag }}</text>
+              </view>
+              <view class="play-icon-wrap">
+                <text class="play-icon">▶</text>
+              </view>
+            </view>
+            <view class="card-body">
+              <text class="card-title">{{ item.title }}</text>
+              <view class="card-meta-row">
+                <text class="card-meta">{{ item.views }} views</text>
+              </view>
+            </view>
+          </SlCard>
         </view>
       </scroll-view>
     </view>
 
-    <view class="section">
-      <view class="section-header">
-        <text class="section-title">热门话题</text>
+    <!-- Hot topics -->
+    <view class="topics-section" v-if="filteredTopicList.length > 0">
+      <view class="feed-header">
+        <text class="feed-title">Trending Topics</text>
       </view>
       <view class="topic-list">
-        <view class="topic-item" v-for="(item, idx) in filteredTopics" :key="idx" @click="openLink(item.url)">
-          <view class="topic-rank" :class="{ hot: idx < 3 }">{{ idx + 1 }}</view>
-          <view class="topic-content">
-            <text class="topic-title">{{ item.title }}</text>
-            <text class="topic-heat">{{ item.heat }}</text>
+        <view class="topic-item" v-for="(t, i) in filteredTopicList" :key="i" @click="openLink(t.url, t.title)">
+          <view class="topic-rank" :class="i < 3 ? 'rank-hot' : ''">
+            <text>{{ i + 1 }}</text>
+          </view>
+          <view class="topic-info">
+            <text class="topic-text">{{ t.title }}</text>
+            <text class="topic-heat">{{ t.heat }}</text>
           </view>
         </view>
       </view>
     </view>
+
+    <view class="bottom-safe"></view>
+
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { clearAuthState, requireAuth } from '@/utils/auth';
-
-type FeedItem = {
-  tag: string;
-  title: string;
-  cover: string;
-  url: string;
-};
-
-type TopicItem = {
-  title: string;
-  heat: string;
-  url: string;
-};
-
-const topSafeHeight = ref(44);
-const searchQuery = ref('');
+import { ref, onMounted, computed } from 'vue';
+import { openLink } from '@/utils/openLink';
+import { getHomeContentApi, type HomeContentItem } from '@/api/home';
 
 const userInfo = ref({
   nickname: '',
+  avatarUrl: ''
 });
 
-const feedList = ref<FeedItem[]>([
-  {
-    tag: '面试',
-    title: '校招高频前端面试题梳理（含答题模板）',
-    cover: 'linear-gradient(135deg, #93c5fd, #3b82f6)',
-    url: 'https://www.nowcoder.com/',
-  },
-  {
-    tag: '简历',
-    title: '一页纸简历如何写出项目亮点',
-    cover: 'linear-gradient(135deg, #c4b5fd, #8b5cf6)',
-    url: 'https://www.zhipin.com/',
-  },
-  {
-    tag: '成长',
-    title: '30天建立前端知识体系的学习路线图',
-    cover: 'linear-gradient(135deg, #f9a8d4, #ec4899)',
-    url: 'https://roadmap.sh/frontend',
-  },
-]);
+const topSafeHeight = ref(88);
+const darkPref = ref(false);
+const searchQuery = ref('');
+const showAllFeed = ref(false);
 
-const topicList = ref<TopicItem[]>([
-  { title: '2026届校招提前批如何准备？', heat: '126K 讨论', url: 'https://www.nowcoder.com/' },
-  { title: 'AI时代前端工程师核心竞争力是什么', heat: '87K 讨论', url: 'https://roadmap.sh/' },
-  { title: '实习转正答辩要注意哪些细节', heat: '74K 讨论', url: 'https://www.zhihu.com/' },
-  { title: '应届生薪资谈判常见误区', heat: '42K 讨论', url: 'https://www.zhipin.com/' },
-]);
+const defaultFeedList: HomeContentItem[] = [
+  { type: 'video', tag: 'Resume', title: 'How to Write a Resume (step-by-step guide)', views: '2M', thumbnail: 'https://i.ytimg.com/vi/Tt08KmFfIYQ/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=Tt08KmFfIYQ' },
+  { type: 'video', tag: 'Tips', title: 'Top 5 Tips to Get a Software Engineering Job', views: '800K', thumbnail: 'https://i.ytimg.com/vi/jZIXKlSJcrc/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=jZIXKlSJcrc' },
+  { type: 'video', tag: 'Interview', title: 'Google Software Engineer Mock Interview', views: '3.5M', thumbnail: 'https://i.ytimg.com/vi/XKu_SEDAykw/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=XKu_SEDAykw' },
+  { type: 'video', tag: 'Frontend', title: 'Frontend Interview Questions 2024', views: '1.2M', thumbnail: 'https://i.ytimg.com/vi/Sm_pnT5Hd2c/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=Sm_pnT5Hd2c' },
+];
 
-const displayInitial = computed(() => {
-  const name = userInfo.value.nickname || '体验用户';
-  return name.slice(0, 1);
+const defaultTopicList: HomeContentItem[] = [
+  { type: 'article', title: 'Is A Computer Science Degree Still Worth It in 2025?', heat: '126K discussions', url: 'https://www.coursera.org/articles/is-computer-science-hard' },
+  { type: 'article', title: 'Non-CS background? Here\'s how to become a developer', heat: '83K discussions', url: 'https://roadmap.sh/frontend' },
+  { type: 'article', title: '2025 Developer Salary Breakdown by Role', heat: '67K discussions', url: 'https://www.levels.fyi/' },
+  { type: 'article', title: 'Grad School vs Industry: Which Path is Right for You?', heat: '42K discussions', url: 'https://www.prospects.ac.uk/postgraduate-study/what-is-a-masters-degree/is-a-masters-worth-it' },
+  { type: 'article', title: 'Will AI Replace Programmers? The Real Answer', heat: '38K discussions', url: 'https://www.weforum.org/stories/2024/01/jobs-ai-artificial-intelligence-workplace/' },
+];
+
+const feedList = ref<HomeContentItem[]>([...defaultFeedList]);
+const topicList = ref<HomeContentItem[]>([...defaultTopicList]);
+
+const filteredFeedList = computed(() => {
+  if (!searchQuery.value) return feedList.value;
+  const q = searchQuery.value.toLowerCase();
+  return feedList.value.filter(item => item.title.toLowerCase().includes(q) || (item.tag || '').toLowerCase().includes(q));
 });
 
-const filteredFeed = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase();
-  if (!query) return feedList.value;
-  return feedList.value.filter((item) => item.title.toLowerCase().includes(query) || item.tag.toLowerCase().includes(query));
-});
-
-const filteredTopics = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase();
-  if (!query) return topicList.value;
-  return topicList.value.filter((item) => item.title.toLowerCase().includes(query));
+const filteredTopicList = computed(() => {
+  if (!searchQuery.value) return topicList.value;
+  const q = searchQuery.value.toLowerCase();
+  return topicList.value.filter(item => item.title.toLowerCase().includes(q));
 });
 
 const onSearch = () => {
+  // Computed properties automatically update, we just close keyboard here if needed
   uni.hideKeyboard();
 };
 
@@ -153,272 +197,444 @@ const clearSearch = () => {
   searchQuery.value = '';
 };
 
+const loadHomeContent = async () => {
+  try {
+    const data = await getHomeContentApi();
+
+    const remoteCareerInsights = (data?.careerInsights || []).filter(item => item.type === 'video');
+    const remoteTrendingTopics = (data?.trendingTopics || []).filter(item => item.type === 'article');
+
+    feedList.value = remoteCareerInsights.length > 0 ? remoteCareerInsights : [...defaultFeedList];
+    topicList.value = remoteTrendingTopics.length > 0 ? remoteTrendingTopics : [...defaultTopicList];
+  } catch (error) {
+    feedList.value = [...defaultFeedList];
+    topicList.value = [...defaultTopicList];
+  }
+};
+
+onMounted(() => {
+  const info = uni.getStorageSync('userInfo');
+  if (info) userInfo.value = info;
+
+  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+
+  const systemInfo = uni.getSystemInfoSync();
+  const menuButton = uni.getMenuButtonBoundingClientRect?.();
+
+  if (menuButton && menuButton.top) {
+    topSafeHeight.value = menuButton.top;
+  } else {
+    const statusBar = systemInfo.statusBarHeight || 20;
+    topSafeHeight.value = statusBar + 8;
+  }
+
+  loadHomeContent();
+});
+
 const navTo = (url: string) => {
   uni.navigateTo({ url });
 };
 
-const openLink = (url: string) => {
-  // #ifdef H5
-  window.open(url, '_blank');
-  // #endif
-
-  // #ifndef H5
-  uni.setClipboardData({
-    data: url,
-    success: () => uni.showToast({ title: '链接已复制', icon: 'none' }),
-  });
-  // #endif
-};
-
 const handleAvatarClick = () => {
   uni.showActionSheet({
-    itemList: ['进入个人中心', '退出登录'],
+    itemList: ['View Profile', 'Log Out'],
     success: (res) => {
       if (res.tapIndex === 0) {
         uni.switchTab({ url: '/pages/user/index' });
       } else if (res.tapIndex === 1) {
-        clearAuthState();
-        uni.reLaunch({ url: '/pages/login/login' });
+        uni.showModal({
+          title: 'Log Out',
+          content: 'Are you sure you want to log out?',
+          success: (r) => {
+            if (r.confirm) {
+              uni.removeStorageSync('userId');
+              uni.removeStorageSync('userInfo');
+              uni.reLaunch({ url: '/pages/login/index' });
+            }
+          },
+        });
       }
     },
   });
 };
-
-onMounted(() => {
-  if (!requireAuth('reLaunch')) return;
-
-  const info = uni.getStorageSync('userInfo');
-  if (info) userInfo.value = info;
-
-  const systemInfo = uni.getSystemInfoSync();
-  const statusBar = systemInfo.statusBarHeight || 20;
-  topSafeHeight.value = statusBar + 8;
-});
 </script>
 
 <style scoped>
 .home-page {
   min-height: 100vh;
-  background: #f8fafc;
-  padding-bottom: 30px;
+  background-color: var(--page-ios-gray);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .status-spacer {
   width: 100%;
 }
 
+/* ---- Top bar ---- */
 .top-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
   padding: 8px 20px 0;
+  gap: 12px;
 }
 
 .search-bar {
   flex: 1;
-  height: 38px;
-  border-radius: 19px;
-  background: #fff;
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  height: 38px;
+  background: #ffffff;
+  border-radius: 19px;
+  padding: 0 16px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
 }
 
-.search-icon {
-  font-size: 14px;
+.search-icon-wrap {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-right: 6px;
+}
+
+.search-icon-svg {
+  font-size: 14px;
 }
 
 .search-input {
   flex: 1;
-  height: 38px;
   font-size: 14px;
   color: #0f172a;
+  height: 38px;
 }
 
 .search-ph {
   color: #94a3b8;
+  font-size: 14px;
+}
+
+.search-clear {
+  padding: 4px;
+  display: flex; align-items: center; justify-content: center;
 }
 
 .clear-icon {
-  font-size: 20px;
-  color: #94a3b8;
-  line-height: 1;
+  font-size: 18px; color: #94a3b8; line-height: 1;
 }
 
-.avatar {
+.user-avatar {
   width: 36px;
   height: 36px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #60a5fa, #2563eb);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #e2e8f0;
+  flex-shrink: 0;
 }
 
-.avatar-text {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
+/* ---- Empty search state ---- */
+.empty-state { text-align: center; padding: 60px 20px 20px; }
+
+.empty-icon { font-size: 48px; display: block; margin-bottom: 16px; }
+
+.empty-text {
+  font-size: 15px; color: #64748b; font-weight: 500;
+  display: block; margin-bottom: 24px;
 }
 
+.btn-clear {
+  background: #2563eb; color: #fff; font-size: 14px; font-weight: 600;
+  border-radius: 12px; height: 40px; line-height: 40px; border: none; width: 140px;
+}
+
+/* ---- Greeting ---- */
 .greeting-row {
-  padding: 14px 20px 4px;
+  padding: 12px 20px 4px;
 }
 
-.greeting {
-  font-size: 16px;
-  color: #334155;
-  font-weight: 600;
+.greeting-text {
+  font-size: var(--font-body);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
+/* ---- Feature grid ---- */
 .feature-grid {
   display: flex;
   justify-content: space-between;
-  padding: 18px 20px 0;
-  gap: 8px;
+  padding: 20px 24px 8px;
 }
 
 .feature-item {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .feature-icon {
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: 18px;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  transition: transform 0.15s ease;
+}
+
+.feature-icon:active {
+  transform: scale(0.92);
+}
+
+.fi-char {
   font-size: 26px;
 }
 
-.assess { background: #dbeafe; }
-.map { background: #e0e7ff; }
-.ai { background: #f5d0fe; }
-.interview { background: #ffedd5; }
+.icon-assess {
+  background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.icon-map {
+  background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+}
+
+.icon-ai {
+  background: linear-gradient(145deg, #fae8ff 0%, #f0abfc 30%, #e9d5ff 100%);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.12);
+}
+
+.icon-interview {
+  background: linear-gradient(145deg, #ffedd5 0%, #fed7aa 100%);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.12);
+}
 
 .feature-label {
-  font-size: 12px;
-  color: #1e293b;
-  font-weight: 600;
-  text-align: center;
-}
-
-.section {
-  margin-top: 24px;
-}
-
-.section-header {
-  padding: 0 20px;
-  margin-bottom: 12px;
-}
-
-.section-title {
-  font-size: 18px;
+  font-size: 13px;
   font-weight: 700;
-  color: #0f172a;
+  color: #1e293b;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.25;
+  min-height: 32px;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.card-scroll {
+/* ---- Feed section ---- */
+.feed-section {
+  padding: 24px 0 0;
+}
+
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  margin-bottom: 14px;
+}
+
+.feed-title {
+  font-size: var(--font-title);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.feed-more {
+  font-size: 13px;
+  color: #2563eb; font-weight: 500;
+}
+
+.feed-scroll {
   width: 100%;
   white-space: nowrap;
 }
 
-.card-track {
+.feed-track {
   display: inline-flex;
-  gap: 14px;
   padding: 0 20px;
+  gap: 16px;
+  padding-right: 40px;
 }
 
-.info-card {
-  width: 240px;
-  border-radius: 16px;
-  background: #fff;
+.feed-grid { display: flex; flex-wrap: wrap; gap: 16px; padding: 0 20px; }
+
+.feed-card {
+  display: inline-flex;
+  flex-direction: column;
+  width: 220px;
+  background: #ffffff;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.10);
+  flex-shrink: 0;
+  transition: transform 0.15s;
 }
 
-.info-cover {
+.feed-card:active { transform: scale(0.98); }
+
+.grid-card { width: calc(50% - 8px); }
+
+.card-cover {
+  width: 100%;
   height: 110px;
+  position: relative;
+  overflow: hidden;
+  background: #e2e8f0;
 }
 
-.info-body {
-  padding: 12px;
+.card-cover-img { width: 100%; height: 100%; display: block; }
+
+.cover-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
 }
 
-.info-tag {
+.cover-tag {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
   font-size: 11px;
-  color: #2563eb;
-  font-weight: 700;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
 }
 
-.info-title {
-  display: block;
-  margin-top: 6px;
+.play-icon-wrap {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 36px; height: 36px; border-radius: 18px; background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+}
+
+.play-icon { font-size: 14px; color: #fff; margin-left: 2px; }
+
+.card-body {
+  padding: 12px 14px;
+  white-space: normal;
+}
+
+.card-title {
   font-size: 14px;
+  font-weight: 600;
   color: #1e293b;
   line-height: 1.4;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 38px;
+}
+
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-meta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* ---- Hot topics ---- */
+.topics-section {
+  padding: 28px 0 20px;
 }
 
 .topic-list {
+  padding: 0 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 0 20px;
+  gap: 12px;
 }
 
 .topic-item {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-  border-radius: 14px;
-  padding: 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  transition: transform 0.15s ease;
+}
+
+.topic-item:active {
+  transform: scale(0.98);
 }
 
 .topic-rank {
   width: 24px;
   height: 24px;
   border-radius: 8px;
-  background: #e2e8f0;
-  color: #334155;
+  background: #f1f5f9;
   display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 12px;
+  align-items: center;
+  margin-right: 14px;
+  flex-shrink: 0;
+  font-size: 13px;
   font-weight: 700;
+  color: #64748b;
 }
 
-.topic-rank.hot {
-  background: #dbeafe;
-  color: #2563eb;
+.rank-hot {
+  background: #fee2e2;
+  color: #ef4444;
 }
 
-.topic-content {
+.topic-info {
   flex: 1;
   min-width: 0;
 }
 
-.topic-title {
-  display: block;
-  font-size: 14px;
-  color: #0f172a;
+.topic-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1e293b;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-bottom: 4px;
+  overflow: hidden;
   line-height: 1.4;
 }
 
 .topic-heat {
-  display: block;
-  margin-top: 4px;
   font-size: 12px;
   color: #94a3b8;
 }
+
+.bottom-safe {
+  height: 60px;
+}
+
+/* ---- Dark Mode ---- */
+.is-dark { background-color: #0f172a; }
+
+.is-dark .search-bar { background: #1e293b; box-shadow: none; }
+.is-dark .search-input { color: #f8fafc; }
+.is-dark .feature-label { color: #e2e8f0; }
+
+.is-dark .feed-title { color: #f8fafc; }
+.is-dark .feed-card { background: #1e293b; box-shadow: none; border-color: #334155; }
+.is-dark .card-title { color: #f8fafc; }
+
+.is-dark .topic-item { background: #1e293b; box-shadow: none; border-color: #334155; }
+.is-dark .topic-text { color: #f8fafc; }
+.is-dark .topic-rank { background: #334155; color: #94a3b8; }
+.is-dark .rank-hot { background: #7f1d1d; color: #fca5a5; }
 </style>
