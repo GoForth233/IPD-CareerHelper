@@ -24,8 +24,22 @@ public class CareerNode {
     @Column(name = "name", length = 100)
     private String name;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "icon_url", length = 255)
+    private String iconUrl;
+
     @Column(name = "level")
     private Integer level;
+
+    @Column(name = "sort_order")
+    @Builder.Default
+    private Integer sortOrder = 0;
+
+    @Column(name = "estimated_hours")
+    @Builder.Default
+    private Integer estimatedHours = 10;
 
     @Column(name = "parent_id")
     @Builder.Default
