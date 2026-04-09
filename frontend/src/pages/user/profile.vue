@@ -17,14 +17,14 @@
     </view>
 
     <view class="card" v-if="!userInfo">
-      <text class="empty-text">Please login first</text>
-      <button class="btn-primary" @click="goLogin">Login</button>
+      <text class="empty-text">Please sign in first</text>
+      <button class="btn-primary" @click="goLogin">Sign In</button>
     </view>
 
     <view class="menu-list" v-if="userInfo">
       <view class="menu-item" @click="goToResumes">
         <text class="menu-icon">📄</text>
-        <text class="menu-text">My Resume</text>
+        <text class="menu-text">My Resumes</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="goToInterviews">
@@ -39,7 +39,7 @@
       </view>
       <view class="menu-item" @click="handleLogout">
         <text class="menu-icon">🚪</text>
-        <text class="menu-text">Logout</text>
+        <text class="menu-text">Sign Out</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
@@ -64,15 +64,15 @@ onMounted(async () => {
 });
 
 const goLogin = () => {
-  uni.navigateTo({ url: '/pages/login/login' });
+  uni.navigateTo({ url: '/pages/login/index' });
 };
 
 const goToResumes = () => {
-  uni.switchTab({ url: '/pages/index/index' });
+  uni.switchTab({ url: '/pages/resume/index' });
 };
 
 const goToInterviews = () => {
-  uni.switchTab({ url: '/pages/interview/history' });
+  uni.navigateTo({ url: '/pages/interview/history' });
 };
 
 const goToProgress = () => {
@@ -81,14 +81,14 @@ const goToProgress = () => {
 
 const handleLogout = () => {
   uni.showModal({
-    title: 'Notice',
-    content: 'Are you sure you want to logout?',
+    title: 'Sign Out',
+    content: 'Are you sure you want to sign out?',
     success: (res) => {
       if (res.confirm) {
         uni.removeStorageSync('userId');
         uni.removeStorageSync('userInfo');
         userInfo.value = null;
-        uni.showToast({ title: 'Logged out successfully', icon: 'success' });
+        uni.showToast({ title: 'Signed out successfully', icon: 'success' });
       }
     }
   });
@@ -98,16 +98,16 @@ const handleLogout = () => {
 <style scoped>
 .container {
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background-color: var(--page-ios-gray);
   padding: 20px;
 }
 
 .header-card {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 16px;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  border-radius: var(--radius-md);
   padding: 30px 20px;
   margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .avatar-section {
@@ -124,9 +124,7 @@ const handleLogout = () => {
   margin-right: 15px;
 }
 
-.user-info {
-  flex: 1;
-}
+.user-info { flex: 1; }
 
 .nickname {
   font-size: 22px;
@@ -164,9 +162,10 @@ const handleLogout = () => {
 
 .card {
   background-color: #fff;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 40px 20px;
   text-align: center;
+  box-shadow: var(--shadow-sm);
 }
 
 .empty-text {
@@ -177,7 +176,7 @@ const handleLogout = () => {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #2563eb, #1e40af);
   color: #fff;
   border-radius: 8px;
 }
@@ -195,24 +194,11 @@ const handleLogout = () => {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.menu-item:last-child {
-  border-bottom: none;
-}
+.menu-item:last-child { border-bottom: none; }
 
-.menu-icon {
-  font-size: 24px;
-  margin-right: 15px;
-}
+.menu-icon { font-size: 24px; margin-right: 15px; }
 
-.menu-text {
-  flex: 1;
-  font-size: 16px;
-  color: #333;
-}
+.menu-text { flex: 1; font-size: 16px; color: #333; }
 
-.menu-arrow {
-  font-size: 24px;
-  color: #ccc;
-}
+.menu-arrow { font-size: 24px; color: #ccc; }
 </style>
-
