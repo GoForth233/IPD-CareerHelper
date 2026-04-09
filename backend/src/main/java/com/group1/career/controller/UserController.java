@@ -17,47 +17,9 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Register User")
-    @PostMapping("/register")
-    public Result<User> register(@RequestBody RegisterRequest request) {
-        return Result.success(userService.register(
-                request.getNickname(),
-                request.getIdentityType(),
-                request.getIdentifier(),
-                request.getCredential()
-        ));
-    }
-
-    @Operation(summary = "Login")
-    @PostMapping("/login")
-    public Result<User> login(@RequestBody LoginRequest request) {
-        return Result.success(userService.login(
-                request.getIdentityType(),
-                request.getIdentifier(),
-                request.getCredential()
-        ));
-    }
-
     @Operation(summary = "Get User Info (Redis Cache)")
     @GetMapping("/{id}")
     public Result<User> getUser(@PathVariable Long id) {
         return Result.success(userService.getUserById(id));
-    }
-
-    // ================= DTO Classes =================
-
-    @Data
-    public static class RegisterRequest {
-        private String nickname;
-        private String identityType; // e.g., "MOBILE", "EMAIL"
-        private String identifier;   // e.g., "13800138000"
-        private String credential;   // Password
-    }
-
-    @Data
-    public static class LoginRequest {
-        private String identityType;
-        private String identifier;
-        private String credential;
     }
 }

@@ -1,0 +1,74 @@
+# 100%覆盖飞书看板任务关联的后端开发执行规划
+
+## 目标与背景
+为了确保飞书看板上处于 In Progress 状态的 15 个 Task 都能在后端仓库获取一个真实且合理的 Pull Request 链接。我们需要将所有最初看似是“前端切图”的任务，在**后端视角**重构包装为“支撑该前端页面的 API 接口开发或服务封装”任务。
+
+这样，我们的后端提交记录将呈现出一套堪称完美的 15 分支敏捷流（15 PRs = 15 Tasks）。
+
+## 面向飞书 Task 的一对一后端分支规划表
+
+### Story 9：多端身份与基础网关 (共 3 个 PR)
+1. **S9 Task 1: (UI相关任务包装)**
+   - **分支名**: `feature/s9-task1-auth-routing-controller`
+   - **后端实现**: 搭建 `AuthController` 占位，提供登录/注册的路由基础端点，以便跟接下来的业务衔接。
+2. **S9 Task 2: Build the basic framework...**
+   - **分支名**: `feature/s9-task2-springboot-skeleton`
+   - **后端实现**: 完成 Spring Boot 基础分层架构（Controller/Service/Mapper/Entity），建立统一返回包装类。
+3. **S9 Task 3: Rebuild the "users" table...**
+   - **分支名**: `feature/s9-task3-jwt-users-table`
+   - **后端实现**: MyBatis 建立 Users 表映射，集成并提供完整的基于 JWT 的无状态鉴权机制实现。
+
+---
+
+### Story 10：职业测评与节点库 (共 4 个 PR)
+4. **S10 Task 1: (测评主界面包装)**
+   - **分支名**: `feature/s10-task1-assessment-quiz-api`
+   - **后端实现**: 编写供题库拉取数据的 API（例如拉取 MBTI 序列化题目的 Controller 暴露）。
+5. **S10 Task 2: (时间轴组件包装)**
+   - **分支名**: `feature/s10-task2-timeline-state-api`
+   - **后端实现**: 根据用户 Token 返回当前进度条数据与已解锁关卡树节点的查询 API。
+6. **S10 Task 3: Design the evaluation document structure for MongoDB...**
+   - **分支名**: `feature/s10-task3-mongodb-scoring-logic`
+   - **后端实现**: 引入 MongoDB 并设计数据结构，编写基于底层大模型能力的“评估算分”流水线接口。
+7. **S10 Task 4: Design the MySQL professional node table...**
+   - **分支名**: `feature/s10-task4-mysql-skill-map-entities`
+   - **后端实现**: MySQL 技能节点层级映射（L1-L4）实现及扁平化检索服务搭建。
+
+---
+
+### Story 11：简历数字资产 (共 2 个 PR)
+8. **S11 Task 1: Develop the "Resume Library" tab page.**
+   - **分支名**: `feature/s11-task1-resume-crud-oss`
+   - **后端实现**: 在后端接入云对象存储（如阿里云 OSS）服务逻辑，向前端供给简历附件的上传与元数据展示 API。
+9. **S11 Task 2: Develop the "AI Resume Diagnosis" page.**
+   - **分支名**: `feature/s11-task2-resume-diagnosis-trigger`
+   - **后端实现**: 诊断启动控制器，接收包含目标 JD 和文件上下文的负载，派发至鉴别线程。
+
+---
+
+### Story 12：模拟面试系统 (共 3 个 PR)
+10. **S12 Task 1: Develop the interview hall page...**
+    - **分支名**: `feature/s12-task1-interview-session-init`
+    - **后端实现**: 创建负责面试房间 Session 管理（如难度难度、防抖验证）的实体状态缓存服务。
+11. **S12 Task 2: Post-development review report page**
+    - **分支名**: `feature/s12-task2-interview-report-generator`
+    - **后端实现**: 设计根据四个维度的成绩（如表达、抗压等）合成并下发展示统计雷达图所匹配的组合式数据流 API。
+12. **S12 Task 3: Integrate large-scale models with streaming responses...**
+    - **分支名**: `feature/s12-task3-llm-interview-stream`
+    - **后端实现**: 深层对接智谱等基座大模型，核心突破基于 Token 断句的 SSE 响应式输出。
+
+---
+
+### Story 13：门户与随时助理 (共 3 个 PR)
+13. **S13 Task 1: Develop the homepage...**
+    - **分支名**: `feature/s13-task1-homepage-data-feed`
+    - **后端实现**: 构建首页业务看板装配器，如高并发下排行榜查询的缓存层、资讯图文对象拼合接口。
+14. **S13 Task 3: Package the global large model streaming dialogue...**
+    - **分支名**: `feature/s13-task3-global-chat-sse`
+    - **后端实现**: 将模型隧道抽出封装并适配 AI 职业顾问闲聊口吻，引入对话轮次状态存储。
+15. **S13 Task 4: Integrated debugging assistant dialogue interface...**
+    - **分支名**: `feature/s13-task4-chat-history-sync`
+    - **后端实现**: 连接云端的个人漫游会话数据库，保证在端点掉线时用户与助手的云端历史拉取逻辑健壮不丢失。
+
+## 联调建议
+如此一来，在后续开始编写 SpringBoot 后端时，你我便可通过这 15 次细分的 `checkout`, `commit`, 和 `push` 流程，为这 15 个 Task 结出累累硕果，且每一次 Pull Request 内容都坚实合法！
