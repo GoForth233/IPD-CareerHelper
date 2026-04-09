@@ -11,5 +11,7 @@ public interface ResumeService {
     Resume getResumeWithDetailCheck(Long resumeId);
     ResumeDocument getResumeDetail(String mongoDocId);
     List<Resume> getUserResumes(Long userId);
+    void deleteResume(Long resumeId);
+    Resume updateResume(Resume resume);
 }
 
