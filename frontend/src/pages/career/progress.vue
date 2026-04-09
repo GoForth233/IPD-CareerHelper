@@ -1,22 +1,22 @@
 <template>
-  <view class="container">
+  <view class="progress-page" :class="{ 'is-dark': darkPref }">
     <view class="header">
-      <text class="title">My Learning Progress</text>
+      <text class="title">Learning Progress</text>
     </view>
 
     <view class="node-list" v-if="nodes.length > 0">
       <view v-for="node in nodes" :key="node.nodeId" class="node-card">
-        <view :class="['node-icon', getNodeStatus(node.nodeId).toLowerCase()]">
-          <text v-if="getNodeStatus(node.nodeId) === 'COMPLETED'">✓</text>
-          <text v-else-if="getNodeStatus(node.nodeId) === 'UNLOCKED'">○</text>
-          <text v-else>🔒</text>
+        <view class="node-dot" :class="'dot-' + getNodeStatus(node.nodeId).toLowerCase()">
+          <text v-if="getNodeStatus(node.nodeId) === 'COMPLETED'" class="dot-icon">✓</text>
+          <text v-else-if="getNodeStatus(node.nodeId) === 'UNLOCKED'" class="dot-icon">○</text>
+          <text v-else class="dot-icon">🔒</text>
         </view>
         <view class="node-info">
           <text class="node-name">{{ node.name }}</text>
           <text class="node-level">Level {{ node.level }}</text>
         </view>
-        <view :class="['status-badge', getNodeStatus(node.nodeId).toLowerCase()]">
-          <text>{{ getStatusText(node.nodeId) }}</text>
+        <view class="status-pill" :class="'pill-' + getNodeStatus(node.nodeId).toLowerCase()">
+          <text class="pill-text">{{ getStatusText(node.nodeId) }}</text>
         </view>
       </view>
     </view>
@@ -35,16 +35,19 @@ import { getPathNodesApi, getUserProgressApi, type CareerNode, type UserCareerPr
 
 const nodes = ref<CareerNode[]>([]);
 const progress = ref<UserCareerProgress[]>([]);
-const pathId = ref<number>(1); // Default to Java path
+const pathId = ref<number>(1);
+const darkPref = ref(false);
 
 onMounted(async () => {
+  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1] as any;
   pathId.value = parseInt(currentPage.options?.pathId || '1');
 
   const userId = uni.getStorageSync('userId');
   if (!userId) {
-    uni.showToast({ title: 'Please login first', icon: 'none' });
+    uni.showToast({ title: 'Please sign in first', icon: 'none' });
     return;
   }
 
@@ -65,142 +68,104 @@ const getNodeStatus = (nodeId?: number) => {
 const getStatusText = (nodeId?: number) => {
   const status = getNodeStatus(nodeId);
   switch (status) {
-    case 'COMPLETED':
-      return 'Completed';
-    case 'UNLOCKED':
-      return 'In Progress';
-    default:
-      return 'Locked';
+    case 'COMPLETED': return 'Completed';
+    case 'UNLOCKED': return 'In Progress';
+    default: return 'Locked';
   }
 };
 
 const goToPaths = () => {
-  uni.switchTab({ url: '/pages/career/paths' });
+  uni.navigateTo({ url: '/pages/career/paths' });
 };
 </script>
 
 <style scoped>
-.container {
+.progress-page {
   min-height: 100vh;
-  background-color: #f5f7fa;
-  padding: 20px;
+  background-color: #f5f5f7;
+  padding: 24px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  box-sizing: border-box;
 }
 
-.header {
-  margin-bottom: 25px;
-  text-align: center;
-}
+.header { margin-bottom: 24px; }
 
 .title {
-  font-size: 22px;
-  font-weight: bold;
-  color: #333;
-  display: block;
+  font-size: 28px; font-weight: 800; color: #0f172a;
+  letter-spacing: -0.5px; display: block;
 }
 
-.node-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
+.node-list { display: flex; flex-direction: column; gap: 10px; }
 
 .node-card {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 18px;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: #ffffff; border-radius: 16px; padding: 16px 18px;
+  display: flex; align-items: center;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
 }
 
-.node-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 25px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  margin-right: 15px;
+.node-dot {
+  width: 44px; height: 44px; border-radius: 22px;
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 14px; flex-shrink: 0;
 }
 
-.node-icon.completed {
-  background-color: #d4edda;
-  color: #155724;
-}
+.dot-icon { font-size: 18px; }
 
-.node-icon.unlocked {
-  background-color: #fff3cd;
-  color: #856404;
-}
+.dot-completed { background: #dcfce7; }
+.dot-completed .dot-icon { color: #16a34a; font-weight: 700; }
 
-.node-icon.locked {
-  background-color: #f0f0f0;
-  color: #999;
-}
+.dot-unlocked { background: #fef3c7; }
+.dot-unlocked .dot-icon { color: #d97706; }
 
-.node-info {
-  flex: 1;
-}
+.dot-locked { background: #f1f5f9; }
+.dot-locked .dot-icon { font-size: 16px; }
+
+.node-info { flex: 1; min-width: 0; }
 
 .node-name {
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
-  display: block;
-  margin-bottom: 4px;
+  font-size: 16px; font-weight: 600; color: #1e293b;
+  display: block; margin-bottom: 3px;
 }
 
-.node-level {
-  font-size: 13px;
-  color: #666;
-  display: block;
+.node-level { font-size: 13px; color: #94a3b8; display: block; }
+
+.status-pill {
+  padding: 5px 12px; border-radius: 10px; flex-shrink: 0; margin-left: 8px;
 }
 
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
+.pill-text { font-size: 12px; font-weight: 600; }
 
-.status-badge.completed {
-  background-color: #d4edda;
-  color: #155724;
-}
+.pill-completed { background: #dcfce7; }
+.pill-completed .pill-text { color: #16a34a; }
 
-.status-badge.unlocked {
-  background-color: #fff3cd;
-  color: #856404;
-}
+.pill-unlocked { background: #fef3c7; }
+.pill-unlocked .pill-text { color: #d97706; }
 
-.status-badge.locked {
-  background-color: #f0f0f0;
-  color: #999;
-}
+.pill-locked { background: #f1f5f9; }
+.pill-locked .pill-text { color: #94a3b8; }
 
-.empty {
-  text-align: center;
-  padding: 60px 20px;
-}
+.empty { text-align: center; padding: 80px 20px; }
 
-.empty-icon {
-  font-size: 64px;
-  display: block;
-  margin-bottom: 20px;
-}
+.empty-icon { font-size: 56px; display: block; margin-bottom: 16px; }
 
 .empty-text {
-  font-size: 16px;
-  color: #999;
-  display: block;
-  margin-bottom: 30px;
+  font-size: 16px; color: #94a3b8; font-weight: 500;
+  display: block; margin-bottom: 24px;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  border-radius: 8px;
+  background: #2563eb; color: #fff; font-size: 16px; font-weight: 600;
+  border-radius: 14px; height: 48px; line-height: 48px; border: none;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.2);
 }
-</style>
 
+.btn-primary:active { background: #1d4ed8; }
+
+/* Dark mode */
+.is-dark { background-color: #0f172a; }
+
+.is-dark .title,
+.is-dark .node-name { color: #f8fafc; }
+
+.is-dark .node-card { background: #1e293b; box-shadow: none; }
+</style>
