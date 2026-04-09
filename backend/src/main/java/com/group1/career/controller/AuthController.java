@@ -39,15 +39,28 @@ public class AuthController {
 
     @Operation(summary = "Login User")
     @PostMapping("/login")
-    public Result<User> login(@Valid @RequestBody LoginDto request) {
-        return Result.success(userService.login(
+    public Result<LoginResponseDto> login(@Valid @RequestBody LoginDto request) {
+        User user = userService.login(
                 request.getIdentityType(),
                 request.getIdentifier(),
                 request.getCredential()
-        ));
+        );
+        String token = com.group1.career.utils.JwtUtils.generateToken(user.getId(), "USER");
+        return Result.success(new LoginResponseDto(token, user));
     }
 
     // ================= DTO Classes with JSR 303 Validation =================
+
+    @Data
+    public static class LoginResponseDto {
+        private String token;
+        private User user;
+
+        public LoginResponseDto(String token, User user) {
+            this.token = token;
+            this.user = user;
+        }
+    }
 
     @Data
     public static class RegisterDto {
