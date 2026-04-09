@@ -28,17 +28,12 @@
     <!-- Stats bar -->
     <view class="stats-bar" v-if="isLoggedIn">
       <view class="stat-item">
-        <text class="stat-val">2</text>
-        <text class="stat-label">Assessments</text>
-      </view>
-      <view class="stat-divider"></view>
-      <view class="stat-item">
-        <text class="stat-val">5</text>
+        <text class="stat-val">{{ statsInterviews }}</text>
         <text class="stat-label">Interviews</text>
       </view>
       <view class="stat-divider"></view>
       <view class="stat-item">
-        <text class="stat-val">3</text>
+        <text class="stat-val">{{ statsResumes }}</text>
         <text class="stat-label">Resumes</text>
       </view>
     </view>
@@ -134,12 +129,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
+import { getUserInterviewsApi } from '@/api/interview';
+import { getUserResumesApi } from '@/api/resume';
 
 const userInfo = ref({ nickname: '', avatarUrl: '', school: '', major: '', gradYear: '' });
 const userId = ref('');
 const darkPref = ref(false);
 const fontPref = ref('standard');
 const topSafeHeight = ref(44);
+
+const statsInterviews = ref(0);
+const statsResumes = ref(0);
 
 const showProfileEdit = ref(false);
 const editForm = ref({ school: '', major: '', gradYear: '' });
@@ -210,6 +210,19 @@ const handleLogout = () => {
   });
 };
 
+const loadStats = async (uid: number) => {
+  try {
+    const [interviews, resumes] = await Promise.all([
+      getUserInterviewsApi(uid),
+      getUserResumesApi(uid),
+    ]);
+    statsInterviews.value = Array.isArray(interviews) ? interviews.length : 0;
+    statsResumes.value = Array.isArray(resumes) ? resumes.length : 0;
+  } catch {
+    // silently fail, stats will remain 0
+  }
+};
+
 onMounted(() => {
   userId.value = uni.getStorageSync('userId') || '';
   const info = uni.getStorageSync('userInfo');
@@ -229,6 +242,10 @@ onMounted(() => {
     topSafeHeight.value = menuButton.top;
   } else {
     topSafeHeight.value = (sysInfo.statusBarHeight || 44) + 8;
+  }
+
+  if (userId.value) {
+    loadStats(Number(userId.value));
   }
 });
 </script>

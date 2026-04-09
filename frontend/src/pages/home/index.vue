@@ -147,7 +147,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { openLink } from '@/utils/openLink';
-import { getHomeContentApi, type HomeContentItem } from '@/api/home';
+import { getHomeContentApi, type HomeContentItem, type CareerCard } from '@/api/home';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 
 const userInfo = ref({
@@ -201,13 +201,28 @@ const clearSearch = () => {
 
 const loadHomeContent = async () => {
   try {
-    const data = await getHomeContentApi();
+    const userId = uni.getStorageSync('userId');
+    const data = await getHomeContentApi(userId ? Number(userId) : undefined);
 
-    const remoteCareerInsights = (data?.careerInsights || []).filter(item => item.type === 'video');
-    const remoteTrendingTopics = (data?.trendingTopics || []).filter(item => item.type === 'article');
+    // Backend returns careerCards (career paths) and articles separately
+    // Map careerCards to feed items as article-type entries
+    const remoteCards: HomeContentItem[] = (data?.careerCards || []).map((c: CareerCard) => ({
+      type: 'article' as const,
+      title: c.name,
+      heat: c.description,
+      url: `/pages/career/paths?pathId=${c.pathId}`,
+    }));
 
-    feedList.value = remoteCareerInsights.length > 0 ? remoteCareerInsights : [...defaultFeedList];
-    topicList.value = remoteTrendingTopics.length > 0 ? remoteTrendingTopics : [...defaultTopicList];
+    // Map backend articles to topic list items
+    const remoteTopics: HomeContentItem[] = (data?.articles || []).map(a => ({
+      type: 'article' as const,
+      title: a.title,
+      heat: a.summary,
+      url: a.imageUrl || '',
+    }));
+
+    feedList.value = [...defaultFeedList]; // Keep curated video feed as-is
+    topicList.value = remoteTopics.length > 0 ? remoteTopics : [...defaultTopicList];
   } catch (error) {
     feedList.value = [...defaultFeedList];
     topicList.value = [...defaultTopicList];

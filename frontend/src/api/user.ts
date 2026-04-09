@@ -28,9 +28,14 @@ export interface LoginDTO {
 /**
  * User Register API
  */
+export interface LoginResponse {
+  token: string;
+  user: User;
+}
+
 export const registerApi = (data: RegisterDTO) => {
   return request<User>({
-    url: '/users/register',
+    url: '/auth/register',
     method: 'POST',
     data,
   });
@@ -40,8 +45,8 @@ export const registerApi = (data: RegisterDTO) => {
  * User Login API
  */
 export const loginApi = (data: LoginDTO) => {
-  return request<User>({
-    url: '/users/login',
+  return request<LoginResponse>({
+    url: '/auth/login',
     method: 'POST',
     data,
   });
