@@ -7,6 +7,7 @@ import com.group1.career.service.AiService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -15,6 +16,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Slf4j
 @Service
@@ -28,8 +31,9 @@ public class AiServiceImpl implements AiService {
 
     private static final String API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(20)) // Longer timeout for chat
+            .connectTimeout(Duration.ofSeconds(60)) // Longer timeout for streaming
             .build();
 
     @Override
@@ -83,8 +87,78 @@ public class AiServiceImpl implements AiService {
         }
     }
     
-    // Deprecated single-turn diagnosis (kept for compatibility if needed, or removed)
+    // Single-turn shortcut
+    @Override
+    public String chat(String prompt) {
+        return chat(List.of(Map.of("role", "user", "content", prompt)));
+    }
+
+    // Deprecated single-turn diagnosis (kept for compatibility)
     public String diagnose(String content) {
         return chat(List.of(Map.of("role", "user", "content", content)));
+    }
+
+    @Override
+    public SseEmitter streamChat(List<Map<String, String>> messages) {
+        SseEmitter emitter = new SseEmitter(120_000L); // 2 min timeout
+
+        executorService.submit(() -> {
+            try {
+                // 1. Build request with stream:true
+                ObjectNode root = objectMapper.createObjectNode();
+                root.put("model", modelName);
+                root.put("stream", true);
+
+                ArrayNode msgArray = root.putArray("messages");
+                for (Map<String, String> msg : messages) {
+                    ObjectNode node = msgArray.addObject();
+                    node.put("role", msg.get("role"));
+                    node.put("content", msg.get("content"));
+                }
+
+                String requestBody = objectMapper.writeValueAsString(root);
+
+                // 2. Send streaming request
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(API_URL))
+                        .header("Authorization", "Bearer " + apiKey)
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                        .build();
+
+                HttpResponse<java.util.stream.Stream<String>> response = httpClient.send(
+                        request, HttpResponse.BodyHandlers.ofLines());
+
+                // 3. Parse SSE lines and forward token-by-token
+                response.body().forEach(line -> {
+                    try {
+                        if (line.startsWith("data: ") && !line.contains("[DONE]")) {
+                            String json = line.substring(6);
+                            ObjectNode chunk = (ObjectNode) objectMapper.readTree(json);
+                            if (chunk.has("choices") && chunk.get("choices").size() > 0) {
+                                var delta = chunk.get("choices").get(0).get("delta");
+                                if (delta != null && delta.has("content")) {
+                                    String token = delta.get("content").asText();
+                                    emitter.send(SseEmitter.event()
+                                            .name("token")
+                                            .data(token));
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("SSE parse error: {}", e.getMessage());
+                    }
+                });
+
+                emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                emitter.complete();
+
+            } catch (Exception e) {
+                log.error("Stream chat failed", e);
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
     }
 }
