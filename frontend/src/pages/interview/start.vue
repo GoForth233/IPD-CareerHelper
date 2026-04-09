@@ -1,16 +1,17 @@
 <template>
-  <view class="container">
+  <view class="start-page" :class="{ 'is-dark': darkPref }">
     <view class="header">
       <text class="title">Start Mock Interview</text>
-      <text class="subtitle">Select position and difficulty to start your preparation</text>
+      <text class="subtitle">Select position and difficulty to begin your practice session</text>
     </view>
 
-    <view class="card">
+    <view class="form-card">
       <view class="form-item">
         <text class="label">Target Position</text>
         <picker :range="positions" @change="onPositionChange">
-          <view class="picker">
-            {{ selectedPosition || 'Select Position' }}
+          <view class="picker-box">
+            <text class="picker-val" :class="{ 'has-val': selectedPosition }">{{ selectedPosition || 'Select Position' }}</text>
+            <text class="picker-arrow">›</text>
           </view>
         </picker>
       </view>
@@ -43,6 +44,7 @@ import { startInterviewApi } from '@/api/interview';
 const positions = ['Java Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer', 'Product Manager', 'Data Analyst'];
 const selectedPosition = ref('');
 const selectedPositionIndex = ref(0);
+const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
 
 const difficulties = [
   { label: 'Easy', value: 'Easy' },
@@ -65,9 +67,9 @@ const startInterview = async () => {
 
   const userId = uni.getStorageSync('userId');
   if (!userId) {
-    uni.showToast({ title: 'Please login first', icon: 'none' });
+    uni.showToast({ title: 'Please sign in first', icon: 'none' });
     setTimeout(() => {
-      uni.navigateTo({ url: '/pages/login/login' });
+      uni.navigateTo({ url: '/pages/login/index' });
     }, 1000);
     return;
   }
@@ -95,89 +97,101 @@ const startInterview = async () => {
 </script>
 
 <style scoped>
-.container {
+.start-page {
   min-height: 100vh;
-  background-color: #f5f7fa;
-  padding: 20px;
+  background-color: var(--page-ios-gray);
+  padding: 24px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  box-sizing: border-box;
 }
 
-.header {
-  margin-bottom: 30px;
-  text-align: center;
-}
+.header { margin-bottom: 28px; padding: 0 4px; }
 
 .title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
+  font-size: var(--font-hero);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #666;
+  font-size: var(--font-caption);
+  color: var(--text-tertiary);
   display: block;
+  line-height: var(--line-height-caption);
 }
 
-.card {
-  background-color: #fff;
-  border-radius: 16px;
-  padding: 30px 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.form-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  box-shadow: var(--shadow-card);
 }
 
-.form-item {
-  margin-bottom: 25px;
-}
+.form-item { margin-bottom: 24px; }
 
 .label {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 12px;
-  display: block;
+  font-size: 16px; font-weight: 600; color: #1e293b;
+  margin-bottom: 12px; display: block;
 }
 
-.picker {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 14px;
-  background-color: #f9f9f9;
-  color: #333;
+.picker-box {
+  display: flex; align-items: center; justify-content: space-between;
+  border: 1.5px solid #e2e8f0; border-radius: 14px;
+  padding: 14px 16px; background: #f8fafc;
 }
 
-.difficulty-options {
-  display: flex;
-  gap: 10px;
-}
+.picker-val { font-size: 15px; color: #94a3b8; }
+
+.has-val { color: #1e293b; }
+
+.picker-arrow { font-size: 18px; color: #c7c7cc; }
+
+.difficulty-options { display: flex; gap: 10px; }
 
 .diff-btn {
-  flex: 1;
-  text-align: center;
-  padding: 12px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #666;
-  background-color: #fff;
+  flex: 1; text-align: center; padding: 14px;
+  border: 2px solid #e2e8f0; border-radius: 14px;
+  font-size: 14px; font-weight: 500; color: #64748b; background: #ffffff;
+  transition: all 0.2s;
 }
 
 .diff-btn.active {
-  border-color: #667eea;
-  background-color: #667eea;
-  color: #fff;
-  font-weight: bold;
+  border-color: #2563eb; background: #2563eb;
+  color: #fff; font-weight: 600;
 }
+
+.diff-btn:active { transform: scale(0.96); }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  width: 100%;
+  background: var(--primary-color);
   color: #fff;
-  border-radius: 8px;
-  margin-top: 20px;
+  border-radius: var(--btn-radius);
+  margin-top: 8px;
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 700;
+  height: var(--btn-height-lg);
+  line-height: var(--btn-height-lg);
+  border: none;
+  box-shadow: var(--shadow-card);
 }
-</style>
 
+.btn-primary:active { background: var(--primary-hover); }
+
+/* Dark mode */
+.is-dark { background-color: #0f172a; }
+
+.is-dark .title,
+.is-dark .label,
+.is-dark .has-val { color: #f8fafc; }
+
+.is-dark .form-card { background: #1e293b; box-shadow: none; }
+
+.is-dark .picker-box,
+.is-dark .diff-btn { border-color: #334155; background: #0f172a; color: #94a3b8; }
+
+.is-dark .diff-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+</style>
