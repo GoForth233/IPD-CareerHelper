@@ -52,14 +52,14 @@ public class JwtUtils {
         try {
             Jwts.parserBuilder().setSigningKey(KEY).build().parseClaimsJws(authToken);
             return true;
-        } catch (SecurityException | MalformedJwtException e) {
-            log.error("Invalid JWT signature");
         } catch (ExpiredJwtException e) {
             log.error("Expired JWT token");
         } catch (UnsupportedJwtException e) {
             log.error("Unsupported JWT token");
         } catch (IllegalArgumentException e) {
             log.error("JWT claims string is empty");
+        } catch (JwtException e) {
+            log.error("Invalid JWT signature");
         }
         return false;
     }

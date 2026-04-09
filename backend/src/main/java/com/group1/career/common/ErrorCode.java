@@ -7,6 +7,7 @@ public enum ErrorCode {
     SUCCESS(200, "Success"),
     SYSTEM_ERROR(500, "System Error"),
     PARAM_ERROR(400, "Parameter Error"),
+    UNAUTHORIZED_ERROR(401, "Unauthorized"),
     USER_NOT_FOUND(4001, "User Not Found"),
     USER_ALREADY_EXISTS(4002, "User Already Exists"),
     RESUME_NOT_FOUND(4003, "Resume Not Found");

@@ -45,7 +45,7 @@ public class AuthController {
                 request.getIdentifier(),
                 request.getCredential()
         );
-        String token = com.group1.career.utils.JwtUtils.generateToken(user.getId(), "USER");
+        String token = com.group1.career.utils.JwtUtils.generateToken(user.getUserId(), "USER");
         return Result.success(new LoginResponseDto(token, user));
     }
 

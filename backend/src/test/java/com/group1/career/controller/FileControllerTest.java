@@ -1,6 +1,8 @@
 package com.group1.career.controller;
 
+import com.group1.career.interceptor.AuthInterceptor;
 import com.group1.career.service.FileService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,24 +27,23 @@ public class FileControllerTest {
     @MockitoBean
     private FileService fileService;
 
+    @MockitoBean
+    private AuthInterceptor authInterceptor;
+
+    @BeforeEach
+    public void bypassAuth() throws Exception {
+        when(authInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
+
     @Test
     @DisplayName("API Test: Upload File Success")
     public void testUploadFile_Success() throws Exception {
-        // Prepare
         MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test-resume.pdf",
-                "application/pdf",
-                "test content".getBytes()
-        );
-
+                "file", "test-resume.pdf", "application/pdf", "test content".getBytes());
         String mockUrl = "https://test-bucket.oss-cn-test.aliyuncs.com/resumes/test-file.pdf";
         when(fileService.uploadFile(any(), anyString())).thenReturn(mockUrl);
 
-        // Execute & Verify
-        mockMvc.perform(multipart("/api/files/upload")
-                        .file(file)
-                        .param("folder", "resumes"))
+        mockMvc.perform(multipart("/api/files/upload").file(file).param("folder", "resumes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").value(mockUrl));
@@ -51,18 +52,11 @@ public class FileControllerTest {
     @Test
     @DisplayName("API Test: Upload File with Default Folder")
     public void testUploadFile_DefaultFolder() throws Exception {
-        // Prepare
         MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "document.pdf",
-                "application/pdf",
-                "content".getBytes()
-        );
-
+                "file", "document.pdf", "application/pdf", "content".getBytes());
         String mockUrl = "https://test-bucket.oss-cn-test.aliyuncs.com/resumes/doc.pdf";
         when(fileService.uploadFile(any(), anyString())).thenReturn(mockUrl);
 
-        // Execute & Verify (without folder param, should use default)
         mockMvc.perform(multipart("/api/files/upload").file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -72,23 +66,13 @@ public class FileControllerTest {
     @Test
     @DisplayName("API Test: Upload Avatar to Different Folder")
     public void testUploadFile_AvatarFolder() throws Exception {
-        // Prepare
         MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "avatar.jpg",
-                "image/jpeg",
-                "image content".getBytes()
-        );
-
+                "file", "avatar.jpg", "image/jpeg", "image content".getBytes());
         String mockUrl = "https://test-bucket.oss-cn-test.aliyuncs.com/avatars/user-avatar.jpg";
         when(fileService.uploadFile(any(), anyString())).thenReturn(mockUrl);
 
-        // Execute & Verify
-        mockMvc.perform(multipart("/api/files/upload")
-                        .file(file)
-                        .param("folder", "avatars"))
+        mockMvc.perform(multipart("/api/files/upload").file(file).param("folder", "avatars"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(mockUrl));
     }
 }
-

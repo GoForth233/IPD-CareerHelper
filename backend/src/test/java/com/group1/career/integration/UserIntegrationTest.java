@@ -1,7 +1,6 @@
 package com.group1.career.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.group1.career.controller.UserController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,25 +11,21 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Integration Test Example
- * 
- * This tests the complete flow from HTTP request -> Controller -> Service -> Repository -> Database
- * It uses a real Spring context and can connect to a test database.
- * 
- * Note: For production-ready integration tests, consider using:
- * - @Testcontainers for Docker-based test databases
- * - H2 in-memory database for faster tests
- * - Test profiles with separate configurations
+ * Integration Test: Tests the complete HTTP -> Controller -> Service -> DB flow.
+ * register/login are now under AuthController (/auth/*).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional // Rollback after each test
+@Transactional
 public class UserIntegrationTest {
 
     @Autowired
@@ -42,16 +37,15 @@ public class UserIntegrationTest {
     @Test
     @DisplayName("Integration Test: Complete User Registration Flow")
     public void testCompleteUserRegistrationFlow() throws Exception {
-        // Step 1: Register a new user
-        UserController.RegisterRequest registerRequest = new UserController.RegisterRequest();
-        registerRequest.setNickname("IntegrationTestUser");
-        registerRequest.setIdentityType("PASSWORD");
-        registerRequest.setIdentifier("integration-test@example.com");
-        registerRequest.setCredential("test123");
+        Map<String, String> request = new HashMap<>();
+        request.put("nickname", "IntegrationTestUser");
+        request.put("identityType", "PASSWORD");
+        request.put("identifier", "integration-test@example.com");
+        request.put("credential", "test123");
 
-        mockMvc.perform(post("/users/register")
+        mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.nickname").value("IntegrationTestUser"));
@@ -60,52 +54,51 @@ public class UserIntegrationTest {
     @Test
     @DisplayName("Integration Test: Login with Existing User")
     public void testLoginFlow() throws Exception {
-        // Pre-condition: Register user first
-        UserController.RegisterRequest registerRequest = new UserController.RegisterRequest();
-        registerRequest.setNickname("LoginTestUser");
-        registerRequest.setIdentityType("PASSWORD");
-        registerRequest.setIdentifier("login-test@example.com");
-        registerRequest.setCredential("password123");
+        // Step 1: Register user
+        Map<String, String> registerRequest = new HashMap<>();
+        registerRequest.put("nickname", "LoginTestUser");
+        registerRequest.put("identityType", "PASSWORD");
+        registerRequest.put("identifier", "login-test@example.com");
+        registerRequest.put("credential", "password123");
 
-        mockMvc.perform(post("/users/register")
+        mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isOk());
 
-        // Step 2: Login with the registered credentials
-        UserController.LoginRequest loginRequest = new UserController.LoginRequest();
-        loginRequest.setIdentityType("PASSWORD");
-        loginRequest.setIdentifier("login-test@example.com");
-        loginRequest.setCredential("password123");
+        // Step 2: Login
+        Map<String, String> loginRequest = new HashMap<>();
+        loginRequest.put("identityType", "PASSWORD");
+        loginRequest.put("identifier", "login-test@example.com");
+        loginRequest.put("credential", "password123");
 
-        mockMvc.perform(post("/users/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.nickname").value("LoginTestUser"));
+                .andExpect(jsonPath("$.data.user.nickname").value("LoginTestUser"));
     }
 
     @Test
     @DisplayName("Integration Test: Prevent Duplicate Registration")
     public void testDuplicateRegistrationPrevention() throws Exception {
-        // Step 1: Register user
-        UserController.RegisterRequest request = new UserController.RegisterRequest();
-        request.setNickname("DuplicateTestUser");
-        request.setIdentityType("PASSWORD");
-        request.setIdentifier("duplicate@example.com");
-        request.setCredential("pass123");
+        Map<String, String> request = new HashMap<>();
+        request.put("nickname", "DuplicateTestUser");
+        request.put("identityType", "PASSWORD");
+        request.put("identifier", "duplicate@example.com");
+        request.put("credential", "pass123");
 
-        mockMvc.perform(post("/users/register")
+        // First registration succeeds
+        mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        // Step 2: Try to register again with same identifier
-        mockMvc.perform(post("/users/register")
+        // Second registration with same identifier should return business error
+        mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(500)); // Expect 200 OK but with error code 500 in body
+                .andExpect(jsonPath("$.code").value(500));
     }
 }
-

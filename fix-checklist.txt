@@ -1,0 +1,47 @@
+========================================
+前后端修复清单 Fix Checklist
+========================================
+
+【P0 - 功能性 Bug，必须修复】
+
+[x] 1. frontend/src/api/user.ts
+    - 问题: 注册/登录接口路径与后端不匹配
+    - 已修: /users/register → /auth/register
+    - 已修: /users/login   → /auth/login
+    - 已修: 新增 LoginResponse 类型 { token, user }
+
+[x] 2. frontend/src/pages/login/index.vue (第 164-177 行)
+    - 问题: 登录成功后 token 和 userId 未正确存储
+    - 后端返回结构: { token: string, user: User }
+    - 已修: 正确存储 token / userId / userInfo 三个字段
+
+[x] 3. frontend/src/api/home.ts + frontend/src/pages/home/index.vue
+    - 问题: 首页接口路径与后端不匹配，且响应结构不同
+    - 已修: /api/home/content → /api/homepage/feed
+    - 已修: 新增 HomepageFeedResponse / CareerCard 类型
+    - 已修: home/index.vue 数据解析适配新结构（articles → topicList）
+
+【P1 - 数据问题，影响体验】
+
+[x] 4. frontend/src/pages/user/index.vue (第 31-43 行)
+    - 问题: 统计数字（Assessments/Interviews/Resumes）硬编码为 2/5/3
+    - 已修: 登录后调用 getUserInterviewsApi / getUserResumesApi 获取真实数量
+    - 已修: 移除无数据来源的 Assessments 统计项
+
+【P2 - Mock 数据，后续优化（暂不修改）】
+
+[ ] 5. backend - HomepageController.java (第 68-69 行)
+    - 问题: totalUsers=1280, totalInterviews=356 硬编码
+    - 待做: 接入 userService.count() / interviewService.count()
+
+[ ] 6. backend - InterviewReportController.java
+    - 问题: 雷达图评分用 60 + messages*3 模拟，非 AI 评分
+    - 待做: 改为调用 AI 服务评分
+
+[ ] 7. backend - ResumeDiagnosisController.java
+    - 问题: 简历评分基于消息数量而非 AI 实际分析
+    - 待做: 改为调用 AI 服务评分
+
+========================================
+P0 + P1 已全部修复完成 ✓
+========================================

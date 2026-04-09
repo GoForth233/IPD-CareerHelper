@@ -22,7 +22,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
 
         if (token == null || !JwtUtils.validateToken(token)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED_ERROR, "Invalid or missing token");
+            throw new BizException(ErrorCode.UNAUTHORIZED_ERROR);
         }
 
         // Parse user id and store in request attributes for controllers to use
