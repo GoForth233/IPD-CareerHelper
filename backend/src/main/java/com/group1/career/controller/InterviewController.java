@@ -25,9 +25,19 @@ public class InterviewController {
     private final InterviewService interviewService;
     private final AiService aiService;
 
-    @Operation(summary = "Start a new interview")
+    @Operation(summary = "Start a new interview (with session guard)")
     @PostMapping("/start")
     public Result<Interview> startInterview(@RequestBody StartInterviewRequest request) {
+        // Guard: check if user already has an active session
+        List<Interview> activeOnes = interviewService.getUserInterviews(request.getUserId())
+                .stream()
+                .filter(i -> "ONGOING".equals(i.getStatus()))
+                .toList();
+        if (!activeOnes.isEmpty()) {
+            // Return the existing session instead of creating a duplicate
+            return Result.success(activeOnes.get(0));
+        }
+
         Interview interview = interviewService.startInterview(
                 request.getUserId(),
                 request.getResumeId(),
@@ -35,6 +45,22 @@ public class InterviewController {
                 request.getDifficulty()
         );
         return Result.success(interview);
+    }
+
+    @Operation(summary = "Get active session status for a user")
+    @GetMapping("/session/status")
+    public Result<SessionStatusDto> getSessionStatus(@RequestParam Long userId) {
+        List<Interview> interviews = interviewService.getUserInterviews(userId);
+        Interview active = interviews.stream()
+                .filter(i -> "ONGOING".equals(i.getStatus()))
+                .findFirst()
+                .orElse(null);
+
+        SessionStatusDto status = new SessionStatusDto();
+        status.setHasActiveSession(active != null);
+        status.setActiveInterview(active);
+        status.setTotalCompleted((int) interviews.stream().filter(i -> "COMPLETED".equals(i.getStatus())).count());
+        return Result.success(status);
     }
 
     @Operation(summary = "Send a message in interview (with AI response)")
@@ -139,6 +165,13 @@ public class InterviewController {
     @Data
     public static class EndInterviewRequest {
         private Integer finalScore;
+    }
+
+    @Data
+    public static class SessionStatusDto {
+        private boolean hasActiveSession;
+        private Interview activeInterview;
+        private int totalCompleted;
     }
 }
 
