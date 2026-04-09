@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
+import { LOGIN_PAGE } from "@/utils/auth";
+
 onLaunch(() => {
   console.log("App Launch");
   const userId = uni.getStorageSync('userId');
   if (!userId) {
-    uni.reLaunch({ url: '/pages/login/index' });
+    uni.reLaunch({ url: LOGIN_PAGE });
   }
 });
 onShow(() => {
@@ -74,6 +76,9 @@ onHide(() => {
   --space-lg: 16px;
   --space-xl: 20px;
   --space-2xl: 24px;
+
+  /* Custom tab bar list height (uni-app default ~50px); pad scroll areas above it */
+  --tab-bar-height: 50px;
 }
 
 /* 跟随系统的深色变量（业务页可另加 .theme-dark 覆盖） */
@@ -93,6 +98,7 @@ onHide(() => {
 
 /* 全局基础样式 */
 page {
+  height: 100%;
   background-color: var(--bg-color);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -136,8 +142,12 @@ textarea.ui-input {
   border-radius: 14px;
 }
 
+button {
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
 .ui-btn,
-button,
 .btn-primary,
 .btn-secondary,
 .btn-send,
@@ -153,9 +163,9 @@ button,
 .ui-btn-primary,
 .btn-primary,
 .btn-send {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-mid));
+  background: var(--primary-color);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.22);
+  box-shadow: var(--shadow-card);
 }
 
 .ui-btn-secondary,

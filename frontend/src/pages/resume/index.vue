@@ -206,7 +206,7 @@ onMounted(() => {
   min-height: 100vh;
   background: var(--page-ios-gray);
   padding: 0 20px;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   box-sizing: border-box;
 }
@@ -217,10 +217,10 @@ onMounted(() => {
 
 .page-title {
   display: block;
-  font-size: var(--font-hero);
+  font-size: var(--font-title);
   font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.35px;
 }
 
 .page-subtitle {
@@ -411,7 +411,9 @@ onMounted(() => {
 
 .add-desc { font-size: 12px; color: #64748b; }
 
-.bottom-safe { height: 40px; }
+.bottom-safe {
+  height: calc(var(--tab-bar-height, 50px) + 20px);
+}
 
 /* ---- Action sheet ---- */
 .sheet-mask {

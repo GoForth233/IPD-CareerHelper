@@ -49,6 +49,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getUserInfoApi, type User } from '@/api/user';
+import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 
 const userInfo = ref<User | null>(null);
 
@@ -64,7 +65,7 @@ onMounted(async () => {
 });
 
 const goLogin = () => {
-  uni.navigateTo({ url: '/pages/login/index' });
+  uni.reLaunch({ url: LOGIN_PAGE });
 };
 
 const goToResumes = () => {
@@ -85,10 +86,12 @@ const handleLogout = () => {
     content: 'Are you sure you want to sign out?',
     success: (res) => {
       if (res.confirm) {
-        uni.removeStorageSync('userId');
-        uni.removeStorageSync('userInfo');
+        clearAuthState();
         userInfo.value = null;
         uni.showToast({ title: 'Signed out successfully', icon: 'success' });
+        setTimeout(() => {
+          uni.reLaunch({ url: LOGIN_PAGE });
+        }, 400);
       }
     }
   });

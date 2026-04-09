@@ -146,7 +146,9 @@
 			"path": "pages/login/index",
 			"style": {
 				"navigationBarTitleText": "",
-				"navigationStyle": "custom"
+				"navigationStyle": "custom",
+				"navigationBarBackgroundColor": "#f1f5f9",
+				"backgroundColor": "#f1f5f9"
 			}
 		},
 		{

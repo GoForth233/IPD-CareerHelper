@@ -145,8 +145,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { openLink } from '@/utils/openLink';
 import { getHomeContentApi, type HomeContentItem } from '@/api/home';
+import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 
 const userInfo = ref({
   nickname: '',
@@ -212,9 +214,15 @@ const loadHomeContent = async () => {
   }
 };
 
-onMounted(() => {
+const syncUserFromStorage = () => {
   const info = uni.getStorageSync('userInfo');
-  if (info) userInfo.value = info;
+  userInfo.value = info
+    ? info
+    : { nickname: '', avatarUrl: '' };
+};
+
+onMounted(() => {
+  syncUserFromStorage();
 
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
 
@@ -229,6 +237,10 @@ onMounted(() => {
   }
 
   loadHomeContent();
+});
+
+onShow(() => {
+  syncUserFromStorage();
 });
 
 const navTo = (url: string) => {
@@ -247,9 +259,9 @@ const handleAvatarClick = () => {
           content: 'Are you sure you want to log out?',
           success: (r) => {
             if (r.confirm) {
-              uni.removeStorageSync('userId');
-              uni.removeStorageSync('userInfo');
-              uni.reLaunch({ url: '/pages/login/index' });
+              clearAuthState();
+              userInfo.value = { nickname: '', avatarUrl: '' };
+              uni.reLaunch({ url: LOGIN_PAGE });
             }
           },
         });
@@ -619,7 +631,7 @@ const handleAvatarClick = () => {
 }
 
 .bottom-safe {
-  height: 60px;
+  height: calc(var(--tab-bar-height, 50px) + 20px);
 }
 
 /* ---- Dark Mode ---- */
