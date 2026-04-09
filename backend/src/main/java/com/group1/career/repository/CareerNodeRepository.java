@@ -9,5 +9,8 @@ import java.util.List;
 @Repository
 public interface CareerNodeRepository extends JpaRepository<CareerNode, Long> {
     List<CareerNode> findByPathIdOrderByLevelAsc(Integer pathId);
+    List<CareerNode> findByPathIdAndLevel(Integer pathId, Integer level);
+    List<CareerNode> findByParentId(Long parentId);
+    List<CareerNode> findByPathIdOrderBySortOrderAsc(Integer pathId);
 }
 
