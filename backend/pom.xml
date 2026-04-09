@@ -107,8 +107,14 @@
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-test</artifactId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- AOP for Global Request Logging -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
     </dependencies>
 
