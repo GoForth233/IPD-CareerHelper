@@ -1,5 +1,6 @@
 <template>
-  <view class="chat-page">
+  <view class="chat-page" :class="{ 'is-dark': darkPref }">
+    <!-- Custom nav bar -->
     <view class="chat-nav">
       <view class="nav-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
       <view class="nav-row">
@@ -7,38 +8,53 @@
           <text class="nav-bot-emoji">🤖</text>
         </view>
         <view class="nav-meta">
-          <text class="nav-name">AI职业顾问</text>
+          <text class="nav-name">AI Career Advisor</text>
           <view class="nav-status-row">
             <view class="online-dot"></view>
-            <text class="nav-status">在线 · 已结合你的求职画像</text>
+            <text class="nav-status">Online · Personalized to your profile</text>
           </view>
         </view>
       </view>
     </view>
 
-    <scroll-view class="chat-list" scroll-y :scroll-top="scrollTop" scroll-with-animation>
+    <!-- Chat messages area -->
+    <scroll-view
+      class="chat-list"
+      scroll-y
+      :scroll-top="scrollTop"
+      scroll-with-animation
+    >
+      <!-- Welcome card -->
       <view class="welcome-card">
         <view class="welcome-icon">🎯</view>
-        <text class="welcome-title">你的专属求职助手</text>
-        <text class="welcome-desc">我可以结合你的测评和简历，给你个性化的求职建议。</text>
+        <text class="welcome-title">Your Personal Career Advisor</text>
+        <text class="welcome-desc">I've reviewed your assessment profile and resume. I can provide personalized job-seeking advice.</text>
         <view class="quick-actions">
-          <view class="quick-chip" @click="sendQuick('帮我优化简历')">
-            <text class="chip-text">优化简历</text>
+          <view class="quick-chip" @click="sendQuick('Help me optimize my resume')">
+            <text class="chip-text">Optimize Resume</text>
           </view>
-          <view class="quick-chip" @click="sendQuick('给我一些面试技巧')">
-            <text class="chip-text">面试技巧</text>
+          <view class="quick-chip" @click="sendQuick('What are some interview techniques?')">
+            <text class="chip-text">Interview Tips</text>
           </view>
-          <view class="quick-chip" @click="sendQuick('前端岗位薪资范围怎么样')">
-            <text class="chip-text">行业薪资</text>
+          <view class="quick-chip" @click="sendQuick('What is the salary range for frontend developers?')">
+            <text class="chip-text">Industry Salary</text>
           </view>
         </view>
       </view>
 
+      <!-- Timestamp -->
       <view class="time-divider">
-        <text class="time-text">今日</text>
+        <text class="time-text">Today 14:30</text>
       </view>
 
-      <view class="msg-row" v-for="(msg, index) in messages" :key="index" :class="msg.role === 'user' ? 'row-user' : 'row-ai'">
+      <!-- Messages -->
+      <view
+        class="msg-row"
+        v-for="(msg, index) in messages"
+        :key="index"
+        :class="msg.role === 'user' ? 'row-user' : 'row-ai'"
+      >
+        <!-- AI avatar (top-left of bubble) -->
         <view class="bot-avatar" v-if="msg.role === 'ai'">
           <text class="bot-emoji">🤖</text>
         </view>
@@ -58,17 +74,22 @@
       <view class="scroll-pad"></view>
     </scroll-view>
 
+    <!-- Input area -->
     <view class="input-bar" :style="{ paddingBottom: safeBottom + 'px' }">
       <view class="input-row">
         <input
           class="chat-input"
           v-model="inputText"
-          placeholder="随时问我求职相关问题..."
+          placeholder="Ask me anything about your career..."
           placeholder-class="input-ph"
           @confirm="sendMessage"
           confirm-type="send"
         />
-        <view class="send-btn" :class="{ 'send-active': inputText.trim().length > 0 }" @click="sendMessage">
+        <view
+          class="send-btn"
+          :class="{ 'send-active': inputText.trim().length > 0 }"
+          @click="sendMessage"
+        >
           <text class="send-arrow">↑</text>
         </view>
       </view>
@@ -77,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue';
+import { ref, nextTick, onMounted } from 'vue';
 
 interface ChatMessage {
   role: 'user' | 'ai';
@@ -88,14 +109,15 @@ interface ChatMessage {
 const messages = ref<ChatMessage[]>([
   {
     role: 'ai',
-    content: '你好！我是你的AI职业顾问。你可以问我简历优化、面试准备、岗位选择和薪资信息。',
+    content: 'Hi! I\'m your personal career advisor. I\'ve reviewed your assessment profile and resume. What would you like to know about your upcoming job search?',
   },
 ]);
 
 const inputText = ref('');
 const scrollTop = ref(0);
 const safeBottom = ref(20);
-const topSafeHeight = ref(44);
+const topSafeHeight = ref(88);
+const darkPref = ref(false);
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -109,10 +131,10 @@ const sendQuick = (text: string) => {
 };
 
 const mockReplies = [
-  '建议你在简历项目经历里用“动作+技术+结果”结构写 bullet，比如：基于 Vue3 + Pinia 重构状态管理，首屏加载时间降低 32%。',
-  '面试建议分三层准备：1) 八股与原理，2) 项目深挖，3) 场景题表达。你想先练哪一块？',
-  '当前校招前端薪资和城市相关性很强，一线城市通常区间更高。你如果告诉我目标城市，我可以给更具体建议。',
-  '你可以把目标 JD 发我，我会按 JD 关键词帮你做简历匹配和改写建议。',
+  'Based on your resume, you have strong experience with Vue3. I suggest highlighting specific performance optimization problems you\'ve solved during your self-introduction. Want me to draft one for you?',
+  'Great question! For frontend interviews, focus on three areas: framework internals (Vue reactivity, Virtual DOM), algorithm basics (sorting, trees), and system design (component architecture). Should I create a study plan?',
+  'According to the latest market data, frontend developer salaries for fresh graduates range from $45K-$75K depending on the city and company tier. Your Vue3 + TypeScript stack puts you in a competitive position.',
+  'I recommend tailoring your resume for each application. Your current resume scores 85/100 for general frontend roles, but could be improved by adding quantified metrics. Would you like specific suggestions?',
 ];
 
 const sendMessage = () => {
@@ -137,13 +159,15 @@ const sendMessage = () => {
 };
 
 onMounted(() => {
+  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+
   const systemInfo = uni.getSystemInfoSync();
   const menuButton = uni.getMenuButtonBoundingClientRect?.();
 
   if (menuButton && menuButton.top && menuButton.height) {
     topSafeHeight.value = menuButton.top + menuButton.height + 8;
   } else {
-    const statusBar = systemInfo.statusBarHeight || 20;
+    const statusBar = systemInfo.statusBarHeight || 44;
     topSafeHeight.value = statusBar + 44;
   }
 
@@ -156,10 +180,11 @@ onMounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--page-ios-gray);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
 }
 
+/* ---- Nav bar ---- */
 .chat-nav {
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(24px);
@@ -195,10 +220,16 @@ onMounted(() => {
   font-size: 20px;
 }
 
+.nav-meta {
+  display: flex;
+  flex-direction: column;
+}
+
 .nav-name {
-  font-size: 16px;
+  font-size: var(--font-section);
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
 }
 
 .nav-status-row {
@@ -217,9 +248,11 @@ onMounted(() => {
 
 .nav-status {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-secondary);
+  line-height: 1.35;
 }
 
+/* ---- Chat list ---- */
 .chat-list {
   flex: 1;
   padding: 16px 16px 0;
@@ -230,12 +263,13 @@ onMounted(() => {
   height: 100px;
 }
 
+/* ---- Welcome card ---- */
 .welcome-card {
   background: #ffffff;
   border-radius: 20px;
   padding: 24px 20px;
   margin-bottom: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-strong);
   box-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
   display: flex;
   flex-direction: column;
@@ -273,6 +307,12 @@ onMounted(() => {
   background: #eff6ff;
   border-radius: 20px;
   padding: 8px 16px;
+  transition: all 0.15s;
+}
+
+.quick-chip:active {
+  background: #dbeafe;
+  transform: scale(0.96);
 }
 
 .chip-text {
@@ -281,6 +321,7 @@ onMounted(() => {
   color: #2563eb;
 }
 
+/* ---- Time divider ---- */
 .time-divider {
   display: flex;
   justify-content: center;
@@ -295,6 +336,7 @@ onMounted(() => {
   border-radius: 10px;
 }
 
+/* ---- Messages ---- */
 .msg-row {
   display: flex;
   margin-bottom: 20px;
@@ -338,7 +380,7 @@ onMounted(() => {
   background: #ffffff;
   color: #1c1c1e;
   border-radius: 4px 20px 20px 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
 }
 
@@ -349,6 +391,11 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
+.bubble-text {
+  display: block;
+}
+
+/* ---- Typing dots ---- */
 .typing-dots {
   display: flex;
   align-items: center;
@@ -364,26 +411,15 @@ onMounted(() => {
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
-.dot:nth-child(1) {
-  animation-delay: -0.32s;
-}
-
-.dot:nth-child(2) {
-  animation-delay: -0.16s;
-}
+.dot:nth-child(1) { animation-delay: -0.32s; }
+.dot:nth-child(2) { animation-delay: -0.16s; }
 
 @keyframes bounce {
-  0%,
-  80%,
-  100% {
-    transform: scale(0);
-  }
-
-  40% {
-    transform: scale(1);
-  }
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
 }
 
+/* ---- Input bar ---- */
 .input-bar {
   background: rgba(245, 245, 247, 0.92);
   backdrop-filter: blur(24px);
@@ -403,7 +439,7 @@ onMounted(() => {
   background: #ffffff;
   border-radius: 24px;
   padding: 4px 4px 4px 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-strong);
   box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
 }
 
@@ -440,5 +476,50 @@ onMounted(() => {
   color: #ffffff;
   font-size: 18px;
   font-weight: 700;
+}
+
+/* ---- Dark mode ---- */
+.is-dark {
+  background: #0f172a;
+}
+
+.is-dark .chat-nav {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: #334155;
+}
+
+.is-dark .nav-name,
+.is-dark .welcome-title {
+  color: #f8fafc;
+}
+
+.is-dark .welcome-desc,
+.is-dark .nav-status {
+  color: #94a3b8;
+}
+
+.is-dark .welcome-card,
+.is-dark .bubble-ai,
+.is-dark .bot-avatar {
+  background: #1e293b;
+  box-shadow: none;
+}
+
+.is-dark .bubble-ai {
+  color: #f8fafc;
+}
+
+.is-dark .input-bar {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: #334155;
+}
+
+.is-dark .input-row {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.is-dark .chat-input {
+  color: #f8fafc;
 }
 </style>
