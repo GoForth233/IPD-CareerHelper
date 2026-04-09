@@ -1,0 +1,55 @@
+<template>
+  <view class="sl-tabs">
+    <view
+      v-for="(item, idx) in options"
+      :key="idx"
+      class="sl-tabs__item"
+      :class="{ 'is-active': idx === modelValue }"
+      @click="emit('update:modelValue', idx)"
+    >
+      <text>{{ item }}</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+defineProps<{
+  modelValue: number;
+  options: string[];
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: number): void;
+}>();
+</script>
+
+<style scoped>
+.sl-tabs {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sl-tabs__item {
+  padding: 10px 0;
+  color: #64748b;
+  font-size: 14px;
+  position: relative;
+}
+
+.sl-tabs__item.is-active {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.sl-tabs__item.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: #2563eb;
+  border-radius: 2px;
+}
+</style>
