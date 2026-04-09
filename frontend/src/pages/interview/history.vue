@@ -1,29 +1,30 @@
 <template>
-  <view class="container">
+  <view class="history-page" :class="{ 'is-dark': darkPref }">
     <view class="header">
-      <button class="btn-start" @click="startNew">+ Start New Interview</button>
+      <text class="title">Interview History</text>
+      <button class="btn-new" @click="startNew">+ New Session</button>
     </view>
 
     <view class="list" v-if="interviews.length > 0">
       <view v-for="item in interviews" :key="item.interviewId" class="interview-card" @click="viewDetail(item)">
-        <view class="card-header">
+        <view class="card-top">
           <text class="position">{{ item.positionName }}</text>
-          <view :class="['status-badge', item.status.toLowerCase()]">
-            <text>{{ item.status === 'COMPLETED' ? 'Completed' : 'Ongoing' }}</text>
+          <view :class="['status-pill', (item.status ?? '').toLowerCase()]">
+            <text class="pill-text">{{ item.status === 'COMPLETED' ? 'Completed' : 'Ongoing' }}</text>
           </view>
         </view>
-        <view class="card-body">
-          <view class="info-row">
-            <text class="label">Difficulty:</text>
-            <text class="value">{{ item.difficulty }}</text>
+        <view class="card-bottom">
+          <view class="info-item">
+            <text class="info-label">Difficulty</text>
+            <text class="info-val">{{ item.difficulty }}</text>
           </view>
-          <view class="info-row" v-if="item.finalScore">
-            <text class="label">Score:</text>
-            <text class="value score">{{ item.finalScore }}</text>
+          <view class="info-item" v-if="item.finalScore">
+            <text class="info-label">Score</text>
+            <text class="info-val score-val">{{ item.finalScore }}</text>
           </view>
-          <view class="info-row">
-            <text class="label">Time:</text>
-            <text class="value">{{ formatDate(item.startedAt) }}</text>
+          <view class="info-item">
+            <text class="info-label">Date</text>
+            <text class="info-val">{{ formatDate(item.startedAt) }}</text>
           </view>
         </view>
       </view>
@@ -42,8 +43,10 @@ import { ref, onMounted } from 'vue';
 import { getUserInterviewsApi, type Interview } from '@/api/interview';
 
 const interviews = ref<Interview[]>([]);
+const darkPref = ref(false);
 
 onMounted(async () => {
+  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   const userId = uni.getStorageSync('userId');
   if (userId) {
     try {
@@ -74,114 +77,102 @@ const formatDate = (dateStr?: string) => {
 </script>
 
 <style scoped>
-.container {
+.history-page {
   min-height: 100vh;
-  background-color: #f5f7fa;
-  padding: 15px;
+  background-color: var(--page-ios-gray);
+  padding: 24px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  box-sizing: border-box;
 }
 
 .header {
-  margin-bottom: 20px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 24px;
 }
 
-.btn-start {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+.title {
+  font-size: var(--font-hero);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.btn-new {
+  background: var(--primary-color);
   color: #fff;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 0 16px;
+  height: 36px;
+  line-height: 36px;
+  border: none;
 }
 
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
+.btn-new:active { background: var(--primary-hover); }
+
+.list { display: flex; flex-direction: column; gap: 12px; }
 
 .interview-card {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+.interview-card:active { transform: scale(0.98); }
+
+.card-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
 }
 
-.position {
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
-}
+.position { font-size: 17px; font-weight: 600; color: #1e293b; }
 
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-}
+.status-pill { padding: 4px 12px; border-radius: 10px; }
 
-.status-badge.completed {
-  background-color: #d4edda;
-  color: #155724;
-}
+.pill-text { font-size: 12px; font-weight: 600; }
 
-.status-badge.ongoing {
-  background-color: #fff3cd;
-  color: #856404;
-}
+.completed { background: #dcfce7; }
+.completed .pill-text { color: #16a34a; }
 
-.card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.ongoing { background: #fef3c7; }
+.ongoing .pill-text { color: #d97706; }
 
-.info-row {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-}
+.card-bottom { display: flex; gap: 20px; }
 
-.label {
-  color: #999;
-  margin-right: 8px;
-}
+.info-item { display: flex; flex-direction: column; gap: 2px; }
 
-.value {
-  color: #333;
-}
+.info-label { font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
 
-.value.score {
-  color: #667eea;
-  font-weight: bold;
-}
+.info-val { font-size: 14px; color: #334155; font-weight: 500; }
 
-.empty {
-  text-align: center;
-  padding: 60px 20px;
-}
+.score-val { color: #2563eb; font-weight: 700; }
 
-.empty-icon {
-  font-size: 64px;
-  display: block;
-  margin-bottom: 20px;
-}
+.empty { text-align: center; padding: 80px 20px; }
+
+.empty-icon { font-size: 56px; display: block; margin-bottom: 16px; }
 
 .empty-text {
-  font-size: 16px;
-  color: #999;
-  display: block;
-  margin-bottom: 30px;
+  font-size: 16px; color: #94a3b8; font-weight: 500;
+  display: block; margin-bottom: 24px;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  border-radius: 8px;
+  background: #2563eb; color: #fff; font-size: 16px; font-weight: 600;
+  border-radius: 14px; height: 48px; line-height: 48px; border: none;
 }
-</style>
 
+.btn-primary:active { background: #1d4ed8; }
+
+/* Dark mode */
+.is-dark { background-color: #0f172a; }
+
+.is-dark .title,
+.is-dark .position { color: #f8fafc; }
+
+.is-dark .interview-card { background: #1e293b; box-shadow: none; }
+
+.is-dark .info-val { color: #e2e8f0; }
+</style>
