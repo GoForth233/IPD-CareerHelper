@@ -73,5 +73,28 @@ public class ResumeServiceImpl implements ResumeService {
     public List<Resume> getUserResumes(Long userId) {
         return resumeRepository.findByUserId(userId);
     }
+
+    @Override
+    @Transactional
+    public void deleteResume(Long resumeId) {
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> new BizException(ErrorCode.RESUME_NOT_FOUND));
+
+        // 1. Delete MongoDB document if exists
+        if (resume.getMongoDocId() != null) {
+            resumeDocumentRepository.deleteById(resume.getMongoDocId());
+            log.info("Deleted MongoDB document: {}", resume.getMongoDocId());
+        }
+
+        // 2. Delete MySQL record
+        resumeRepository.deleteById(resumeId);
+        log.info("Deleted resume record: {}", resumeId);
+    }
+
+    @Override
+    @Transactional
+    public Resume updateResume(Resume resume) {
+        return resumeRepository.save(resume);
+    }
 }
 

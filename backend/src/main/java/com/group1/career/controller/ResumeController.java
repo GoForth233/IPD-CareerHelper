@@ -70,6 +70,24 @@ public class ResumeController {
         return Result.success(resumeVOs);
     }
 
+    @Operation(summary = "Delete Resume (MySQL + MongoDB + OSS)")
+    @DeleteMapping("/{resumeId}")
+    public Result<String> deleteResume(@PathVariable Long resumeId) {
+        resumeService.deleteResume(resumeId);
+        return Result.success("Resume deleted successfully");
+    }
+
+    @Operation(summary = "Update Resume Metadata")
+    @PutMapping("/{resumeId}")
+    public Result<ResumeVO> updateResume(@PathVariable Long resumeId, @RequestBody UpdateResumeRequest request) {
+        Resume resume = resumeService.getResumeWithDetailCheck(resumeId);
+        if (request.getTitle() != null) resume.setTitle(request.getTitle());
+        if (request.getTargetJob() != null) resume.setTargetJob(request.getTargetJob());
+        if (request.getFileUrl() != null) resume.setFileUrl(request.getFileUrl());
+        Resume updated = resumeService.updateResume(resume);
+        return Result.success(convertToVO(updated, null));
+    }
+
     // ================= Helper Methods =================
 
     private ResumeVO convertToVO(Resume resume, ResumeDocument detail) {
@@ -88,6 +106,13 @@ public class ResumeController {
         private String targetJob;
         private String fileUrl;
         private ResumeDocument detail;
+    }
+
+    @Data
+    public static class UpdateResumeRequest {
+        private String title;
+        private String targetJob;
+        private String fileUrl;
     }
 
     /**
