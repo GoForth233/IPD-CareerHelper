@@ -75,7 +75,7 @@
     </scroll-view>
 
     <!-- Input area -->
-    <view class="input-bar" :style="{ paddingBottom: safeBottom + 'px' }">
+    <view class="input-bar">
       <view class="input-row">
         <input
           class="chat-input"
@@ -115,7 +115,6 @@ const messages = ref<ChatMessage[]>([
 
 const inputText = ref('');
 const scrollTop = ref(0);
-const safeBottom = ref(20);
 const topSafeHeight = ref(88);
 const darkPref = ref(false);
 
@@ -171,7 +170,6 @@ onMounted(() => {
     topSafeHeight.value = statusBar + 44;
   }
 
-  safeBottom.value = systemInfo.safeAreaInsets?.bottom || 20;
 });
 </script>
 
@@ -260,7 +258,7 @@ onMounted(() => {
 }
 
 .scroll-pad {
-  height: 100px;
+  height: 140px;
 }
 
 /* ---- Welcome card ---- */
@@ -373,7 +371,8 @@ onMounted(() => {
   padding: 12px 16px;
   font-size: 15px;
   line-height: 1.55;
-  word-break: break-all;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .bubble-ai {
@@ -426,11 +425,13 @@ onMounted(() => {
   -webkit-backdrop-filter: blur(24px);
   border-top: 0.5px solid rgba(60, 60, 67, 0.1);
   padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   position: fixed;
-  bottom: 0;
+  bottom: var(--tab-bar-height, 50px);
   left: 0;
   right: 0;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .input-row {

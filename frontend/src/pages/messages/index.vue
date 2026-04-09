@@ -327,10 +327,10 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: var(--font-hero);
+  font-size: var(--font-title);
   font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.35px;
 }
 
 /* ---- Segment tabs ---- */
@@ -340,11 +340,10 @@ onMounted(() => {
 
 .segment-bar {
   display: flex;
-  background: #e8ecf1;
+  background: #f1f5f9;
   border-radius: 12px;
   padding: 3px;
   gap: 2px;
-  border: 1px solid var(--border-color);
 }
 
 .seg-item {
@@ -391,7 +390,7 @@ onMounted(() => {
   flex: 1;
   height: 0;
   min-height: 0;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  padding-bottom: calc(24px + var(--tab-bar-height, 50px) + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 

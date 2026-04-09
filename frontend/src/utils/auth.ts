@@ -1,4 +1,4 @@
-export const LOGIN_PAGE = '/pages/login/login';
+export const LOGIN_PAGE = '/pages/login/index';
 
 export const isLoggedIn = (): boolean => {
   const userId = uni.getStorageSync('userId');
@@ -14,7 +14,7 @@ export const clearAuthState = () => {
 export const requireAuth = (redirectType: 'reLaunch' | 'navigateTo' = 'reLaunch'): boolean => {
   if (isLoggedIn()) return true;
 
-  uni.showToast({ title: '请先登录', icon: 'none' });
+  uni.showToast({ title: 'Please sign in to continue', icon: 'none' });
 
   setTimeout(() => {
     if (redirectType === 'navigateTo') {

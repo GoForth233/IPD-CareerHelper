@@ -1,6 +1,6 @@
 <template>
   <view class="login-page" :class="{ 'is-dark': darkPref }">
-    <view class="status-bar-spacer"></view>
+    <view class="status-bar-spacer" :style="{ height: statusTopPx + 'px' }"></view>
 
     <!-- Top hero area -->
     <view class="hero">
@@ -67,41 +67,58 @@
         {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
       </button>
 
-      <!-- Divider -->
-      <view class="divider-row">
-        <view class="divider-line"></view>
-        <text class="divider-text">or continue with</text>
-        <view class="divider-line"></view>
-      </view>
-
-      <!-- Social buttons -->
-      <view class="social-row">
-        <button class="btn-wechat" @click="wxLogin">
-          <text class="wx-icon">💬</text>
-          <text class="wx-text">WeChat</text>
-        </button>
-        <button class="btn-guest" @click="guestLogin">
-          <text class="guest-text">Guest Mode (No Login)</text>
-        </button>
-      </view>
-
-      <!-- Agreement -->
-      <view class="agreement-row">
-        <view class="checkbox-wrap" @click="agreed = !agreed">
-          <view class="checkbox" :class="{ 'checked': agreed }">
-            <text v-if="agreed" class="check-mark">✓</text>
-          </view>
+      <view class="bottom-section">
+        <!-- Divider -->
+        <view class="divider-row">
+          <view class="divider-line"></view>
+          <text class="divider-text">or continue with</text>
+          <view class="divider-line"></view>
         </view>
-        <text class="agreement-text">
-          I agree to the <text class="link">Terms of Service</text> and <text class="link">Privacy Policy</text>
-        </text>
+
+        <!-- Social buttons -->
+        <view class="social-row">
+          <button class="btn-wechat" @click="wxLogin">
+            <text class="wx-icon">💬</text>
+            <text class="wx-text">WeChat</text>
+          </button>
+          <button class="btn-guest" @click="guestLogin">
+            <text class="guest-text">Guest Mode (No Login)</text>
+          </button>
+        </view>
+
+        <!-- Agreement -->
+        <view class="agreement-row">
+          <view class="checkbox-wrap" @click="agreed = !agreed">
+            <view class="checkbox" :class="{ 'checked': agreed }">
+              <text v-if="agreed" class="check-mark">✓</text>
+            </view>
+          </view>
+          <text class="agreement-text">
+            I agree to the <text class="link">Terms of Service</text> and <text class="link">Privacy Policy</text>
+          </text>
+        </view>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+
+/** Custom navigation: use real statusBarHeight (WeChat often has no --status-bar-height). */
+const statusTopPx = ref(52);
+
+onMounted(() => {
+  try {
+    const sys = uni.getSystemInfoSync() as UniApp.GetSystemInfoResult;
+    const insetTop = Number(sys.safeAreaInsets?.top);
+    const sb = Number(sys.statusBarHeight) || 44;
+    const top = insetTop > 0 ? insetTop : sb;
+    statusTopPx.value = top + 10;
+  } catch {
+    statusTopPx.value = 52;
+  }
+});
 
 const mode = ref<'login' | 'register'>('login');
 const nickname = ref('');
@@ -204,19 +221,38 @@ const guestLogin = () => {
 <style scoped>
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #2563eb 0%, #1e40af 35%, #f5f5f7 35.1%);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   box-sizing: border-box;
+  background: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  overflow-x: hidden;
 }
 
 .status-bar-spacer {
-  height: calc(var(--status-bar-height, 44px) + 8px);
+  width: 100%;
+  display: block;
+}
+
+/* WeChat / uni-app: remove default button hairline and extra chrome between controls */
+.login-page button {
+  margin: 0;
+  overflow: visible;
+}
+
+.login-page button::after {
+  border: none !important;
 }
 
 /* Hero */
 .hero {
-  padding: 0 28px 28px;
-  display: flex; flex-direction: column;
+  padding: 0 22px 22px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 55%, rgba(37, 99, 235, 0.88) 100%);
+  border-radius: 0 0 28px 28px;
+  box-shadow: 0 12px 40px rgba(37, 99, 235, 0.2);
 }
 
 .hero-kicker {
@@ -231,15 +267,28 @@ const guestLogin = () => {
 
 .hero-sub { font-size: 13px; color: rgba(255, 255, 255, 0.78); line-height: 1.55; max-width: 95%; }
 
-/* Form sheet */
 .form-sheet {
-  background: #ffffff; border-radius: 24px 24px 0 0;
-  padding: 28px 24px calc(32px + env(safe-area-inset-bottom));
-  min-height: calc(100vh - 200px);
+  position: relative;
+  z-index: 1;
+  margin-top: -14px;
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 24px 24px 0 0;
+  padding: 18px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -6px 28px rgba(15, 23, 42, 0.06);
+}
+
+.bottom-section {
+  margin-top: auto;
+  padding-top: 20px;
 }
 
 /* Segment */
-.segment-wrap { margin-bottom: 24px; }
+.segment-wrap { margin-bottom: 16px; }
 
 .segment-bar {
   display: flex; background: #f1f5f9; border-radius: 12px;
@@ -287,8 +336,11 @@ const guestLogin = () => {
   border-radius: var(--btn-radius);
   line-height: var(--btn-height-lg);
   border: none;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary:active { background: var(--primary-hover); }
@@ -303,7 +355,7 @@ const guestLogin = () => {
 .divider-text { font-size: 12px; color: #94a3b8; }
 
 /* Social */
-.social-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.social-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 
 .btn-wechat {
   width: 100%; height: 48px; background: #07c160; color: #ffffff;
@@ -320,7 +372,7 @@ const guestLogin = () => {
 
 /* Agreement */
 .agreement-row {
-  display: flex; align-items: flex-start; gap: 8px; padding-top: 8px;
+  display: flex; align-items: flex-start; gap: 8px; padding-top: 4px; margin-bottom: 0;
 }
 
 .checkbox-wrap { flex-shrink: 0; padding-top: 2px; }
@@ -340,7 +392,14 @@ const guestLogin = () => {
 .link { color: #2563eb; }
 
 /* Dark mode */
-.is-dark { background: linear-gradient(180deg, #1e3a8a 0%, #1e3a8a 35%, #0f172a 35.1%); }
+.is-dark {
+  background: #1e293b;
+}
+
+.is-dark .hero {
+  background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
 
 .is-dark .form-sheet { background: #1e293b; }
 

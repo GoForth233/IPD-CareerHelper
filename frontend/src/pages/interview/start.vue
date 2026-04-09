@@ -40,6 +40,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { startInterviewApi } from '@/api/interview';
+import { LOGIN_PAGE } from '@/utils/auth';
 
 const positions = ['Java Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer', 'Product Manager', 'Data Analyst'];
 const selectedPosition = ref('');
@@ -69,8 +70,8 @@ const startInterview = async () => {
   if (!userId) {
     uni.showToast({ title: 'Please sign in first', icon: 'none' });
     setTimeout(() => {
-      uni.navigateTo({ url: '/pages/login/index' });
-    }, 1000);
+      uni.reLaunch({ url: LOGIN_PAGE });
+    }, 600);
     return;
   }
 

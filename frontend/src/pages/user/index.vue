@@ -94,10 +94,14 @@
       </view>
     </view>
 
-    <!-- Logout -->
-    <button class="btn-logout" v-if="isLoggedIn" @click="handleLogout">Sign Out</button>
+    <!-- Spacer to push content to bottom -->
+    <view class="flex-spacer"></view>
 
-    <view class="bottom-safe"></view>
+    <view class="bottom-section">
+      <!-- Logout -->
+      <button class="btn-logout" v-if="isLoggedIn" @click="handleLogout">Sign Out</button>
+      <view class="bottom-safe"></view>
+    </view>
 
     <!-- Profile Edit Modal -->
     <view class="modal-overlay" v-if="showProfileEdit" @click="showProfileEdit = false">
@@ -129,6 +133,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 
 const userInfo = ref({ nickname: '', avatarUrl: '', school: '', major: '', gradYear: '' });
 const userId = ref('');
@@ -142,7 +147,7 @@ const editForm = ref({ school: '', major: '', gradYear: '' });
 const isLoggedIn = computed(() => !!userId.value);
 
 const goLogin = () => {
-  uni.navigateTo({ url: '/pages/login/index' });
+  uni.reLaunch({ url: LOGIN_PAGE });
 };
 
 const goResumes = () => {
@@ -193,11 +198,13 @@ const handleLogout = () => {
     confirmColor: '#ef4444',
     success: (res) => {
       if (res.confirm) {
-        uni.removeStorageSync('userId');
-        uni.removeStorageSync('userInfo');
+        clearAuthState();
         userId.value = '';
         userInfo.value = { nickname: '', avatarUrl: '', school: '', major: '', gradYear: '' };
         uni.showToast({ title: 'Signed out', icon: 'success' });
+        setTimeout(() => {
+          uni.reLaunch({ url: LOGIN_PAGE });
+        }, 400);
       }
     },
   });
@@ -229,11 +236,21 @@ onMounted(() => {
 <style scoped>
 .user-page {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--page-ios-gray);
   padding: 0 20px;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 140px); /* 预留给底部登出按钮的空间，避免小屏幕重叠 */
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   box-sizing: border-box;
+  position: relative; /* 为底部绝对定位做参照 */
+}
+
+.bottom-section {
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  right: 20px;
 }
 
 .status-spacer { width: 100%; }
@@ -366,7 +383,10 @@ onMounted(() => {
 
 .btn-logout:active { background: #fef2f2; }
 
-.bottom-safe { height: 40px; }
+.bottom-safe {
+  height: calc(var(--tab-bar-height, 50px) + 16px);
+  flex-shrink: 0;
+}
 
 /* Modals */
 .modal-overlay {
