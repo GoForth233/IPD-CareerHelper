@@ -11,7 +11,10 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Tag(name = "Career API")
 @RestController
@@ -63,6 +66,36 @@ public class CareerController {
         return Result.success("Node completed successfully");
     }
 
+    @Operation(summary = "Get L1-L4 structured timeline state for a user")
+    @GetMapping("/timeline")
+    public Result<TimelineStateResponseDto> getTimelineState(
+            @RequestParam Long userId,
+            @RequestParam Integer pathId) {
+
+        // Note: For mock purposes, just retrieve nodes and progress and structure them
+        List<CareerNode> allNodes = careerService.getPathNodes(pathId);
+        List<UserCareerProgress> userProgress = careerService.getUserProgress(userId);
+
+        Map<Integer, List<TimelineNodeDto>> groupedNodes = allNodes.stream()
+                .map(node -> {
+                    String status = userProgress.stream()
+                            .filter(p -> p.getNodeId().equals(node.getNodeId()))
+                            .map(UserCareerProgress::getStatus)
+                            .findFirst()
+                            .orElse("LOCKED");
+                    return new TimelineNodeDto(node.getNodeId(), node.getName(), node.getLevel(), status);
+                })
+                .collect(Collectors.groupingBy(TimelineNodeDto::getLevel));
+
+        TimelineStateResponseDto response = new TimelineStateResponseDto();
+        response.setL1Nodes(groupedNodes.getOrDefault(1, Collections.emptyList()));
+        response.setL2Nodes(groupedNodes.getOrDefault(2, Collections.emptyList()));
+        response.setL3Nodes(groupedNodes.getOrDefault(3, Collections.emptyList()));
+        response.setL4Nodes(groupedNodes.getOrDefault(4, Collections.emptyList()));
+
+        return Result.success(response);
+    }
+
     @Operation(summary = "Initialize default career paths (for testing)")
     @PostMapping("/initialize")
     public Result<String> initializePaths() {
@@ -82,6 +115,29 @@ public class CareerController {
     public static class CompleteNodeRequest {
         private Long userId;
         private Long nodeId;
+    }
+
+    @Data
+    public static class TimelineNodeDto {
+        private Long nodeId;
+        private String name;
+        private Integer level;
+        private String status; // "LOCKED", "IN_PROGRESS", "COMPLETED"
+
+        public TimelineNodeDto(Long nodeId, String name, Integer level, String status) {
+            this.nodeId = nodeId;
+            this.name = name;
+            this.level = level;
+            this.status = status;
+        }
+    }
+
+    @Data
+    public static class TimelineStateResponseDto {
+        private List<TimelineNodeDto> l1Nodes;
+        private List<TimelineNodeDto> l2Nodes;
+        private List<TimelineNodeDto> l3Nodes;
+        private List<TimelineNodeDto> l4Nodes;
     }
 }
 
