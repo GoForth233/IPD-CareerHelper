@@ -1,3 +1,6 @@
+# Local config with credentials (do not commit)
+backend/src/main/resources/application-local.yml
+
 # OS generated files
 .DS_Store
 .DS_Store?
