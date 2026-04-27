@@ -14,8 +14,8 @@ export interface User {
 
 export interface RegisterDTO {
   nickname: string;
-  identityType: string; // 'PASSWORD', 'MOBILE'
-  identifier: string;   // username or phone
+  identityType: string; // 'EMAIL_PASSWORD'
+  identifier: string;   // email
   credential: string;   // password
 }
 
@@ -53,6 +53,17 @@ export const loginApi = (data: LoginDTO) => {
 };
 
 /**
+ * WeChat Login API
+ */
+export const wechatLoginApi = (data: { code: string }) => {
+  return request<LoginResponse>({
+    url: '/auth/wechat-login',
+    method: 'POST',
+    data,
+  });
+};
+
+/**
  * Get User Info (with Redis cache)
  */
 export const getUserInfoApi = (userId: number) => {
@@ -62,3 +73,19 @@ export const getUserInfoApi = (userId: number) => {
   });
 };
 
+export interface UpdateUserDTO {
+  school?: string;
+  major?: string;
+  graduationYear?: number;
+}
+
+/**
+ * Update User Profile (school / major / graduationYear)
+ */
+export const updateUserApi = (userId: number, data: UpdateUserDTO) => {
+  return request<User>({
+    url: `/users/${userId}`,
+    method: 'PUT',
+    data,
+  });
+};

@@ -82,6 +82,7 @@ onHide(() => {
 }
 
 /* 跟随系统的深色变量（业务页可另加 .theme-dark 覆盖） */
+/* #ifndef H5 */
 @media (prefers-color-scheme: dark) {
   :root {
     --bg-color: #0f172a;
@@ -95,6 +96,7 @@ onHide(() => {
     --accent-soft: rgba(249, 115, 22, 0.15);
   }
 }
+/* #endif */
 
 /* 全局基础样式 */
 page {
@@ -103,6 +105,15 @@ page {
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
+
+/* #ifdef H5 */
+html,
+body,
+#app {
+  height: 100%;
+  overflow-x: hidden;
+}
+/* #endif */
 
 /* 全局视觉系统：统一卡片、输入框、按钮、列表项 */
 .ui-card,
@@ -177,6 +188,7 @@ button {
   border-color: var(--border-color);
 }
 
+/* #ifndef H5 */
 @media (prefers-color-scheme: dark) {
   .ui-card,
   .card,
@@ -203,4 +215,5 @@ button {
     color: #e2e8f0;
   }
 }
+/* #endif */
 </style>

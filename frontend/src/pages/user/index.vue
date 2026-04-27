@@ -3,8 +3,8 @@
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <!-- Header card: logged in -->
-    <view class="header-card" v-if="isLoggedIn" @click="handleAvatarClick">
-      <view class="header-avatar">
+    <view class="header-card" v-if="isLoggedIn">
+      <view class="header-avatar" @click="handleAvatarClick">
         <image 
           class="avatar-img"
           :src="userInfo.avatarUrl || '/static/default-avatar.png'" 
@@ -129,8 +129,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
+import { getTopSafeHeight } from '@/utils/safeArea';
 import { getUserInterviewsApi } from '@/api/interview';
 import { getUserResumesApi } from '@/api/resume';
+import { updateUserApi } from '@/api/user';
 
 const userInfo = ref({ nickname: '', avatarUrl: '', school: '', major: '', gradYear: '' });
 const userId = ref('');
@@ -158,13 +160,30 @@ const navTo = (url: string) => {
   uni.navigateTo({ url });
 };
 
-const saveProfile = () => {
+const saveProfile = async () => {
   userInfo.value.school = editForm.value.school;
   userInfo.value.major = editForm.value.major;
   userInfo.value.gradYear = editForm.value.gradYear;
-  
+
+  // Sync to local storage immediately for snappy UI
   uni.setStorageSync('userInfo', userInfo.value);
   showProfileEdit.value = false;
+
+  // Persist to backend if user is logged in
+  const numericId = Number(userId.value);
+  if (numericId > 0) {
+    try {
+      const gradYearNum = editForm.value.gradYear ? Number(editForm.value.gradYear) : undefined;
+      const updated = await updateUserApi(numericId, {
+        school: editForm.value.school || undefined,
+        major: editForm.value.major || undefined,
+        graduationYear: gradYearNum && !isNaN(gradYearNum) ? gradYearNum : undefined,
+      });
+      // Update local storage with server response to stay in sync
+      uni.setStorageSync('userInfo', { ...userInfo.value, ...updated });
+    } catch { /* localStorage already updated, best-effort backend sync */ }
+  }
+
   uni.showToast({ title: 'Profile saved', icon: 'success' });
 };
 
@@ -236,16 +255,11 @@ onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   fontPref.value = uni.getStorageSync('app_pref_font') || 'standard';
 
-  const sysInfo = uni.getSystemInfoSync();
-  const menuButton = uni.getMenuButtonBoundingClientRect?.();
-  if (menuButton && menuButton.top) {
-    topSafeHeight.value = menuButton.top;
-  } else {
-    topSafeHeight.value = (sysInfo.statusBarHeight || 44) + 8;
-  }
+  topSafeHeight.value = getTopSafeHeight();
 
-  if (userId.value) {
-    loadStats(Number(userId.value));
+  const numericId = Number(userId.value);
+  if (userId.value && !isNaN(numericId) && numericId > 0) {
+    loadStats(numericId);
   }
 });
 </script>

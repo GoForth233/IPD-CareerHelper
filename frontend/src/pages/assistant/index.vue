@@ -44,7 +44,7 @@
 
       <!-- Timestamp -->
       <view class="time-divider">
-        <text class="time-text">Today 14:30</text>
+        <text class="time-text">{{ chatTimeLabel }}</text>
       </view>
 
       <!-- Messages -->
@@ -99,6 +99,8 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
+import { chatAiApi, type ChatMessage as ApiChatMessage } from '@/api/ai';
 
 interface ChatMessage {
   role: 'user' | 'ai';
@@ -106,17 +108,26 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
+const SYSTEM_PROMPT = 'You are an AI career advisor for university students seeking jobs. Be concise, practical, and encouraging. Answer in the same language the user uses.';
+
 const messages = ref<ChatMessage[]>([
   {
     role: 'ai',
-    content: 'Hi! I\'m your personal career advisor. I\'ve reviewed your assessment profile and resume. What would you like to know about your upcoming job search?',
+    content: 'Hi! I\'m your personal career advisor. I can help with resume tips, interview prep, and career planning. What would you like to know?',
   },
 ]);
+
+// Keeps a parallel history in the format the backend /api/ai/chat expects
+const apiHistory = ref<ApiChatMessage[]>([]);
 
 const inputText = ref('');
 const scrollTop = ref(0);
 const topSafeHeight = ref(88);
 const darkPref = ref(false);
+const isSending = ref(false);
+
+// Dynamic current-time label for the chat divider
+const chatTimeLabel = ref('');
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -129,47 +140,59 @@ const sendQuick = (text: string) => {
   sendMessage();
 };
 
-const mockReplies = [
-  'Based on your resume, you have strong experience with Vue3. I suggest highlighting specific performance optimization problems you\'ve solved during your self-introduction. Want me to draft one for you?',
-  'Great question! For frontend interviews, focus on three areas: framework internals (Vue reactivity, Virtual DOM), algorithm basics (sorting, trees), and system design (component architecture). Should I create a study plan?',
-  'According to the latest market data, frontend developer salaries for fresh graduates range from $45K-$75K depending on the city and company tier. Your Vue3 + TypeScript stack puts you in a competitive position.',
-  'I recommend tailoring your resume for each application. Your current resume scores 85/100 for general frontend roles, but could be improved by adding quantified metrics. Would you like specific suggestions?',
-];
-
-const sendMessage = () => {
+const sendMessage = async () => {
   const text = inputText.value.trim();
-  if (!text) return;
+  if (!text || isSending.value) return;
 
+  // 1. Show user message immediately
   messages.value.push({ role: 'user', content: text });
   inputText.value = '';
+  isSending.value = true;
   scrollToBottom();
 
-  setTimeout(() => {
-    messages.value.push({ role: 'ai', content: '', isTyping: true });
-    scrollToBottom();
+  // 2. Add typing indicator
+  const typingIdx = messages.value.length;
+  messages.value.push({ role: 'ai', content: '', isTyping: true });
+  scrollToBottom();
 
-    setTimeout(() => {
-      const last = messages.value[messages.value.length - 1];
-      last.isTyping = false;
-      last.content = mockReplies[Math.floor(Math.random() * mockReplies.length)];
-      scrollToBottom();
-    }, 1500);
-  }, 500);
+  // 3. Build message history for backend (system prompt + full conversation)
+  const payload: ApiChatMessage[] = [
+    { role: 'user', content: SYSTEM_PROMPT },
+    ...apiHistory.value,
+    { role: 'user', content: text },
+  ];
+
+  try {
+    const reply = await chatAiApi(payload);
+
+    // 4. Replace typing indicator with real AI reply
+    messages.value[typingIdx] = { role: 'ai', content: reply || 'Sorry, I didn\'t get a response. Please try again.' };
+
+    // 5. Update history for next turn
+    apiHistory.value.push(
+      { role: 'user', content: text },
+      { role: 'assistant', content: reply },
+    );
+  } catch (err: any) {
+    messages.value[typingIdx] = {
+      role: 'ai',
+      content: 'Sorry, I\'m having trouble connecting right now. Please check your network and try again.',
+    };
+  } finally {
+    isSending.value = false;
+    scrollToBottom();
+  }
 };
 
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  topSafeHeight.value = getTopSafeHeight();
 
-  const systemInfo = uni.getSystemInfoSync();
-  const menuButton = uni.getMenuButtonBoundingClientRect?.();
-
-  if (menuButton && menuButton.top && menuButton.height) {
-    topSafeHeight.value = menuButton.top + menuButton.height + 8;
-  } else {
-    const statusBar = systemInfo.statusBarHeight || 44;
-    topSafeHeight.value = statusBar + 44;
-  }
-
+  // Fix AI-02: use real current time instead of hardcoded "Today 14:30"
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  chatTimeLabel.value = `Today ${h}:${m}`;
 });
 </script>
 

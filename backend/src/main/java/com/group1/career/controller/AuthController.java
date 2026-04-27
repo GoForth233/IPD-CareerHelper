@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -45,7 +46,15 @@ public class AuthController {
                 request.getIdentifier(),
                 request.getCredential()
         );
-        String token = com.group1.career.utils.JwtUtils.generateToken(user.getId(), "USER");
+        String token = com.group1.career.utils.JwtUtils.generateToken(user.getUserId(), "USER");
+        return Result.success(new LoginResponseDto(token, user));
+    }
+
+    @Operation(summary = "WeChat Login")
+    @PostMapping("/wechat-login")
+    public Result<LoginResponseDto> wechatLogin(@Valid @RequestBody WeChatLoginDto request) {
+        User user = userService.wechatLogin(request.getCode());
+        String token = com.group1.career.utils.JwtUtils.generateToken(user.getUserId(), "USER");
         return Result.success(new LoginResponseDto(token, user));
     }
 
@@ -63,15 +72,22 @@ public class AuthController {
     }
 
     @Data
+    public static class WeChatLoginDto {
+        @NotBlank(message = "Code cannot be blank")
+        private String code;
+    }
+
+    @Data
     public static class RegisterDto {
         @NotBlank(message = "Nickname cannot be blank")
         @Size(min = 2, max = 20, message = "Nickname must be between 2 and 20 characters")
         private String nickname;
 
-        @NotBlank(message = "Identity Type is required (e.g., MOBILE, EMAIL)")
+        @NotBlank(message = "Identity Type is required")
         private String identityType;
 
-        @NotBlank(message = "Account identifier cannot be blank")
+        @NotBlank(message = "Email cannot be blank")
+        @Email(message = "Please provide a valid email address")
         private String identifier;
 
         @NotBlank(message = "Password cannot be blank")
@@ -84,7 +100,8 @@ public class AuthController {
         @NotBlank(message = "Identity Type is required")
         private String identityType;
 
-        @NotBlank(message = "Account identifier cannot be blank")
+        @NotBlank(message = "Email cannot be blank")
+        @Email(message = "Please provide a valid email address")
         private String identifier;
 
         @NotBlank(message = "Password cannot be blank")

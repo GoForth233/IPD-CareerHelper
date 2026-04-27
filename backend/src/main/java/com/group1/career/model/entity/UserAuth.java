@@ -14,7 +14,10 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "user_auths")
+@Table(
+        name = "user_auths",
+        uniqueConstraints = @UniqueConstraint(name = "uk_identity_identifier", columnNames = {"identity_type", "identifier"})
+)
 public class UserAuth {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,8 +27,8 @@ public class UserAuth {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "identity_type", length = 20, nullable = false)
-    private String identityType; // PASSWORD, WECHAT, MOBILE
+    @Column(name = "identity_type", length = 32, nullable = false)
+    private String identityType; // EMAIL_PASSWORD, WECHAT
 
     @Column(name = "identifier", length = 100, nullable = false)
     private String identifier;
@@ -37,4 +40,3 @@ public class UserAuth {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastLoginTime;
 }
-

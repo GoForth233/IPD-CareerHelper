@@ -65,6 +65,12 @@
     "mp-toutiao" : {
         "usingComponents" : true
     },
+    "h5": {
+        "router": {
+            "mode": "history"
+        },
+        "title": "Career Platform"
+    },
     "uniStatistics": {  
         "enable": false
     },

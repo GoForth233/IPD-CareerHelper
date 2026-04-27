@@ -85,18 +85,45 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
+import { getUserResumesApi, type Resume } from '@/api/resume';
 
 interface ResumeItem {
+  resumeId?: number;
   name: string;
   date: string;
   status: 'recent' | 'normal';
   statusLabel: string;
 }
 
-const resumeList = ref<ResumeItem[]>([
-  { name: 'Frontend_Developer_Resume.pdf', date: 'Updated 04-08', status: 'recent', statusLabel: 'Recently Updated' },
-  { name: 'Fullstack_General_v2.pdf', date: 'Updated 04-05', status: 'normal', statusLabel: 'Editable' },
-]);
+const resumeList = ref<ResumeItem[]>([]);
+const isLoading = ref(false);
+
+const loadResumes = async () => {
+  const userId = uni.getStorageSync('userId');
+  const numericId = Number(userId);
+  if (!userId || isNaN(numericId) || numericId <= 0) {
+    // Guest or not logged in — show empty list gracefully
+    resumeList.value = [];
+    return;
+  }
+  isLoading.value = true;
+  try {
+    const resumes = await getUserResumesApi(numericId);
+    resumeList.value = (resumes || []).map((r: Resume) => ({
+      resumeId: r.resumeId,
+      name: r.title || r.fileUrl?.split('/').pop() || 'Untitled.pdf',
+      date: 'Synced',
+      status: 'recent' as const,
+      statusLabel: r.status || 'Active',
+    }));
+  } catch {
+    // Network failed — keep empty list, don't show fake data
+    resumeList.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 const showSheet = ref(false);
 const topSafeHeight = ref(88);
@@ -176,9 +203,20 @@ const handleMore = (idx: number) => {
         uni.showModal({
           title: 'Confirm Delete',
           content: 'Are you sure you want to delete this resume?',
-          success: (r) => {
+          success: async (r) => {
             if (r.confirm) {
+              const item = resumeList.value[idx];
               resumeList.value.splice(idx, 1);
+              // If the item has a real backend ID, also delete from server
+              if (item?.resumeId) {
+                try {
+                  await uni.request({
+                    url: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/resumes/${item.resumeId}`,
+                    method: 'DELETE',
+                    header: { Authorization: `Bearer ${uni.getStorageSync('token')}` },
+                  });
+                } catch { /* best-effort */ }
+              }
               uni.showToast({ title: 'Deleted', icon: 'success' });
             }
           },
@@ -190,14 +228,8 @@ const handleMore = (idx: number) => {
 
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
-  const systemInfo = uni.getSystemInfoSync();
-  const menuButton = uni.getMenuButtonBoundingClientRect?.();
-  if (menuButton && menuButton.top) {
-    topSafeHeight.value = menuButton.top;
-  } else {
-    const statusBar = systemInfo.statusBarHeight || 44;
-    topSafeHeight.value = statusBar + 8;
-  }
+  topSafeHeight.value = getTopSafeHeight();
+  loadResumes();
 });
 </script>
 

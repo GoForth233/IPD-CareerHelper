@@ -11,12 +11,10 @@ import com.group1.career.repository.UserCareerProgressRepository;
 import com.group1.career.service.CareerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -26,9 +24,6 @@ public class CareerServiceImpl implements CareerService {
     private final CareerPathRepository pathRepository;
     private final CareerNodeRepository nodeRepository;
     private final UserCareerProgressRepository progressRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
-
-    private static final String CAREER_PROGRESS_PREFIX = "career:progress:";
 
     @Override
     public List<CareerPath> getAllPaths() {
@@ -48,23 +43,7 @@ public class CareerServiceImpl implements CareerService {
 
     @Override
     public List<UserCareerProgress> getUserProgress(Long userId) {
-        String cacheKey = CAREER_PROGRESS_PREFIX + userId;
-
-        // 1. Check Cache
-        @SuppressWarnings("unchecked")
-        List<UserCareerProgress> cachedProgress = (List<UserCareerProgress>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedProgress != null) {
-            log.info("Redis Cache Hit: {}", cacheKey);
-            return cachedProgress;
-        }
-
-        // 2. Query DB
-        List<UserCareerProgress> progress = progressRepository.findByUserId(userId);
-
-        // 3. Write Cache (1 hour)
-        redisTemplate.opsForValue().set(cacheKey, progress, 1, TimeUnit.HOURS);
-
-        return progress;
+        return progressRepository.findByUserId(userId);
     }
 
     @Override
@@ -82,9 +61,6 @@ public class CareerServiceImpl implements CareerService {
         }
 
         progressRepository.save(progress);
-
-        // Clear cache
-        redisTemplate.delete(CAREER_PROGRESS_PREFIX + userId);
     }
 
     @Override
@@ -95,15 +71,11 @@ public class CareerServiceImpl implements CareerService {
 
         progress.setStatus("COMPLETED");
         progressRepository.save(progress);
-
-        // Clear cache
-        redisTemplate.delete(CAREER_PROGRESS_PREFIX + userId);
     }
 
     @Override
     @Transactional
     public void initializeDefaultPaths() {
-        // 1. Java Backend
         CareerPath javaPath = pathRepository.findByCode("java-backend")
                 .orElse(CareerPath.builder().code("java-backend").build());
         javaPath.setName("Java Backend Engineer");
@@ -112,35 +84,15 @@ public class CareerServiceImpl implements CareerService {
 
         if (nodeRepository.findByPathIdOrderByLevelAsc(javaPath.getPathId()).isEmpty()) {
             CareerNode node1 = nodeRepository.save(CareerNode.builder()
-                    .pathId(javaPath.getPathId())
-                    .name("Java Basics")
-                    .level(1)
-                    .parentId(0L)
-                    .build());
-
+                    .pathId(javaPath.getPathId()).name("Java Basics").level(1).parentId(0L).build());
             CareerNode node2 = nodeRepository.save(CareerNode.builder()
-                    .pathId(javaPath.getPathId())
-                    .name("Spring Boot Intro")
-                    .level(2)
-                    .parentId(node1.getNodeId())
-                    .build());
-
+                    .pathId(javaPath.getPathId()).name("Spring Boot Intro").level(2).parentId(node1.getNodeId()).build());
             nodeRepository.save(CareerNode.builder()
-                    .pathId(javaPath.getPathId())
-                    .name("Database Design")
-                    .level(2)
-                    .parentId(node1.getNodeId())
-                    .build());
-
+                    .pathId(javaPath.getPathId()).name("Database Design").level(2).parentId(node1.getNodeId()).build());
             nodeRepository.save(CareerNode.builder()
-                    .pathId(javaPath.getPathId())
-                    .name("Spring Cloud Microservices")
-                    .level(3)
-                    .parentId(node2.getNodeId())
-                    .build());
+                    .pathId(javaPath.getPathId()).name("Spring Cloud Microservices").level(3).parentId(node2.getNodeId()).build());
         }
 
-        // 2. Frontend Engineer
         CareerPath frontendPath = pathRepository.findByCode("frontend-engineer")
                 .orElse(CareerPath.builder().code("frontend-engineer").build());
         frontendPath.setName("Frontend Engineer");
@@ -149,28 +101,13 @@ public class CareerServiceImpl implements CareerService {
 
         if (nodeRepository.findByPathIdOrderByLevelAsc(frontendPath.getPathId()).isEmpty()) {
             CareerNode fe1 = nodeRepository.save(CareerNode.builder()
-                    .pathId(frontendPath.getPathId())
-                    .name("HTML/CSS Basics")
-                    .level(1)
-                    .parentId(0L)
-                    .build());
-
+                    .pathId(frontendPath.getPathId()).name("HTML/CSS Basics").level(1).parentId(0L).build());
             CareerNode fe2 = nodeRepository.save(CareerNode.builder()
-                    .pathId(frontendPath.getPathId())
-                    .name("JavaScript Core")
-                    .level(2)
-                    .parentId(fe1.getNodeId())
-                    .build());
-
+                    .pathId(frontendPath.getPathId()).name("JavaScript Core").level(2).parentId(fe1.getNodeId()).build());
             nodeRepository.save(CareerNode.builder()
-                    .pathId(frontendPath.getPathId())
-                    .name("Vue.js Framework")
-                    .level(3)
-                    .parentId(fe2.getNodeId())
-                    .build());
+                    .pathId(frontendPath.getPathId()).name("Vue.js Framework").level(3).parentId(fe2.getNodeId()).build());
         }
 
         log.info("Initialized/Updated career paths: Java Backend, Frontend Engineer");
     }
 }
-

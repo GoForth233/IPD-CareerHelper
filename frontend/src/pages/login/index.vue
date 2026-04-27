@@ -1,16 +1,12 @@
 <template>
   <view class="login-page" :class="{ 'is-dark': darkPref }">
-    <!-- Top hero area -->
     <view class="hero">
       <view class="status-bar-spacer" :style="{ height: statusTopPx + 'px' }"></view>
-      <text class="hero-kicker">CAREER DEVELOPMENT PLATFORM</text>
+      <text class="hero-kicker">CAREER LOOP</text>
       <text class="hero-title">Start Your Career Loop</text>
-      <text class="hero-sub">Sign in to sync your assessments, resumes, and interview data</text>
     </view>
 
-    <!-- Main form card -->
     <view class="form-sheet">
-      <!-- Segment tabs -->
       <view class="segment-wrap">
         <view class="segment-bar">
           <view class="seg-item" :class="{ 'seg-active': mode === 'login' }" @click="mode = 'login'">
@@ -22,60 +18,92 @@
         </view>
       </view>
 
-      <!-- Nickname (register only) -->
+      <view class="sheet-head">
+        <text class="sheet-title">{{ mode === 'login' ? 'Welcome Back' : 'Create Your Account' }}</text>
+      </view>
+
       <view class="field" v-if="mode === 'register'">
         <text class="field-label">Nickname</text>
-        <input class="field-input" v-model="nickname" placeholder="Choose a display name" placeholder-class="ph" />
+        <input
+          class="field-input"
+          v-model="nickname"
+          placeholder="Choose a display name"
+          placeholder-class="ph"
+          maxlength="20"
+        />
       </view>
 
-      <!-- Phone / Account -->
       <view class="field">
-        <text class="field-label">Phone / Account</text>
-        <input class="field-input" v-model="account" placeholder="Enter your account ID" placeholder-class="ph" />
+        <text class="field-label">{{ accountLabel }}</text>
+        <input
+          class="field-input"
+          v-model="account"
+          :placeholder="accountPlaceholder"
+          placeholder-class="ph"
+          maxlength="40"
+        />
       </view>
 
-      <!-- Password -->
       <view class="field">
         <text class="field-label">Password</text>
-        <input class="field-input" v-model="password" type="password" placeholder="Enter your password" placeholder-class="ph" />
+        <input
+          class="field-input"
+          v-model="password"
+          type="password"
+          placeholder="Enter your password"
+          placeholder-class="ph"
+          maxlength="32"
+        />
       </view>
 
-      <!-- Forgot password (login only) -->
+      <view class="field" v-if="mode === 'register'">
+        <text class="field-label">Confirm Password</text>
+        <input
+          class="field-input"
+          v-model="confirmPassword"
+          type="password"
+          placeholder="Enter your password again"
+          placeholder-class="ph"
+          maxlength="32"
+        />
+      </view>
+
       <view class="forgot-row" v-if="mode === 'login'">
         <text class="forgot-link" @click="handleForgot">Forgot password?</text>
       </view>
 
-      <!-- Agreement -->
-      <view class="agreement-row" @click="agreed = !agreed">
-        <view class="checkbox" :class="{ 'checked': agreed }">
+      <view class="agreement-row">
+        <view class="checkbox" :class="{ 'checked': agreed }" @click="agreed = !agreed">
           <text v-if="agreed" class="check-mark">✓</text>
         </view>
-        <text class="agreement-text">
-          I agree to the <text class="link">Terms of Service</text> and <text class="link">Privacy Policy</text>
-        </text>
+        <view class="agreement-copy">
+          <text class="agreement-text">I have read and agree to the</text>
+          <text class="link" @click="openAgreement('terms')">Terms of Service</text>
+          <text class="agreement-text">and</text>
+          <text class="link" @click="openAgreement('privacy')">Privacy Policy</text>
+        </view>
       </view>
 
-      <!-- Main button -->
-      <button class="btn-primary" :loading="loading" @click="handleSubmit">
-        {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
-      </button>
+      <view class="btn-primary" @click="handleSubmit" :class="{ 'is-loading': loading, 'is-disabled': !canSubmit }">
+        <text class="btn-text">{{ loading ? 'Please wait...' : (mode === 'login' ? 'Sign In and Continue' : 'Create Account and Continue') }}</text>
+      </view>
 
-      <!-- Divider -->
       <view class="divider-row">
         <view class="divider-line"></view>
-        <text class="divider-text">or continue with</text>
+        <text class="divider-text">Other methods</text>
         <view class="divider-line"></view>
       </view>
 
-      <!-- Social buttons -->
       <view class="social-row">
-        <button class="btn-wechat" @click="wxLogin">
-          <text class="wx-icon">💬</text>
-          <text class="wx-text">WeChat</text>
-        </button>
-        <button class="btn-guest" @click="guestLogin">
+        <view class="btn-wechat" @click="wxLogin">
+          <view class="wx-badge">
+            <text class="wx-badge-text">W</text>
+          </view>
+          <text class="wx-text">WeChat Sign In</text>
+        </view>
+        <view class="btn-guest" @click="guestLogin">
           <text class="guest-text">Guest Mode</text>
-        </button>
+        </view>
       </view>
 
       <view class="bottom-safe"></view>
@@ -84,78 +112,111 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
 
 /** Custom navigation: use real statusBarHeight (WeChat often has no --status-bar-height). */
 const statusTopPx = ref(52);
 
 onMounted(() => {
-  try {
-    const sys = uni.getSystemInfoSync() as UniApp.GetSystemInfoResult;
-    const insetTop = Number(sys.safeAreaInsets?.top);
-    const sb = Number(sys.statusBarHeight) || 44;
-    const top = insetTop > 0 ? insetTop : sb;
-    statusTopPx.value = top + 10;
-  } catch {
-    statusTopPx.value = 52;
-  }
+  statusTopPx.value = getTopSafeHeight();
 });
 
 const mode = ref<'login' | 'register'>('login');
 const nickname = ref('');
 const account = ref('');
 const password = ref('');
+const confirmPassword = ref('');
 const agreed = ref(false);
 const loading = ref(false);
 const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
+const accountLabel = computed(() => 'Email');
+const accountPlaceholder = computed(() => 'Enter your email address');
+const canSubmit = computed(() => {
+  if (loading.value || !agreed.value || !account.value || !password.value) {
+    return false;
+  }
+  if (mode.value === 'register') {
+    return !!nickname.value && !!confirmPassword.value;
+  }
+  return true;
+});
 
 const handleForgot = () => {
   uni.showModal({
-    title: 'Password Reset',
-    content: 'Please contact support@careerloop.ai or use WeChat login to recover your account.',
+    title: 'Password Recovery',
+    content: 'Self-service recovery is not available in this demo yet. Please contact support@careerloop.ai or use WeChat sign in.',
     showCancel: false,
     confirmText: 'Got it'
   });
 };
 
+const openAgreement = (type: 'terms' | 'privacy') => {
+  const title = type === 'terms' ? 'Terms of Service' : 'Privacy Policy';
+  const content = type === 'terms'
+    ? 'This demo does not have the final terms page wired in yet. Add the full agreement content and a dedicated detail page before release.'
+    : 'This demo does not have the final privacy policy page wired in yet. Add clear details about data collection, usage, and storage before release.';
+
+  uni.showModal({
+    title,
+    content,
+    showCancel: false,
+    confirmText: 'Close'
+  });
+};
+
 const handleSubmit = async () => {
   if (!agreed.value) {
-    uni.showToast({ title: 'Please agree to the Terms of Service', icon: 'none' });
+    uni.showToast({ title: 'Please agree to the terms first', icon: 'none' });
     return;
   }
   if (!account.value || !password.value) {
-    uni.showToast({ title: 'Please fill in all required fields', icon: 'none' });
+    uni.showToast({ title: 'Please complete the account and password fields', icon: 'none' });
     return;
   }
   if (mode.value === 'register' && !nickname.value) {
     uni.showToast({ title: 'Please enter a nickname', icon: 'none' });
     return;
   }
+  if (mode.value === 'register' && !confirmPassword.value) {
+    uni.showToast({ title: 'Please confirm your password', icon: 'none' });
+    return;
+  }
+  if (mode.value === 'register' && confirmPassword.value !== password.value) {
+    uni.showToast({ title: 'The two passwords do not match', icon: 'none' });
+    return;
+  }
 
   loading.value = true;
   try {
     if (mode.value === 'register') {
-      const { registerApi } = await import('@/api/user');
-      const res = await registerApi({
+      const { registerApi, loginApi } = await import('@/api/user');
+      await registerApi({
         nickname: nickname.value,
-        identityType: 'PASSWORD',
+        identityType: 'EMAIL_PASSWORD',
         identifier: account.value,
         credential: password.value,
       });
-      uni.setStorageSync('userId', res.userId);
-      uni.setStorageSync('userInfo', { nickname: nickname.value, avatarUrl: '' });
-      uni.showToast({ title: 'Account created!', icon: 'success' });
+      const loginRes = await loginApi({
+        identityType: 'EMAIL_PASSWORD',
+        identifier: account.value,
+        credential: password.value,
+      });
+      uni.setStorageSync('token', loginRes.token);
+      uni.setStorageSync('userId', loginRes.user.userId);
+      uni.setStorageSync('userInfo', loginRes.user);
+      uni.showToast({ title: 'Account created', icon: 'success' });
     } else {
       const { loginApi } = await import('@/api/user');
       const res = await loginApi({
-        identityType: 'PASSWORD',
+        identityType: 'EMAIL_PASSWORD',
         identifier: account.value,
         credential: password.value,
       });
       uni.setStorageSync('token', res.token);
       uni.setStorageSync('userId', res.user.userId);
       uni.setStorageSync('userInfo', res.user);
-      uni.showToast({ title: 'Welcome back!', icon: 'success' });
+      uni.showToast({ title: 'Signed in', icon: 'success' });
     }
     setTimeout(() => {
       uni.switchTab({ url: '/pages/home/index' });
@@ -169,29 +230,56 @@ const handleSubmit = async () => {
 
 const wxLogin = () => {
   if (!agreed.value) {
-    uni.showToast({ title: 'Please agree to the Terms of Service', icon: 'none' });
+    uni.showToast({ title: 'Please agree to the terms first', icon: 'none' });
     return;
   }
-  uni.showLoading({ title: 'Authorizing via WeChat...' });
-  setTimeout(() => {
-    uni.hideLoading();
-    uni.setStorageSync('userId', 'wx_guest_001');
-    uni.setStorageSync('userInfo', { nickname: 'WeChat User', avatarUrl: '' });
-    uni.showToast({ title: 'Welcome!', icon: 'success' });
-    setTimeout(() => {
-      uni.switchTab({ url: '/pages/home/index' });
-    }, 800);
-  }, 1500);
+  uni.showLoading({ title: 'Signing in...' });
+  
+  uni.login({
+    provider: 'weixin',
+    success: async (loginRes) => {
+      if (loginRes.code) {
+        try {
+          const { wechatLoginApi } = await import('@/api/user');
+          const res = await wechatLoginApi({ code: loginRes.code });
+          
+          uni.setStorageSync('token', res.token);
+          uni.setStorageSync('userId', res.user.userId);
+          uni.setStorageSync('userInfo', res.user);
+          
+          uni.hideLoading();
+          uni.showToast({ title: 'Signed in', icon: 'success' });
+          setTimeout(() => {
+            uni.switchTab({ url: '/pages/home/index' });
+          }, 800);
+        } catch (e: any) {
+          uni.hideLoading();
+          // Error toast is already handled by request.ts
+        }
+      } else {
+        uni.hideLoading();
+        uni.showToast({ title: 'WeChat sign in failed', icon: 'none' });
+      }
+    },
+    fail: () => {
+      uni.hideLoading();
+      uni.showToast({ title: 'WeChat sign in was canceled or failed', icon: 'none' });
+    }
+  });
 };
 
 const guestLogin = () => {
   if (!agreed.value) {
-    uni.showToast({ title: 'Please agree to the Terms of Service', icon: 'none' });
+    uni.showToast({ title: 'Please agree to the terms first', icon: 'none' });
     return;
   }
-  uni.setStorageSync('userId', 'guest_temp_001');
+  // Guest mode: do NOT set a string userId — it breaks Number() checks everywhere.
+  // Pages guard with: const numericId = Number(userId); if (!isNaN(numericId) && numericId > 0)
+  // A missing userId correctly skips all auth-required API calls.
+  uni.removeStorageSync('userId');
+  uni.removeStorageSync('token');
   uni.setStorageSync('userInfo', { nickname: 'Guest', avatarUrl: '' });
-  uni.showToast({ title: 'Welcome, Guest!', icon: 'success' });
+  uni.showToast({ title: 'Guest mode enabled', icon: 'success' });
   setTimeout(() => {
     uni.switchTab({ url: '/pages/home/index' });
   }, 800);
@@ -203,7 +291,9 @@ const guestLogin = () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 30%),
+    linear-gradient(180deg, #eef4ff 0%, #f8fbff 28%, #ffffff 100%);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
 }
 
@@ -212,124 +302,170 @@ const guestLogin = () => {
 
 /* Hero */
 .hero {
-  padding: 0 24px 32px;
-  background: linear-gradient(145deg, #2563eb 0%, #1e40af 100%);
+  padding: 0 24px 40px;
+  background:
+    radial-gradient(circle at right top, rgba(255,255,255,0.2), transparent 30%),
+    linear-gradient(160deg, #2457d6 0%, #173ea6 70%, #102f85 100%);
 }
 
 .status-bar-spacer { width: 100%; }
 
 .hero-kicker {
-  font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.55);
-  letter-spacing: 2px; display: block; margin-bottom: 10px; margin-top: 12px;
+  font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.68);
+  letter-spacing: 2px; display: block; margin-bottom: 12px; margin-top: 12px;
 }
 
 .hero-title {
-  font-size: 28px; font-weight: 800; color: #ffffff;
-  letter-spacing: -0.5px; display: block; margin-bottom: 6px;
+  font-size: 30px; font-weight: 800; color: #ffffff;
+  display: block; line-height: 1.2;
 }
 
-.hero-sub {
-  font-size: 13px; color: rgba(255,255,255,0.72); line-height: 1.5; display: block;
-}
-
-/* Form card */
 .form-sheet {
-  margin-top: -20px;
-  background: #ffffff;
-  border-radius: 24px 24px 0 0;
+  margin-top: -18px;
+  background: rgba(255,255,255,0.94);
+  border-radius: 28px 28px 0 0;
   padding: 24px 20px 0;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.04);
+  backdrop-filter: blur(8px);
 }
 
-/* Segment */
 .segment-wrap { margin-bottom: 20px; }
 
 .segment-bar {
-  display: flex; background: #f1f5f9; border-radius: 12px; padding: 3px;
+  display: flex; background: #edf2fb; border-radius: 14px; padding: 4px;
 }
 
 .seg-item {
   flex: 1; text-align: center; height: 40px; line-height: 40px;
-  border-radius: 10px; font-size: 15px; font-weight: 500; color: #94a3b8;
+  border-radius: 12px; font-size: 15px; font-weight: 600; color: #8c99af;
 }
 
 .seg-active {
   background: #ffffff; color: #1e293b; font-weight: 700;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
 }
 
-/* Fields */
+.sheet-head {
+  margin-bottom: 20px;
+}
+
+.sheet-title {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: #172033;
+}
+
 .field { margin-bottom: 16px; }
 
 .field-label {
-  font-size: 13px; font-weight: 600; color: #475569;
-  display: block; margin-bottom: 6px;
+  font-size: 13px; font-weight: 700; color: #475569;
+  display: block; margin-bottom: 8px;
 }
 
 .field-input {
-  width: 100%; height: 50px; border: 1.5px solid #e2e8f0;
-  border-radius: 12px; padding: 0 16px; font-size: 15px; color: #1e293b;
-  background: #f8fafc; box-sizing: border-box;
+  width: 100%; height: 52px; border: 1.5px solid #d7deea;
+  border-radius: 14px; padding: 0 16px; font-size: 15px; color: #1e293b;
+  background: #fdfefe; box-sizing: border-box;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
 }
 
-.ph { color: #cbd5e1; }
+.ph { color: #9aa8bc; }
 
-.forgot-row { text-align: right; margin-top: -6px; margin-bottom: 20px; }
-.forgot-link { font-size: 13px; color: #2563eb; font-weight: 500; }
+.forgot-row { text-align: right; margin-top: -4px; margin-bottom: 20px; }
+.forgot-link { font-size: 13px; color: #2457d6; font-weight: 600; }
 
-/* Agreement */
 .agreement-row {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px;
 }
 
 .checkbox {
   width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid #b8c5d8;
   display: flex; align-items: center; justify-content: center;
   background: #ffffff;
+  margin-top: 1px;
 }
 
-.checked { background: #2563eb; border-color: #2563eb; }
+.checked { background: #2457d6; border-color: #2457d6; }
 .check-mark { font-size: 13px; color: #ffffff; font-weight: 700; }
 
-.agreement-text { font-size: 12px; color: #94a3b8; line-height: 1.5; flex: 1; }
-.link { color: #2563eb; font-weight: 500; }
-
-/* Primary button */
-.btn-primary {
-  width: 100%; height: 52px; background: #2563eb; color: #ffffff;
-  font-size: 16px; font-weight: 700; border-radius: 14px; line-height: 52px;
-  border: none; margin-bottom: 20px;
-  box-shadow: 0 6px 18px rgba(37,99,235,0.35);
+.agreement-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  column-gap: 2px;
+  flex: 1;
 }
 
-.btn-primary:active { opacity: 0.88; }
+.agreement-text { font-size: 12px; color: #64748b; line-height: 1.6; }
+.link { color: #2457d6; font-weight: 600; }
 
-/* Divider */
+.btn-primary {
+  width: 100%; height: 54px; background: linear-gradient(135deg, #3568e8 0%, #2457d6 100%);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 24px rgba(37,99,235,0.28);
+  transition: all 0.2s ease;
+}
+
+.btn-text {
+  color: #ffffff;
+  font-size: 16px; 
+  font-weight: 700;
+}
+
+.is-loading { opacity: 0.7; pointer-events: none; }
+.is-disabled { opacity: 0.55; }
+.btn-primary:active { opacity: 0.88; transform: scale(0.98); }
+
 .divider-row {
   display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
 }
 
-.divider-line { flex: 1; height: 1px; background: #e2e8f0; }
-.divider-text { font-size: 12px; color: #cbd5e1; white-space: nowrap; }
+.divider-line { flex: 1; height: 1px; background: #dde5f0; }
+.divider-text { font-size: 12px; color: #94a3b8; white-space: nowrap; }
 
-/* Social */
 .social-row { display: flex; gap: 12px; margin-bottom: 0; }
 
 .btn-wechat {
-  flex: 1; height: 48px; background: #07c160; color: #ffffff;
-  font-size: 14px; font-weight: 600; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center; gap: 6px; border: none;
+  flex: 1; height: 48px; background: #07c160;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 18px rgba(7, 193, 96, 0.18);
 }
 
-.wx-icon { font-size: 16px; }
+.wx-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wx-badge-text {
+  font-size: 11px;
+  color: #07c160;
+  font-weight: 800;
+}
+
+.wx-text { color: #ffffff; font-size: 14px; font-weight: 700; }
 
 .btn-guest {
-  flex: 1; height: 48px; background: #f1f5f9; color: #64748b;
-  font-size: 14px; font-weight: 500; border-radius: 12px; border: none;
+  flex: 1; height: 48px; background: #eef2f8;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease;
 }
+.guest-text { color: #516176; font-size: 14px; font-weight: 700; }
 
-.btn-guest:active { background: #e2e8f0; }
+.btn-guest:active { background: #e2e8f0; transform: scale(0.98); }
+.btn-wechat:active { opacity: 0.88; transform: scale(0.98); }
 
 .bottom-safe { height: calc(env(safe-area-inset-bottom, 0px) + 24px); }
 </style>

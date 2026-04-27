@@ -13,7 +13,7 @@ interface Result<T> {
  * @param options uni.request options
  * @returns Promise<T>
  */
-const request = <T>(options: UniApp.RequestOptions): Promise<T> => {
+const request = <T>(options: UniApp.RequestOptions & { silent?: boolean }): Promise<T> => {
   return new Promise((resolve, reject) => {
     // 1. Request Interceptor Logic
     const token = uni.getStorageSync('token');
@@ -43,20 +43,24 @@ const request = <T>(options: UniApp.RequestOptions): Promise<T> => {
         } else {
           // Business Error (e.g., 4001 User Not Found)
           const errorMsg = data.message || 'Request Failed';
-          uni.showToast({
-            title: errorMsg,
-            icon: 'none',
-            duration: 2000,
-          });
+          if (!options.silent) {
+            uni.showToast({
+              title: errorMsg,
+              icon: 'none',
+              duration: 2000,
+            });
+          }
           reject(new Error(errorMsg));
         }
       },
       fail: (err) => {
         // Network Error
-        uni.showToast({
-          title: 'Network Error',
-          icon: 'none',
-        });
+        if (!options.silent) {
+          uni.showToast({
+            title: 'Network Error',
+            icon: 'none',
+          });
+        }
         reject(err);
       },
     });

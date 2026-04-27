@@ -147,6 +147,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { openLink } from '@/utils/openLink';
+import { getTopSafeHeight } from '@/utils/safeArea';
 import { getHomeContentApi, type HomeContentItem, type CareerCard } from '@/api/home';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 
@@ -202,7 +203,8 @@ const clearSearch = () => {
 const loadHomeContent = async () => {
   try {
     const userId = uni.getStorageSync('userId');
-    const data = await getHomeContentApi(userId ? Number(userId) : undefined);
+    const numericUserId = Number(userId);
+    const data = await getHomeContentApi(userId && !isNaN(numericUserId) && numericUserId > 0 ? numericUserId : undefined);
 
     // Backend returns careerCards (career paths) and articles separately
     // Map careerCards to feed items as article-type entries
@@ -241,15 +243,7 @@ onMounted(() => {
 
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
 
-  const systemInfo = uni.getSystemInfoSync();
-  const menuButton = uni.getMenuButtonBoundingClientRect?.();
-
-  if (menuButton && menuButton.top) {
-    topSafeHeight.value = menuButton.top;
-  } else {
-    const statusBar = systemInfo.statusBarHeight || 20;
-    topSafeHeight.value = statusBar + 8;
-  }
+  topSafeHeight.value = getTopSafeHeight();
 
   loadHomeContent();
 });

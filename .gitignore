@@ -13,8 +13,12 @@ Thumbs.db
 # Editors
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
+
+# Environment files
+frontend/.env.*
 
 # Node modules
 node_modules/

@@ -43,8 +43,9 @@ public class Resume {
     @Builder.Default
     private String status = "UPLOADED"; // UPLOADED, PARSING, COMPLETED
 
-    @Column(name = "mongo_doc_id", length = 50)
-    private String mongoDocId;
+    /** 简历解析后的结构化内容（JSON 字符串），包含 education/projects/skills/rawContent */
+    @Column(name = "parsed_content", columnDefinition = "json")
+    private String parsedContent;
 
     @Column(name = "diagnosis_score")
     @Builder.Default

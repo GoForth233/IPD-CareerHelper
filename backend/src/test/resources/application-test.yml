@@ -22,16 +22,6 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
 
-  # MongoDB Configuration (Embedded or Testcontainer)
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/career_test_db
-
-    # Redis Configuration (Embedded)
-    redis:
-      host: localhost
-      port: 6379
-      database: 1 # Use different DB for tests
 
 # Disable OSS for tests
 aliyun:
