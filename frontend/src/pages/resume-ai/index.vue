@@ -76,6 +76,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
 
 const selectedResume = ref('');
 const jdText = ref('');
@@ -147,13 +148,7 @@ const generateTailored = () => {
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
 
-  const sysInfo = uni.getSystemInfoSync();
-  const menuButton = uni.getMenuButtonBoundingClientRect?.();
-  if (menuButton && menuButton.top) {
-    topSafeHeight.value = menuButton.top;
-  } else {
-    topSafeHeight.value = (sysInfo.statusBarHeight || 20) + 8;
-  }
+  topSafeHeight.value = getTopSafeHeight();
 });
 </script>
 
