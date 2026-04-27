@@ -55,9 +55,10 @@ const userInfo = ref<User | null>(null);
 
 onMounted(async () => {
   const userId = uni.getStorageSync('userId');
-  if (userId) {
+  const numericId = Number(userId);
+  if (userId && !isNaN(numericId) && numericId > 0) {
     try {
-      userInfo.value = await getUserInfoApi(userId);
+      userInfo.value = await getUserInfoApi(numericId);
     } catch (error) {
       console.error('Failed to load user info:', error);
     }

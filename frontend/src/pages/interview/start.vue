@@ -67,7 +67,8 @@ const startInterview = async () => {
   }
 
   const userId = uni.getStorageSync('userId');
-  if (!userId) {
+  const numericId = Number(userId);
+  if (!userId || isNaN(numericId) || numericId <= 0) {
     uni.showToast({ title: 'Please sign in first', icon: 'none' });
     setTimeout(() => {
       uni.reLaunch({ url: LOGIN_PAGE });
@@ -78,7 +79,7 @@ const startInterview = async () => {
   loading.value = true;
   try {
     const interview = await startInterviewApi({
-      userId,
+      userId: numericId,
       positionName: selectedPosition.value,
       difficulty: selectedDifficulty.value
     });

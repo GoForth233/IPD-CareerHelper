@@ -48,9 +48,10 @@ const darkPref = ref(false);
 onMounted(async () => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   const userId = uni.getStorageSync('userId');
-  if (userId) {
+  const numericId = Number(userId);
+  if (userId && !isNaN(numericId) && numericId > 0) {
     try {
-      interviews.value = await getUserInterviewsApi(userId);
+      interviews.value = await getUserInterviewsApi(numericId);
     } catch (error) {
       console.error('Failed to load interviews:', error);
     }

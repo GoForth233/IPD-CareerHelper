@@ -32,5 +32,6 @@ export const getHomeContentApi = (userId?: number) => {
   return request<HomepageFeedResponse>({
     url: userId ? `/api/homepage/feed?userId=${userId}` : '/api/homepage/feed',
     method: 'GET',
+    silent: true,
   });
 };

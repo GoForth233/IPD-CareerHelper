@@ -1,94 +1,133 @@
 package com.group1.career.service.impl;
 
-import com.group1.career.model.document.AssessmentResultDocument;
-import com.group1.career.repository.AssessmentResultRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.group1.career.model.entity.*;
+import com.group1.career.repository.*;
 import com.group1.career.service.AssessmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AssessmentServiceImpl implements AssessmentService {
 
-    private final AssessmentResultRepository assessmentResultRepository;
+    private final AssessmentScaleRepository scaleRepository;
+    private final AssessmentQuestionRepository questionRepository;
+    private final AssessmentOptionRepository optionRepository;
+    private final AssessmentRecordRepository recordRepository;
+    private final AssessmentAnswerRepository answerRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
-    public AssessmentResultDocument submitAndScore(Long userId, String assessmentType, Map<String, String> rawAnswers) {
+    public List<AssessmentScale> getAllScales() {
+        return scaleRepository.findByIsActiveTrueOrderByScaleIdAsc();
+    }
 
-        // Weight-based scoring: count occurrences of each trait option
-        Map<String, Integer> calculatedTraits = new HashMap<>();
+    @Override
+    public List<AssessmentQuestion> getScaleQuestions(Long scaleId) {
+        return questionRepository.findByScaleIdAndIsActiveTrueOrderBySortOrderAsc(scaleId);
+    }
 
-        if ("MBTI".equalsIgnoreCase(assessmentType)) {
-            // MBTI scoring: E/I, S/N, T/F, J/P
-            int eCount = 0, iCount = 0, sCount = 0, nCount = 0;
-            int tCount = 0, fCount = 0, jCount = 0, pCount = 0;
+    @Override
+    @Transactional
+    public AssessmentRecord submitAndScore(Long userId, Long scaleId, Map<Long, Long> answers) {
+        AssessmentScale scale = scaleRepository.findById(scaleId)
+                .orElseThrow(() -> new RuntimeException("Scale not found: " + scaleId));
 
-            for (Map.Entry<String, String> entry : rawAnswers.entrySet()) {
-                String answer = entry.getValue().toUpperCase();
-                int qNum = Integer.parseInt(entry.getKey().replaceAll("[^0-9]", ""));
-                int dimension = (qNum % 4);
-                if (dimension == 1) { if ("A".equals(answer)) eCount++; else iCount++; }
-                if (dimension == 2) { if ("A".equals(answer)) sCount++; else nCount++; }
-                if (dimension == 3) { if ("A".equals(answer)) tCount++; else fCount++; }
-                if (dimension == 0) { if ("A".equals(answer)) jCount++; else pCount++; }
+        List<Long> questionIds = new ArrayList<>(answers.keySet());
+        List<Long> optionIds = new ArrayList<>(answers.values());
+        List<AssessmentOption> selectedOptions = optionRepository.findByQuestionIdIn(questionIds);
+
+        Map<Long, AssessmentOption> optionMap = selectedOptions.stream()
+                .filter(o -> optionIds.contains(o.getOptionId()))
+                .collect(Collectors.toMap(AssessmentOption::getOptionId, o -> o));
+
+        Map<String, Integer> traitCounts = new HashMap<>();
+        List<AssessmentAnswer> answerEntities = new ArrayList<>();
+
+        for (Map.Entry<Long, Long> entry : answers.entrySet()) {
+            Long questionId = entry.getKey();
+            Long optionId = entry.getValue();
+            AssessmentOption option = optionMap.get(optionId);
+
+            BigDecimal scoreSnapshot = BigDecimal.ZERO;
+            if (option != null && option.getDimensionCode() != null) {
+                traitCounts.merge(option.getDimensionCode(), 1, Integer::sum);
+                scoreSnapshot = option.getScoreValue();
             }
 
-            calculatedTraits.put("E", eCount);
-            calculatedTraits.put("I", iCount);
-            calculatedTraits.put("S", sCount);
-            calculatedTraits.put("N", nCount);
-            calculatedTraits.put("T", tCount);
-            calculatedTraits.put("F", fCount);
-            calculatedTraits.put("J", jCount);
-            calculatedTraits.put("P", pCount);
-        } else {
-            // Holland: R/I/A/S/E/C generic scoring
-            for (Map.Entry<String, String> entry : rawAnswers.entrySet()) {
-                String trait = entry.getValue();
-                calculatedTraits.merge(trait, 1, Integer::sum);
-            }
+            answerEntities.add(AssessmentAnswer.builder()
+                    .questionId(questionId)
+                    .optionId(optionId)
+                    .scoreSnapshot(scoreSnapshot)
+                    .build());
         }
 
-        // Generate final portrait string (e.g., "INTJ" or "RIA")
-        String portrait = generatePortrait(assessmentType, calculatedTraits);
+        String portrait = generatePortrait(scale.getTitle(), traitCounts);
 
-        AssessmentResultDocument doc = AssessmentResultDocument.builder()
+        String traitsJson = "{}";
+        try {
+            traitsJson = objectMapper.writeValueAsString(traitCounts);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize traits", e);
+        }
+
+        AssessmentRecord record = AssessmentRecord.builder()
                 .userId(userId)
-                .assessmentType(assessmentType)
-                .rawAnswers(rawAnswers)
-                .calculatedTraits(calculatedTraits)
-                .finalPortrait(portrait)
-                .createdAt(new Date())
+                .scaleId(scaleId)
+                .status("COMPLETED")
+                .resultSummary(portrait)
+                .resultJson(traitsJson)
                 .build();
+        record = recordRepository.save(record);
 
-        return assessmentResultRepository.save(doc);
+        final Long recordId = record.getRecordId();
+        answerEntities.forEach(a -> a.setRecordId(recordId));
+        answerRepository.saveAll(answerEntities);
+
+        return record;
     }
 
     @Override
-    public List<AssessmentResultDocument> getUserResults(Long userId) {
-        return assessmentResultRepository.findByUserId(userId);
+    public List<AssessmentRecord> getUserRecords(Long userId) {
+        return recordRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
-    private String generatePortrait(String type, Map<String, Integer> traits) {
-        if ("MBTI".equalsIgnoreCase(type)) {
+    @Override
+    public AssessmentRecord getRecord(Long recordId) {
+        return recordRepository.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Record not found: " + recordId));
+    }
+
+    private String generatePortrait(String scaleTitle, Map<String, Integer> traits) {
+        if (traits.isEmpty()) return "N/A";
+
+        String title = scaleTitle.toUpperCase();
+        if (title.contains("MBTI")) {
             StringBuilder sb = new StringBuilder();
-            sb.append(traits.getOrDefault("E", 0) >= traits.getOrDefault("I", 0) ? "E" : "I");
-            sb.append(traits.getOrDefault("S", 0) >= traits.getOrDefault("N", 0) ? "S" : "N");
-            sb.append(traits.getOrDefault("T", 0) >= traits.getOrDefault("F", 0) ? "T" : "F");
-            sb.append(traits.getOrDefault("J", 0) >= traits.getOrDefault("P", 0) ? "J" : "P");
+            sb.append(get(traits, "E") >= get(traits, "I") ? "E" : "I");
+            sb.append(get(traits, "S") >= get(traits, "N") ? "S" : "N");
+            sb.append(get(traits, "T") >= get(traits, "F") ? "T" : "F");
+            sb.append(get(traits, "J") >= get(traits, "P") ? "J" : "P");
             return sb.toString();
         } else {
-            // Return top 3 Holland codes
             return traits.entrySet().stream()
                     .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                     .limit(3)
                     .map(Map.Entry::getKey)
                     .collect(Collectors.joining());
         }
+    }
+
+    private int get(Map<String, Integer> map, String key) {
+        return map.getOrDefault(key, 0);
     }
 }

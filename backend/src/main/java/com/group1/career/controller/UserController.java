@@ -22,4 +22,17 @@ public class UserController {
     public Result<User> getUser(@PathVariable Long id) {
         return Result.success(userService.getUserById(id));
     }
+
+    @Operation(summary = "Update User Profile (school / major / graduationYear)")
+    @PutMapping("/{id}")
+    public Result<User> updateUser(@PathVariable Long id, @RequestBody UpdateUserDto dto) {
+        return Result.success(userService.updateUser(id, dto.getSchool(), dto.getMajor(), dto.getGraduationYear()));
+    }
+
+    @Data
+    public static class UpdateUserDto {
+        private String school;
+        private String major;
+        private Integer graduationYear;
+    }
 }

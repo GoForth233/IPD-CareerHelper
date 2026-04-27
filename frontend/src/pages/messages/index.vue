@@ -172,6 +172,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
 
 const currentTab = ref('hr');
 const topSafeHeight = ref(88);
@@ -296,14 +297,7 @@ const openStatusModal = (item: any) => {
 
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
-  const systemInfo = uni.getSystemInfoSync();
-  const menuButton = uni.getMenuButtonBoundingClientRect?.();
-  if (menuButton && menuButton.top) {
-    topSafeHeight.value = menuButton.top;
-  } else {
-    const statusBar = systemInfo.statusBarHeight || 44;
-    topSafeHeight.value = statusBar + 8;
-  }
+  topSafeHeight.value = getTopSafeHeight();
 });
 </script>
 
