@@ -8,5 +8,7 @@ public interface UserService {
     User wechatLogin(String code);
     User getUserById(Long userId);
     User updateUser(Long userId, String school, String major, Integer graduationYear);
+    void resetPassword(String identifier, String newCredential);
+    boolean isEmailRegistered(String email);
 }
 

@@ -158,6 +158,22 @@ public class UserServiceImpl implements UserService {
         return newUser;
     }
 
+    @Override
+    public boolean isEmailRegistered(String email) {
+        String normalized = normalizeIdentifier(email);
+        return userAuthRepository.findByIdentifierAndIdentityType(normalized, EMAIL_PASSWORD).isPresent();
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String identifier, String newCredential) {
+        String normalizedIdentifier = normalizeIdentifier(identifier);
+        UserAuth userAuth = userAuthRepository.findByIdentifierAndIdentityType(normalizedIdentifier, EMAIL_PASSWORD)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userAuth.setCredential(passwordEncoder.encode(newCredential));
+        userAuthRepository.save(userAuth);
+    }
+
     private void validateIdentityType(String identityType, String expectedType) {
         if (!expectedType.equals(identityType)) {
             throw new RuntimeException("Unsupported identity type");

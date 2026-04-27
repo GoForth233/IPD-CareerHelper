@@ -17,6 +17,7 @@ export interface RegisterDTO {
   identityType: string; // 'EMAIL_PASSWORD'
   identifier: string;   // email
   credential: string;   // password
+  code: string;         // email verification code
 }
 
 export interface LoginDTO {
@@ -64,7 +65,40 @@ export const wechatLoginApi = (data: { code: string }) => {
 };
 
 /**
- * Get User Info (with Redis cache)
+ * Check if email is already registered
+ */
+export const checkEmailApi = (email: string) => {
+  return request<boolean>({
+    url: '/auth/check-email',
+    method: 'POST',
+    data: { email },
+  });
+};
+
+/**
+ * Send Email Verification Code
+ */
+export const sendCodeApi = (data: { email: string; purpose: 'REGISTER' | 'RESET' }) => {
+  return request<string>({
+    url: '/auth/send-code',
+    method: 'POST',
+    data,
+  });
+};
+
+/**
+ * Reset Password with Email Code
+ */
+export const resetPasswordApi = (data: { email: string; code: string; newPassword: string }) => {
+  return request<string>({
+    url: '/auth/reset-password',
+    method: 'POST',
+    data,
+  });
+};
+
+/**
+ * Get User Info
  */
 export const getUserInfoApi = (userId: number) => {
   return request<User>({

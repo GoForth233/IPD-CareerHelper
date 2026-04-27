@@ -11,9 +11,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.group1.career.service.EmailService;
+import com.group1.career.service.VerificationCodeService;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,6 +31,12 @@ public class AuthControllerTest {
     @MockitoBean
     private UserService userService;
 
+    @MockitoBean
+    private EmailService emailService;
+
+    @MockitoBean
+    private VerificationCodeService verificationCodeService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -38,6 +47,7 @@ public class AuthControllerTest {
         mockUser.setUserId(1L);
         mockUser.setNickname("TestUser");
 
+        when(verificationCodeService.verify(anyString(), anyString(), anyString())).thenReturn(true);
         when(userService.register(anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(mockUser);
 
@@ -45,7 +55,8 @@ public class AuthControllerTest {
                 "nickname", "TestUser",
                 "identityType", "EMAIL_PASSWORD",
                 "identifier", "test@example.com",
-                "credential", "password123"
+                "credential", "password123",
+                "code", "123456"
         );
 
         mockMvc.perform(post("/auth/register")
@@ -63,7 +74,8 @@ public class AuthControllerTest {
                 "nickname", "TestUser",
                 "identityType", "EMAIL_PASSWORD",
                 "identifier", "not-an-email",
-                "credential", "password123"
+                "credential", "password123",
+                "code", "123456"
         );
 
         mockMvc.perform(post("/auth/register")
@@ -79,7 +91,8 @@ public class AuthControllerTest {
                 "nickname", "TestUser",
                 "identityType", "EMAIL_PASSWORD",
                 "identifier", "test@example.com",
-                "credential", "123"
+                "credential", "123",
+                "code", "123456"
         );
 
         mockMvc.perform(post("/auth/register")

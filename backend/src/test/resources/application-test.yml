@@ -17,11 +17,26 @@ spring:
     hibernate:
       ddl-auto: create-drop # Recreate schema for each test
     show-sql: false # Set to true for debugging
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
 
+
+# Disable Mail for tests (use MockitoBean in test classes instead)
+spring:
+  mail:
+    host: localhost
+    port: 25
+    username: test@test.com
+    password: test
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+            required: false
 
 # Disable OSS for tests
 aliyun:

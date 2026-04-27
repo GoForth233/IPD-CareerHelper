@@ -27,6 +27,28 @@ spring:
         format_sql: true
 
 
+  # ==============================
+  # 邮件 SMTP 配置
+  # 默认使用 QQ邮箱，可通过环境变量切换其他服务商：
+  #   163邮箱: MAIL_HOST=smtp.163.com  MAIL_PORT=465  MAIL_SSL=true
+  #   Gmail:  MAIL_HOST=smtp.gmail.com MAIL_PORT=587  MAIL_SSL=false
+  # ==============================
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your_qq@qq.com}
+    password: ${MAIL_PASSWORD:your_qq_smtp_auth_code}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true    # 587端口必须开启STARTTLS（QQ/163/Gmail通用）
+            required: true
+          ssl:
+            enable: false   # 587用STARTTLS，465才用SSL
+
   # 文件上传限制
   servlet:
     multipart:

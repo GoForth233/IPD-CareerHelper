@@ -41,27 +41,12 @@ const request = <T>(options: UniApp.RequestOptions & { silent?: boolean }): Prom
         if (statusCode === 200 && data.code === 200) {
           resolve(data.data);
         } else {
-          // Business Error (e.g., 4001 User Not Found)
           const errorMsg = data.message || 'Request Failed';
-          if (!options.silent) {
-            uni.showToast({
-              title: errorMsg,
-              icon: 'none',
-              duration: 2000,
-            });
-          }
           reject(new Error(errorMsg));
         }
       },
       fail: (err) => {
-        // Network Error
-        if (!options.silent) {
-          uni.showToast({
-            title: 'Network Error',
-            icon: 'none',
-          });
-        }
-        reject(err);
+        reject(new Error('Network error, please check your connection'));
       },
     });
   });
