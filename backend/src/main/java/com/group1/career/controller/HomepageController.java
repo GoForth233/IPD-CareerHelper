@@ -2,9 +2,9 @@ package com.group1.career.controller;
 
 import com.group1.career.common.Result;
 import com.group1.career.model.entity.CareerPath;
+import com.group1.career.repository.InterviewRepository;
+import com.group1.career.repository.UserRepository;
 import com.group1.career.service.CareerService;
-import com.group1.career.service.InterviewService;
-import com.group1.career.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 public class HomepageController {
 
     private final CareerService careerService;
+    private final UserRepository userRepository;
+    private final InterviewRepository interviewRepository;
 
     @Operation(summary = "Get homepage aggregated feed")
     @GetMapping("/feed")
@@ -62,11 +64,11 @@ public class HomepageController {
                         .build()
         );
 
-        // 3. Quick stats
+        // 3. Quick stats -- live counts straight from MySQL.
         QuickStatsDto stats = QuickStatsDto.builder()
                 .totalCareerPaths(paths.size())
-                .totalUsers(1280)   // In production: userService.count()
-                .totalInterviews(356) // In production: interviewService.count()
+                .totalUsers((int) userRepository.count())
+                .totalInterviews((int) interviewRepository.count())
                 .build();
 
         HomepageFeedDto feed = HomepageFeedDto.builder()

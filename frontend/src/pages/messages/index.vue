@@ -3,56 +3,22 @@
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
-      <text class="page-title">Messages</text>
-    </view>
-
-    <!-- iOS segment tabs -->
-    <view class="segment-wrap">
-      <view class="segment-bar">
+      <view class="header-row">
+        <text class="page-title">Notifications</text>
         <view
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="seg-item"
-          :class="{ 'seg-active': currentTab === tab.key }"
-          @click="currentTab = tab.key"
-        >
-          <text>{{ tab.label }}</text>
-          <view class="seg-badge" v-if="tab.count > 0">
-            <text class="badge-num">{{ tab.count }}</text>
-          </view>
-        </view>
+          class="clear-btn"
+          v-if="systemMessages.length > 0 && tabs[1].count > 0"
+          @click="markAllReadHandler"
+        ><text class="clear-btn-text">Mark all read</text></view>
       </view>
+      <text class="page-subtitle">Updates from your interviews, assessments, and resume reviews.</text>
     </view>
 
     <!-- Message list -->
     <scroll-view class="msg-list" scroll-y>
-      <!-- HR conversations -->
-      <view v-if="currentTab === 'hr'" class="list-wrap">
-        <view
-          class="msg-card"
-          :class="{ 'msg-unread': item.unread }"
-          v-for="(item, idx) in hrMessages"
-          :key="idx"
-          @click="openHrModal(item)"
-        >
-          <view class="avatar-wrap">
-            <view class="msg-avatar" :class="'av-' + (idx % 3)">
-              <text class="av-text">{{ item.avatarChar }}</text>
-            </view>
-            <view class="unread-dot" v-if="item.unread"></view>
-          </view>
-          <view class="msg-body">
-            <view class="msg-top-row">
-              <text class="msg-name">{{ item.name }}</text>
-              <text class="msg-time">{{ item.time }}</text>
-            </view>
-            <text class="msg-preview">{{ item.preview }}</text>
-          </view>
-        </view>
-      </view>
 
       <!-- System notifications -->
-      <view v-if="currentTab === 'system'" class="list-wrap">
+      <view class="list-wrap">
         <view
           class="msg-card"
           :class="{ 'msg-unread': item.unread }"
@@ -76,37 +42,11 @@
         </view>
       </view>
 
-      <!-- Application status -->
-      <view v-if="currentTab === 'status'" class="list-wrap">
-        <view
-          class="msg-card"
-          v-for="(item, idx) in statusMessages"
-          :key="idx"
-          @click="openStatusModal(item)"
-        >
-          <view class="avatar-wrap">
-            <view class="msg-avatar status-av">
-              <text class="av-emoji">{{ item.icon }}</text>
-            </view>
-          </view>
-          <view class="msg-body">
-            <view class="msg-top-row">
-              <text class="msg-name">{{ item.name }}</text>
-              <text class="msg-time">{{ item.time }}</text>
-            </view>
-            <text class="msg-preview">{{ item.preview }}</text>
-            <view class="status-tag" :class="'tag-' + item.status">
-              <text class="tag-text">{{ item.statusLabel }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
       <!-- Empty state -->
-      <view class="empty-state" v-if="currentListEmpty">
-        <text class="empty-icon">📭</text>
-        <text class="empty-text">No messages yet</text>
-        <text class="empty-sub">New messages will appear here</text>
+      <view class="empty-state" v-if="!systemLoading && systemMessages.length === 0">
+        <text class="empty-icon">�</text>
+        <text class="empty-text">No notifications yet</text>
+        <text class="empty-sub">Finish a mock interview or assessment, and it'll show up here.</text>
       </view>
     </scroll-view>
 
@@ -172,9 +112,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
+import {
+  listNotificationsApi,
+  markReadApi,
+  markAllReadApi,
+  type Notification,
+} from '@/api/notification';
 
-const currentTab = ref('hr');
+const currentTab = ref('system'); // System tab is the only one with real data; default there
 const topSafeHeight = ref(88);
 const darkPref = ref(false);
 
@@ -182,8 +129,8 @@ const activeHrChat = ref<any>(null);
 const activeStatus = ref<any>(null);
 
 const tabs = ref([
-  { key: 'hr', label: 'Chats', count: 2 },
-  { key: 'system', label: 'Alerts', count: 1 },
+  { key: 'hr', label: 'Chats', count: 0 },
+  { key: 'system', label: 'Alerts', count: 0 },
   { key: 'status', label: 'Applications', count: 0 },
 ]);
 
@@ -211,22 +158,75 @@ const hrMessages = ref([
   },
 ]);
 
-const systemMessages = ref([
-  {
-    icon: '🔔',
-    name: 'System',
-    time: 'Just now',
-    preview: 'Your interview review report is ready. Tap to view details.',
-    unread: true,
-  },
-  {
-    icon: '✨',
-    name: 'AI Assistant',
-    time: 'Yesterday',
-    preview: 'Resume diagnosis complete — overall score 85. 3 items can be optimized.',
-    unread: false,
-  },
-]);
+// System notifications now come from the backend (/api/notifications).
+// Each row is a Notification + a derived UI shape used by the existing template.
+interface SystemMessageView {
+  notificationId: number;
+  icon: string;
+  name: string;
+  time: string;
+  preview: string;
+  unread: boolean;
+  link?: string;
+}
+const systemMessages = ref<SystemMessageView[]>([]);
+const systemLoading = ref(false);
+
+const formatRelativeTime = (ts?: string): string => {
+  if (!ts) return '';
+  const date = new Date(ts.replace(' ', 'T'));
+  if (isNaN(date.getTime())) return '';
+  const diff = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (diff < 60) return 'Just now';
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'Yesterday';
+  if (d < 7) return `${d}d ago`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+const iconForType = (type: string): string => {
+  switch (type) {
+    case 'INTERVIEW_COMPLETED': return '🎤';
+    case 'ASSESSMENT_DONE':     return '🧠';
+    case 'RESUME_REVIEWED':     return '📄';
+    default:                    return '🔔';
+  }
+};
+const nameForType = (type: string): string => {
+  switch (type) {
+    case 'INTERVIEW_COMPLETED': return 'Interview';
+    case 'ASSESSMENT_DONE':     return 'Assessment';
+    case 'RESUME_REVIEWED':     return 'Resume AI';
+    default:                    return 'System';
+  }
+};
+
+const loadSystemNotifications = async () => {
+  systemLoading.value = true;
+  try {
+    const list: Notification[] = (await listNotificationsApi()) || [];
+    systemMessages.value = list.map((n) => ({
+      notificationId: n.notificationId,
+      icon: iconForType(n.type),
+      name: nameForType(n.type) + (n.title ? ' · ' + n.title : ''),
+      time: formatRelativeTime(n.createdAt),
+      preview: n.content || '',
+      unread: !n.readFlag,
+      link: n.link,
+    }));
+    const unread = systemMessages.value.filter((m) => m.unread).length;
+    tabs.value[1].count = unread;
+  } catch {
+    systemMessages.value = [];
+    tabs.value[1].count = 0;
+  } finally {
+    systemLoading.value = false;
+  }
+};
 
 const statusMessages = ref([
   {
@@ -279,11 +279,37 @@ const viewProfile = () => {
   uni.showToast({ title: 'Coming in next release', icon: 'none' });
 };
 
-const handleSystemClick = (item: any) => {
-  item.unread = false;
-  const unreadCount = systemMessages.value.filter(m => m.unread).length;
-  tabs.value[1].count = unreadCount;
+const markAllReadHandler = async () => {
+  // Optimistic UI: flip every row, then call the backend.
+  systemMessages.value.forEach((m) => { m.unread = false; });
+  tabs.value[1].count = 0;
+  try {
+    await markAllReadApi();
+    uni.showToast({ title: 'All marked read', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed', icon: 'none' });
+  }
+};
 
+const handleSystemClick = async (item: SystemMessageView) => {
+  // Optimistically mark read in the UI; the backend confirms it next.
+  if (item.unread) {
+    item.unread = false;
+    tabs.value[1].count = systemMessages.value.filter((m) => m.unread).length;
+    try { await markReadApi(item.notificationId); } catch { /* best-effort */ }
+  }
+
+  // Follow the deep link the backend attached, if any.
+  if (item.link) {
+    if (item.link.startsWith('/pages/')) {
+      uni.navigateTo({ url: item.link });
+    } else {
+      uni.showToast({ title: item.link, icon: 'none' });
+    }
+    return;
+  }
+
+  // Legacy fallback path.
   if (item.preview.includes('report')) {
     uni.navigateTo({ url: '/pages/interview/report' });
   } else if (item.preview.includes('diagnosis')) {
@@ -298,6 +324,13 @@ const openStatusModal = (item: any) => {
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   topSafeHeight.value = getTopSafeHeight();
+});
+
+// Pull notifications every time the tab becomes visible -- new alerts can
+// arrive while the user is on another page (e.g. they just finished an
+// interview / quiz). HR + Applications stay mock for now.
+onShow(() => {
+  loadSystemNotifications();
 });
 </script>
 
@@ -317,14 +350,36 @@ onMounted(() => {
 }
 
 .page-header {
-  padding: 8px 20px 12px;
+  padding: 8px 20px 14px;
 }
+.header-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.clear-btn {
+  min-height: 32px;
+  padding: 6px 12px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  display: flex; align-items: center;
+}
+.clear-btn:active { background: #dbeafe; }
+.clear-btn-text { color: #2563eb; font-size: 12px; font-weight: 700; }
 
 .page-title {
-  font-size: var(--font-title);
+  display: block;
+  font-size: 28px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.35px;
+}
+
+.page-subtitle {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 /* ---- Segment tabs ---- */
@@ -334,10 +389,12 @@ onMounted(() => {
 
 .segment-bar {
   display: flex;
-  background: #f1f5f9;
-  border-radius: 12px;
-  padding: 3px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 4px;
   gap: 2px;
+  box-shadow: var(--shadow-xs);
 }
 
 .seg-item {
@@ -356,10 +413,10 @@ onMounted(() => {
 }
 
 .seg-active {
-  background: #ffffff;
+  background: var(--surface-2);
   color: #0f172a;
   font-weight: 600;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
 .seg-badge {
@@ -401,8 +458,8 @@ onMounted(() => {
   background: #ffffff;
   padding: 16px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.1s;
 }
 
@@ -411,7 +468,8 @@ onMounted(() => {
 }
 
 .msg-unread {
-  border-left: 3px solid #2563eb;
+  border-color: rgba(37, 99, 235, 0.35);
+  background: linear-gradient(0deg, rgba(239, 246, 255, 0.6), rgba(239, 246, 255, 0.6)), #ffffff;
 }
 
 /* ---- Avatar ---- */

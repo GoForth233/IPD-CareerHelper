@@ -7,6 +7,7 @@ import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.repository.InterviewMessageRepository;
 import com.group1.career.repository.InterviewRepository;
 import com.group1.career.service.InterviewService;
+import com.group1.career.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class InterviewServiceImpl implements InterviewService {
 
     private final InterviewRepository interviewRepository;
     private final InterviewMessageRepository messageRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -71,7 +73,20 @@ public class InterviewServiceImpl implements InterviewService {
             interview.setDurationSeconds((int) duration.getSeconds());
         }
 
-        return interviewRepository.save(interview);
+        Interview saved = interviewRepository.save(interview);
+
+        // Surface a notification on the Messages > System tab so the user
+        // sees their interview is wrapped up and can jump straight to the
+        // AI evaluation report.
+        notificationService.push(
+                saved.getUserId(),
+                "INTERVIEW_COMPLETED",
+                "Interview completed",
+                "Your " + saved.getPositionName() + " mock interview is finished. Tap to see your AI report.",
+                "/pages/interview/report?interviewId=" + saved.getInterviewId()
+        );
+
+        return saved;
     }
 
     @Override
@@ -83,5 +98,27 @@ public class InterviewServiceImpl implements InterviewService {
     public Interview getInterviewById(Long interviewId) {
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new BizException(ErrorCode.PARAM_ERROR));
+    }
+
+    @Override
+    public Interview assertOwnership(Long interviewId, Long userId) {
+        Interview interview = getInterviewById(interviewId);
+        if (!interview.getUserId().equals(userId)) {
+            log.warn("Ownership violation: user {} tried to access interview {} owned by {}",
+                    userId, interviewId, interview.getUserId());
+            throw new BizException(ErrorCode.FORBIDDEN);
+        }
+        return interview;
+    }
+
+    @Override
+    @Transactional
+    public Interview saveReport(Long interviewId, String reportJson, Integer overallScore) {
+        Interview interview = getInterviewById(interviewId);
+        interview.setReportJson(reportJson);
+        if (overallScore != null) {
+            interview.setFinalScore(overallScore);
+        }
+        return interviewRepository.save(interview);
     }
 }
