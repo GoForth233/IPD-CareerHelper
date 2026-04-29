@@ -17,22 +17,52 @@ const ENV_FILE = path.resolve(__dirname, '..', '.env.development');
 
 function pickLanIp() {
   const ifaces = os.networkInterfaces();
-  // Prefer en0 (Wi-Fi/Ethernet on macOS), then any non-internal IPv4.
-  const order = ['en0', 'en1', 'en2'];
-  for (const name of order) {
-    const list = ifaces[name] || [];
-    for (const it of list) {
-      if (it.family === 'IPv4' && !it.internal) return it.address;
-    }
-  }
-  for (const list of Object.values(ifaces)) {
+
+  // Names of virtual / non-physical adapters to skip (Windows + common tools).
+  const SKIP_RE = /(vEthernet|VMware|VirtualBox|VBoxNet|Hyper-V|WSL|Docker|TAP|Loopback|Bluetooth|Tunnel|utun|llw|awdl|bridge)/i;
+
+  // Preferred adapter names on macOS / Windows / Linux.
+  const PREFER_RE = /(^en0$|^en1$|^en2$|Wi-?Fi|WLAN|Wireless|无线|以太网|Ethernet|eth0|wlan0)/i;
+
+  const isLanIp = (addr) =>
+    addr.startsWith('192.168.') ||
+    addr.startsWith('10.') ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(addr) ||
+    // Some campus/office networks hand out other private ranges; allow as last resort
+    (!addr.startsWith('169.254.') && !addr.startsWith('127.'));
+
+  const candidates = [];
+  for (const [name, list] of Object.entries(ifaces)) {
+    if (SKIP_RE.test(name)) continue;
     for (const it of list || []) {
-      if (it.family === 'IPv4' && !it.internal && !it.address.startsWith('169.254.')) {
-        return it.address;
-      }
+      if (it.family !== 'IPv4' || it.internal) continue;
+      if (it.address.startsWith('169.254.')) continue;
+      candidates.push({ name, address: it.address });
     }
   }
-  return null;
+
+  // 1. Preferred-name + classic LAN range (best match)
+  let hit = candidates.find(
+    (c) => PREFER_RE.test(c.name) &&
+      (c.address.startsWith('192.168.') || c.address.startsWith('10.') ||
+       /^172\.(1[6-9]|2\d|3[01])\./.test(c.address))
+  );
+  if (hit) return hit.address;
+
+  // 2. Any classic LAN range
+  hit = candidates.find(
+    (c) => c.address.startsWith('192.168.') || c.address.startsWith('10.') ||
+           /^172\.(1[6-9]|2\d|3[01])\./.test(c.address)
+  );
+  if (hit) return hit.address;
+
+  // 3. Preferred-name with whatever IP
+  hit = candidates.find((c) => PREFER_RE.test(c.name));
+  if (hit) return hit.address;
+
+  // 4. Anything non-internal
+  hit = candidates.find((c) => isLanIp(c.address));
+  return hit ? hit.address : null;
 }
 
 const ip = pickLanIp();
