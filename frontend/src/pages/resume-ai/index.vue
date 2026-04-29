@@ -2,47 +2,50 @@
   <view class="resume-ai-container" :class="{ 'is-dark': darkPref }">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
-    <view class="nav-row">
+    <view class="top-bar">
       <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
-        <text class="back-text">Back</text>
       </view>
-      <text class="nav-title">AI Resume</text>
-      <view class="nav-right"></view>
     </view>
 
     <view class="header">
-      <text class="title">AI Resume Diagnosis</text>
-      <text class="subtitle">Select a resume and paste a job description. We will generate targeted optimization suggestions.</text>
+      <text class="title">Resume Diagnosis</text>
+      <text class="subtitle">Pick one of your resumes and paste a job description. AI will score the match and suggest improvements.</text>
     </view>
 
     <view class="card">
       <view class="section">
-        <text class="section-title">1. Select Resume</text>
-        <view class="select-box" @click="selectResume">
-          <text class="s-icon">📄</text>
+        <text class="section-title">Resume</text>
+        <view class="select-box" :class="{ 'has-value': !!selectedResume }" @click="selectResume">
+          <view class="s-icon-wrap"><text class="s-icon-text">PDF</text></view>
           <text class="s-text">{{ selectedResume || 'Choose a resume from your library' }}</text>
-          <text class="s-chevron">Select</text>
+          <text class="s-chevron">›</text>
         </view>
       </view>
 
       <view class="section">
-        <text class="section-title">2. Target Job Description (JD)</text>
-        <textarea 
-          class="jd-input" 
-          v-model="jdText" 
-          placeholder="Paste the target job description here. AI will conduct a targeted diagnosis based on this..."
+        <view class="jd-header">
+          <text class="section-title">Job Description</text>
+          <text class="jd-counter" :class="{ 'jd-counter-warn': jdText.length > 4000 }">
+            {{ jdText.length }} / 4000
+          </text>
+        </view>
+        <textarea
+          class="jd-input"
+          v-model="jdText"
+          :maxlength="4000"
+          placeholder="Paste the target job description here. AI will diagnose your resume against it..."
           placeholder-class="ph"
         ></textarea>
       </view>
 
       <button class="btn-primary" :loading="analyzing" @click="startAnalysis">
-        Start AI Diagnosis
+        Analyze
       </button>
     </view>
 
-    <!-- Loading overlay -->
-    <view class="loading-overlay" v-if="analyzing">
+    <!-- Loading overlay (shared by Analyze and Tailor flows) -->
+    <view class="loading-overlay" v-if="analyzing || tailoring">
       <view class="spinner"></view>
       <text class="loading-text">{{ loadingMessage }}</text>
       <view class="progress-bar-container">
@@ -50,105 +53,221 @@
       </view>
     </view>
 
-    <view class="result-card" v-if="showResult">
+    <view class="result-card" v-if="showResult && result">
       <view class="r-header">
-        <text class="r-title">Diagnosis Result</text>
-        <view class="score-ring">
-          <text class="score-val">85</text>
-          <text class="score-label">Match</text>
+        <view class="r-title-wrap">
+          <text class="r-title">Match Score</text>
+          <text class="r-sub">vs. the job description</text>
+        </view>
+        <view class="score-ring" :class="scoreClass">
+          <text class="score-val">{{ result.overallScore }}</text>
         </view>
       </view>
-      
+
       <view class="r-body">
-        <text class="point-title">🟢 Strengths</text>
-        <text class="point-text">· Proficient in Vue3 and TypeScript, matching JD requirements.</text>
-        <text class="point-text">· Demonstrated independent project ownership with strong engineering capability.</text>
-        
-        <text class="point-title mt">🔴 Areas to Improve</text>
-        <text class="point-text">· Missing quantified performance metrics (e.g. first contentful paint time).</text>
-        <text class="point-text">· Consider adding CI/CD pipeline experience.</text>
+        <view class="point-block strengths" v-if="result.strengths && result.strengths.length">
+          <text class="point-title">Strengths</text>
+          <view class="point-list">
+            <text class="point-text" v-for="(s, i) in result.strengths" :key="'s'+i">{{ s }}</text>
+          </view>
+        </view>
+
+        <view class="point-block weaknesses" v-if="result.weaknesses && result.weaknesses.length">
+          <text class="point-title">Areas to Improve</text>
+          <view class="point-list">
+            <text class="point-text" v-for="(w, i) in result.weaknesses" :key="'w'+i">{{ w }}</text>
+          </view>
+        </view>
+
+        <view class="point-block suggestions" v-if="result.suggestions && result.suggestions.length">
+          <text class="point-title">Suggestions</text>
+          <view class="point-list">
+            <text class="point-text" v-for="(g, i) in result.suggestions" :key="'g'+i">{{ g }}</text>
+          </view>
+        </view>
       </view>
-      
-      <button class="btn-secondary" @click="generateTailored">Generate Tailored Resume</button>
+
+      <button class="btn-secondary" :loading="tailoring" @click="generateTailored">Generate Tailored Resume</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { getTopSafeHeight } from '@/utils/safeArea';
+import {
+  getUserResumesApi,
+  diagnoseResumeApi,
+  tailorResumeApi,
+  type Resume,
+  type DiagnosisResult,
+} from '@/api/resume';
 
 const selectedResume = ref('');
+const selectedResumeId = ref<number | null>(null);
+const userResumes = ref<Resume[]>([]);
 const jdText = ref('');
 const darkPref = ref(false);
 const topSafeHeight = ref(44);
 const analyzing = ref(false);
+const tailoring = ref(false);
 const showResult = ref(false);
+const result = ref<DiagnosisResult | null>(null);
 const loadingMessage = ref('Ready...');
 const loadingProgress = ref(0);
+
+const scoreClass = computed(() => {
+  const s = result.value?.overallScore ?? 0;
+  if (s >= 80) return 'ring-good';
+  if (s >= 60) return 'ring-warn';
+  return 'ring-bad';
+});
 
 const goBack = () => {
   uni.navigateBack({ delta: 1 });
 };
 
+const loadResumes = async () => {
+  const userId = Number(uni.getStorageSync('userId'));
+  if (!userId || isNaN(userId) || userId <= 0) return;
+  try {
+    userResumes.value = (await getUserResumesApi(userId)) || [];
+  } catch {
+    userResumes.value = [];
+  }
+};
+
 const selectResume = () => {
+  if (!userResumes.value.length) {
+    uni.showToast({ title: 'No resumes yet — upload one first', icon: 'none' });
+    return;
+  }
+  const itemList = userResumes.value.map(
+    (r) => r.title || r.fileUrl?.split('/').pop() || `Resume #${r.resumeId}`
+  );
   uni.showActionSheet({
-    itemList: ['Frontend_Developer_2026_Fall.pdf', 'Fullstack_General_v2.pdf'],
+    itemList,
     success: (res) => {
-      if (res.tapIndex === 0) {
-        selectedResume.value = 'Frontend_Developer_2026_Fall.pdf';
-      } else {
-        selectedResume.value = 'Fullstack_General_v2.pdf';
+      const r = userResumes.value[res.tapIndex];
+      if (r && r.resumeId) {
+        selectedResume.value = itemList[res.tapIndex];
+        selectedResumeId.value = r.resumeId;
       }
-    }
+    },
   });
 };
 
-const startAnalysis = () => {
-  if (!selectedResume.value) {
+let progressTimers: number[] = [];
+const clearProgressTimers = () => {
+  progressTimers.forEach((t) => clearTimeout(t));
+  progressTimers = [];
+};
+
+const runProgressAnimation = () => {
+  loadingProgress.value = 0;
+  loadingMessage.value = 'Connecting to AI...';
+  clearProgressTimers();
+  progressTimers = [
+    setTimeout(() => { loadingMessage.value = 'Downloading & parsing PDF...'; loadingProgress.value = 22; }, 400) as unknown as number,
+    setTimeout(() => { loadingMessage.value = 'Comparing resume vs. JD...'; loadingProgress.value = 55; }, 1500) as unknown as number,
+    setTimeout(() => { loadingMessage.value = 'AI generating insights...'; loadingProgress.value = 82; }, 3500) as unknown as number,
+  ];
+};
+
+// Tailoring is a longer pipeline (AI rewrite -> HTML -> PDF -> OSS upload).
+// Total typical duration is 30-90s, so we crawl progress slowly and cap at
+// 92% until the API actually returns, then snap to 100%.
+const runTailorProgress = () => {
+  loadingProgress.value = 0;
+  loadingMessage.value = 'Preparing source resume...';
+  clearProgressTimers();
+  const stages: Array<{ at: number; pct: number; msg: string }> = [
+    { at: 800,   pct: 8,  msg: 'Reading your PDF...' },
+    { at: 2500,  pct: 18, msg: 'Extracting text content...' },
+    { at: 5000,  pct: 32, msg: 'AI rewriting against the JD...' },
+    { at: 15000, pct: 52, msg: 'AI rewriting against the JD...' },
+    { at: 30000, pct: 70, msg: 'AI polishing wording...' },
+    { at: 50000, pct: 82, msg: 'Rendering PDF...' },
+    { at: 75000, pct: 90, msg: 'Uploading to cloud storage...' },
+    { at: 100000, pct: 92, msg: 'Almost there...' },
+  ];
+  progressTimers = stages.map(
+    (s) =>
+      setTimeout(() => {
+        loadingMessage.value = s.msg;
+        loadingProgress.value = s.pct;
+      }, s.at) as unknown as number
+  );
+};
+
+const startAnalysis = async () => {
+  if (!selectedResumeId.value) {
     uni.showToast({ title: 'Please select a resume first', icon: 'none' });
     return;
   }
-  if (!jdText.value) {
+  if (!jdText.value || !jdText.value.trim()) {
     uni.showToast({ title: 'Please paste the Job Description', icon: 'none' });
     return;
   }
 
   analyzing.value = true;
   showResult.value = false;
-  loadingProgress.value = 0;
-  loadingMessage.value = 'Connecting to diagnosis model...';
+  result.value = null;
+  runProgressAnimation();
 
-  setTimeout(() => { loadingMessage.value = 'Extracting experience features...'; loadingProgress.value = 18; }, 350);
-  setTimeout(() => { loadingMessage.value = 'Analyzing resume structure & keywords...'; loadingProgress.value = 42; }, 1050);
-  setTimeout(() => { loadingMessage.value = 'Comparing against target JD line by line...'; loadingProgress.value = 68; }, 1900);
-  setTimeout(() => { loadingMessage.value = 'Generating optimization strategy...'; loadingProgress.value = 88; }, 2800);
-  setTimeout(() => {
-    loadingMessage.value = 'Almost done, please wait...';
+  try {
+    const res = await diagnoseResumeApi({
+      resumeId: selectedResumeId.value,
+      jobDescription: jdText.value.trim(),
+    });
     loadingProgress.value = 100;
-  }, 3550);
-  setTimeout(() => {
-    analyzing.value = false;
+    loadingMessage.value = 'Done';
+    result.value = res;
     showResult.value = true;
     uni.showToast({ title: 'Diagnosis complete', icon: 'success' });
-  }, 4050);
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Diagnosis failed', icon: 'none' });
+  } finally {
+    progressTimers.forEach((t) => clearTimeout(t));
+    analyzing.value = false;
+  }
 };
 
-const generateTailored = () => {
-  uni.showLoading({ title: 'Generating...' });
-  setTimeout(() => {
-    uni.hideLoading();
-    uni.showToast({ title: 'Resume tailored!', icon: 'success' });
-    setTimeout(() => {
-      uni.switchTab({ url: '/pages/resume/index' });
-    }, 1500);
-  }, 2000);
+const generateTailored = async () => {
+  if (!selectedResumeId.value) {
+    uni.showToast({ title: 'Please select a resume first', icon: 'none' });
+    return;
+  }
+  const userId = Number(uni.getStorageSync('userId'));
+  if (!userId) {
+    uni.showToast({ title: 'Please log in first', icon: 'none' });
+    return;
+  }
+  tailoring.value = true;
+  runTailorProgress();
+  try {
+    await tailorResumeApi({
+      userId,
+      resumeId: selectedResumeId.value,
+      jobDescription: jdText.value.trim(),
+    });
+    clearProgressTimers();
+    loadingProgress.value = 100;
+    loadingMessage.value = 'Done!';
+    uni.showToast({ title: 'Tailored resume saved!', icon: 'success' });
+    setTimeout(() => uni.switchTab({ url: '/pages/resume/index' }), 900);
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Generation failed', icon: 'none' });
+  } finally {
+    clearProgressTimers();
+    tailoring.value = false;
+  }
 };
 
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
-
   topSafeHeight.value = getTopSafeHeight();
+  loadResumes();
 });
 </script>
 
@@ -163,39 +282,19 @@ onMounted(() => {
 
 .status-spacer { width: 100%; }
 
-.nav-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 0 14px;
-}
-
+.top-bar { padding: 4px 0 8px; }
 .back-btn {
+  width: 36px; height: 36px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid #e2e8f0;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  color: #2563eb;
-  width: var(--nav-back-width);
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
-
-.back-icon {
-  font-size: 22px;
-  font-weight: 300;
-  line-height: 1;
-}
-
-.back-text {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.nav-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.nav-right { width: 64px; }
+.back-btn:active { background: #f1f5f9; }
+.back-icon { font-size: 22px; font-weight: 400; line-height: 1; color: #1e293b; margin-top: -2px; }
 
 .header { margin-bottom: 20px; }
 
@@ -217,9 +316,10 @@ onMounted(() => {
 
 .card {
   background-color: #ffffff;
+  border: 1px solid var(--border-color);
   border-radius: 24px;
   padding: 24px 20px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 24px;
 }
 
@@ -239,31 +339,54 @@ onMounted(() => {
   background-color: #f8fafc;
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xs);
 }
 
 .select-box:active { background-color: #f1f5f9; }
 
-.s-icon { font-size: 20px; margin-right: 12px; }
+.s-icon-wrap {
+  width: 36px; height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 12px; flex-shrink: 0;
+}
+.s-icon-text { font-size: 10px; font-weight: 800; color: #2563eb; letter-spacing: 0.5px; }
 
 .s-text {
   flex: 1;
   min-width: 0;
   font-size: 15px;
-  color: #334155;
+  color: #94a3b8;
   line-height: 1.45;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-right: 10px;
 }
+.select-box.has-value .s-text { color: #0f172a; font-weight: 500; }
 
 .s-chevron {
-  font-size: 12px;
-  color: #94a3b8;
-  font-weight: 600;
+  font-size: 22px;
+  color: #cbd5e1;
+  font-weight: 400;
+  line-height: 1;
   flex-shrink: 0;
 }
+
+/* Header row with the live character counter on the right.
+   Helps the user judge if they've pasted enough JD context for a useful diagnosis. */
+.jd-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.jd-counter {
+  font-size: 11px; font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+.jd-counter-warn { color: #f59e0b; }
 
 .jd-input {
   width: 100%;
@@ -274,72 +397,93 @@ onMounted(() => {
   box-sizing: border-box;
   font-size: 15px;
   color: #334155;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   line-height: 1.5;
 }
 
 .ph { color: #94a3b8; }
 
+/* WeChat <button> defaults to white bg with a ::after pseudo border.
+   Use solid hex (gradients on button are unreliable on mp-weixin) and
+   reset the ::after border so our background actually shows through. */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
-  color: #ffffff;
+  background-color: #2563eb !important;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
   font-size: 16px;
   font-weight: 600;
-  border-radius: var(--btn-radius);
-  height: var(--btn-height-lg);
-  line-height: var(--btn-height-lg);
+  border-radius: 14px;
+  height: 52px;
+  line-height: 52px;
   border: none;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  margin-top: 4px;
 }
-
-.btn-primary:active { transform: scale(0.98); }
+.btn-primary::after { border: none; }
+.btn-primary[disabled] { background-color: #94a3b8 !important; color: #ffffff !important; }
+.btn-primary:active { opacity: 0.92; }
 
 .result-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-radius: 24px;
-  padding: 24px 20px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 22px 18px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .r-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.r-title { font-size: 20px; font-weight: 700; color: #0f172a; }
+.r-title-wrap { display: flex; flex-direction: column; gap: 2px; }
+.r-title { font-size: 18px; font-weight: 700; color: #0f172a; }
+.r-sub { font-size: 12px; color: #94a3b8; }
 
 .score-ring {
-  width: 64px;
-  height: 64px;
-  border-radius: 32px;
-  border: 4px solid #10b981;
+  width: 76px; height: 76px;
+  border-radius: 38px;
+  border: 5px solid #10b981;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   background-color: #ecfdf5;
+  flex-shrink: 0;
 }
+.score-ring.ring-good { border-color: #10b981; background: #ecfdf5; }
+.score-ring.ring-good .score-val { color: #047857; }
+.score-ring.ring-warn { border-color: #f59e0b; background: #fffbeb; }
+.score-ring.ring-warn .score-val { color: #b45309; }
+.score-ring.ring-bad  { border-color: #ef4444; background: #fef2f2; }
+.score-ring.ring-bad  .score-val { color: #b91c1c; }
 
-.score-val { font-size: 20px; font-weight: 800; color: #047857; line-height: 1; }
+.score-val { font-size: 26px; font-weight: 800; line-height: 1; }
 
-.score-label { font-size: 10px; color: #059669; margin-top: 2px; }
+.r-body { margin-bottom: 20px; display: flex; flex-direction: column; gap: 14px; }
 
-.r-body { margin-bottom: 24px; }
+.point-block {
+  border-left: 3px solid #cbd5e1;
+  padding: 4px 0 4px 12px;
+}
+.point-block.strengths { border-left-color: #10b981; }
+.point-block.weaknesses { border-left-color: #ef4444; }
+.point-block.suggestions { border-left-color: #6366f1; }
 
-.point-title { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block; }
+.point-title { font-size: 13px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #475569; margin-bottom: 8px; display: block; }
+.point-block.strengths .point-title { color: #047857; }
+.point-block.weaknesses .point-title { color: #b91c1c; }
+.point-block.suggestions .point-title { color: #4338ca; }
 
-.mt { margin-top: 16px; }
-
-.point-text { font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 4px; display: block; }
+.point-list { display: flex; flex-direction: column; gap: 6px; }
+.point-text { font-size: 14px; color: #334155; line-height: 1.55; display: block; }
 
 .btn-secondary {
-  background-color: #eff6ff;
-  color: #2563eb;
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
   font-size: 15px;
   font-weight: 600;
   border-radius: 14px;
@@ -348,7 +492,8 @@ onMounted(() => {
   border: none;
 }
 
-.btn-secondary:active { background-color: #dbeafe; }
+.btn-secondary::after { border: none; }
+.btn-secondary:active { background-color: #dbeafe !important; }
 
 .loading-overlay {
   position: fixed;

@@ -10,12 +10,24 @@ import java.util.Date;
 @Slf4j
 public class JwtUtils {
 
-    // Must be at least 256 bits (32 bytes) long
-    private static final String SECRET_KEY_STRING = "CareerPlatformSuperSecretKeyThatIsAtLeast32BytesLong!!!";
-    private static final Key KEY = Keys.hmacShaKeyFor(SECRET_KEY_STRING.getBytes());
+    // Default fallback (overridable via JwtConfig at startup using jwt.secret in application.yml)
+    private static final String DEFAULT_SECRET = "CareerPlatformSuperSecretKeyThatIsAtLeast32BytesLong!!!";
+    private static volatile Key KEY = Keys.hmacShaKeyFor(DEFAULT_SECRET.getBytes());
 
-    // Token validity (e.g., 24 hours)
-    private static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000L;
+    // Token validity (default 24 hours, override via JwtConfig)
+    private static volatile long EXPIRATION_TIME = 24 * 60 * 60 * 1000L;
+
+    /** Initialized by JwtConfig at Spring startup. Safe to call once at boot. */
+    public static void configure(String secret, long expirationMs) {
+        if (secret != null && secret.getBytes().length >= 32) {
+            KEY = Keys.hmacShaKeyFor(secret.getBytes());
+        } else {
+            log.warn("JWT secret too short (<32 bytes); falling back to default key");
+        }
+        if (expirationMs > 0) {
+            EXPIRATION_TIME = expirationMs;
+        }
+    }
 
     /**
      * Generate JWT

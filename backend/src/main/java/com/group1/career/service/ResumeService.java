@@ -17,4 +17,11 @@ public interface ResumeService {
     void deleteResume(Long resumeId);
 
     Resume updateResume(Resume resume);
+
+    /**
+     * Verify that {@code resumeId} is owned by {@code userId}.
+     * Throws BizException(FORBIDDEN) when violated. Used to enforce
+     * cross-user resume access control on read/write/delete endpoints.
+     */
+    Resume assertOwnership(Long resumeId, Long userId);
 }

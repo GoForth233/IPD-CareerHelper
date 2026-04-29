@@ -51,8 +51,8 @@ public class InterviewControllerTest {
     @Test
     @DisplayName("API Test: Start Interview")
     public void testStartInterview_Success() throws Exception {
+        // userId is no longer in the body; resolved server-side from JWT.
         InterviewController.StartInterviewRequest request = new InterviewController.StartInterviewRequest();
-        request.setUserId(1L);
         request.setResumeId(100L);
         request.setPositionName("Java Developer");
         request.setDifficulty("Normal");
@@ -113,19 +113,15 @@ public class InterviewControllerTest {
     @DisplayName("API Test: End Interview")
     public void testEndInterview_Success() throws Exception {
         Long interviewId = 1L;
-        InterviewController.EndInterviewRequest request = new InterviewController.EndInterviewRequest();
-        request.setFinalScore(85);
-
+        // The end endpoint no longer accepts a client-supplied score.
+        // Final score is now produced by the report endpoint via AI evaluation.
         Interview completedInterview = Interview.builder()
-                .interviewId(interviewId).status("COMPLETED").finalScore(85).build();
-        when(interviewService.endInterview(interviewId, 85)).thenReturn(completedInterview);
+                .interviewId(interviewId).status("COMPLETED").build();
+        when(interviewService.endInterview(interviewId, null)).thenReturn(completedInterview);
 
-        mockMvc.perform(post("/api/interviews/{interviewId}/end", interviewId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post("/api/interviews/{interviewId}/end", interviewId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.finalScore").value(85));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
     }
 
     @Test

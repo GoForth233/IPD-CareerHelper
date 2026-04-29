@@ -13,6 +13,10 @@ export interface CareerNode {
   name: string;
   level: number;
   parentId: number;
+  description?: string;
+  estimatedHours?: number;
+  sortOrder?: number;
+  iconUrl?: string;
 }
 
 export interface UserCareerProgress {

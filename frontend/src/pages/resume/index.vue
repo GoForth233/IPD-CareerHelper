@@ -7,22 +7,29 @@
       <text class="page-subtitle">Manage your career assets</text>
     </view>
 
-    <!-- Hero status card -->
-    <view class="hero-card">
-      <view class="hero-left">
-        <text class="hero-count">{{ resumeList.length }}</text>
-        <text class="hero-unit">Resumes</text>
-      </view>
-      <view class="hero-deco"></view>
-    </view>
-
-    <!-- Resume list -->
+    <!-- Section header (compact, replaces oversized hero) -->
     <view class="section-bar">
-      <text class="section-title">My Resumes</text>
-      <text class="section-count">{{ resumeList.length }} files</text>
+      <view class="section-titles">
+        <text class="section-title">My Resumes</text>
+        <text class="section-sub">{{ resumeList.length }} {{ resumeList.length === 1 ? 'file' : 'files' }} · stored privately</text>
+      </view>
+      <view class="section-action" @click="handleUploadClick">
+        <text class="section-action-text">+ Add</text>
+      </view>
     </view>
 
-    <view class="resume-list">
+    <!-- Skeleton while the list is loading from the backend -->
+    <view class="skeleton-list" v-if="isLoading && resumeList.length === 0">
+      <view class="skel-card" v-for="i in 3" :key="i">
+        <view class="skel-square"></view>
+        <view class="skel-lines">
+          <view class="skel-line skel-w70"></view>
+          <view class="skel-line skel-w40"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="resume-list" v-else-if="resumeList.length > 0">
       <view class="resume-card" v-for="(item, idx) in resumeList" :key="idx">
         <view class="rc-icon-wrap">
           <view class="rc-icon" :class="'rc-icon-' + (idx % 2)">
@@ -60,6 +67,21 @@
       </view>
     </view>
 
+    <view class="empty-state" v-else-if="!isLoading">
+      <text class="empty-icon">📄</text>
+      <text class="empty-title">No resumes yet</text>
+      <text class="empty-desc">Create one from the guided template or upload an existing PDF to start using diagnosis and interview features.</text>
+      <view class="add-card" @click="handleUploadClick">
+        <view class="add-icon">
+          <text class="add-plus">+</text>
+        </view>
+        <view class="add-info">
+          <text class="add-title">Add your first resume</text>
+          <text class="add-desc">Template creation and PDF upload are both supported</text>
+        </view>
+      </view>
+    </view>
+
     <view class="bottom-safe"></view>
 
     <!-- Action sheet -->
@@ -85,8 +107,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
-import { getUserResumesApi, type Resume } from '@/api/resume';
+import {
+  getUserResumesApi,
+  createResumeApi,
+  deleteResumeApi,
+  updateResumeApi,
+  uploadResumeFile,
+  type Resume,
+} from '@/api/resume';
 
 interface ResumeItem {
   resumeId?: number;
@@ -94,10 +124,34 @@ interface ResumeItem {
   date: string;
   status: 'recent' | 'normal';
   statusLabel: string;
+  fileUrl?: string;
 }
 
 const resumeList = ref<ResumeItem[]>([]);
 const isLoading = ref(false);
+
+/**
+ * Render an absolute timestamp (e.g. "2026-04-30 01:00:21") as a friendly
+ * relative label. We deliberately keep this self-contained -- it falls back
+ * to a short date for anything older than a week. (HCI: match real world,
+ * minimise cognitive load.)
+ */
+const formatRelative = (ts?: string): string => {
+  if (!ts) return '';
+  const date = new Date(ts.replace(' ', 'T'));
+  if (isNaN(date.getTime())) return '';
+  const diffMs = Date.now() - date.getTime();
+  const sec = Math.max(0, Math.floor(diffMs / 1000));
+  if (sec < 60) return 'Just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return 'Yesterday';
+  if (day < 7) return `${day}d ago`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
 
 const loadResumes = async () => {
   const userId = uni.getStorageSync('userId');
@@ -113,13 +167,24 @@ const loadResumes = async () => {
     resumeList.value = (resumes || []).map((r: Resume) => ({
       resumeId: r.resumeId,
       name: r.title || r.fileUrl?.split('/').pop() || 'Untitled.pdf',
-      date: 'Synced',
+      date: formatRelative(r.updatedAt || r.createdAt),
       status: 'recent' as const,
       statusLabel: r.status || 'Active',
+      fileUrl: r.fileUrl,
     }));
-  } catch {
-    // Network failed — keep empty list, don't show fake data
+  } catch (e: any) {
+    // Surface the actual error instead of silently showing an empty hub.
+    // Common causes: stale token after a rebuild (signature mismatch),
+    // userId in storage doesn't match the JWT subject, or backend down.
     resumeList.value = [];
+    const msg = e?.message || 'Failed to load resumes';
+    if (msg.toLowerCase().includes('forbidden') || msg.includes('未登录') || msg.toLowerCase().includes('unauthor')) {
+      uni.showToast({ title: 'Session expired, please log in again', icon: 'none' });
+      uni.removeStorageSync('token');
+      uni.removeStorageSync('userId');
+    } else {
+      uni.showToast({ title: msg, icon: 'none' });
+    }
   } finally {
     isLoading.value = false;
   }
@@ -140,28 +205,51 @@ const closeSheet = () => {
 const selectAction = (type: string) => {
   closeSheet();
   if (type === 'upload') {
+    const userId = Number(uni.getStorageSync('userId'));
+    if (!userId || isNaN(userId) || userId <= 0) {
+      uni.showToast({ title: 'Please log in first', icon: 'none' });
+      return;
+    }
     uni.chooseMessageFile({
       count: 1,
       type: 'file',
-      success: (fileRes) => {
+      success: async (fileRes) => {
         const file = fileRes.tempFiles?.[0];
         const fileName = file?.name || 'Untitled_Resume.pdf';
+        const filePath = file?.path;
+        if (!filePath) {
+          uni.showToast({ title: 'No file selected', icon: 'none' });
+          return;
+        }
         if (!/\.pdf$/i.test(fileName)) {
           uni.showToast({ title: 'Please select a PDF file', icon: 'none' });
           return;
         }
 
-        uni.showLoading({ title: 'Uploading & parsing...' });
-        setTimeout(() => {
+        uni.showLoading({ title: 'Uploading...' });
+        try {
+          const fileUrl = await uploadResumeFile(filePath, 'resumes');
+          const created = await createResumeApi({
+            userId,
+            title: fileName.replace(/\.pdf$/i, ''),
+            targetJob: '',
+            fileUrl,
+            status: 'ACTIVE',
+          });
           uni.hideLoading();
           resumeList.value.unshift({
-            name: fileName,
+            resumeId: created.resumeId,
+            name: created.title || fileName,
             date: 'Just now',
             status: 'recent',
-            statusLabel: 'Parsed'
+            statusLabel: 'Active',
+            fileUrl: created.fileUrl,
           });
           uni.showToast({ title: 'Upload successful', icon: 'success' });
-        }, 900);
+        } catch (e: any) {
+          uni.hideLoading();
+          uni.showToast({ title: e?.message || 'Upload failed', icon: 'none' });
+        }
       },
       fail: () => {
         uni.showToast({ title: 'No file selected', icon: 'none' });
@@ -173,11 +261,47 @@ const selectAction = (type: string) => {
 };
 
 const handlePreview = (item: ResumeItem) => {
-  uni.showModal({
-    title: 'Preview Notice',
-    content: `File: ${item.name}\nDirect PDF preview is not supported on Mini Program. Please export and open with your system reader.`,
-    showCancel: false,
-    confirmText: 'Got it'
+  if (!item.resumeId) {
+    uni.showToast({ title: 'File not available yet', icon: 'none' });
+    return;
+  }
+  // Use authenticated backend proxy instead of the raw OSS URL.
+  // This avoids the WeChat mini-program domain whitelist requirement
+  // and enforces owner-only access on the server side.
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  const token = uni.getStorageSync('token');
+  uni.showLoading({ title: 'Opening...' });
+  uni.downloadFile({
+    url: `${BASE_URL}/api/resumes/${item.resumeId}/download`,
+    header: token ? { Authorization: `Bearer ${token}` } : {},
+    success: (dl) => {
+      if (dl.statusCode === 200) {
+        uni.openDocument({
+          filePath: dl.tempFilePath,
+          fileType: 'pdf',
+          showMenu: true,
+          success: () => uni.hideLoading(),
+          fail: () => {
+            uni.hideLoading();
+            // openDocument is unreliable in the WeChat DevTools simulator;
+            // works on real devices. Hint the user instead of being mysterious.
+            uni.showModal({
+              title: 'Cannot preview here',
+              content: 'PDF preview is not supported in the DevTools simulator. Please use the "Preview" button at the top of WeChat DevTools to scan and test on a real phone.',
+              showCancel: false,
+              confirmText: 'OK',
+            });
+          },
+        });
+      } else {
+        uni.hideLoading();
+        uni.showToast({ title: `Download failed (${dl.statusCode})`, icon: 'none' });
+      }
+    },
+    fail: () => {
+      uni.hideLoading();
+      uni.showToast({ title: 'Network error', icon: 'none' });
+    },
   });
 };
 
@@ -188,14 +312,40 @@ const handleMore = (idx: number) => {
     itemList: ['Rename', 'Share', 'Delete'],
     success: (res) => {
       if (res.tapIndex === 0) {
-        const oldName = resumeList.value[idx].name;
+        const item = resumeList.value[idx];
+        const oldName = item.name;
         const dotIndex = oldName.lastIndexOf('.pdf');
         const base = dotIndex > 0 ? oldName.slice(0, dotIndex) : oldName;
-        resumeList.value[idx].name = `${base}_renamed.pdf`;
-        uni.showToast({ title: 'Renamed', icon: 'success' });
+        uni.showModal({
+          title: 'Rename Resume',
+          editable: true,
+          placeholderText: 'New name',
+          content: base,
+          success: async (mr) => {
+            if (!mr.confirm) return;
+            const newBase = (mr.content || '').trim();
+            if (!newBase) return;
+            const newName = newBase.endsWith('.pdf') ? newBase : `${newBase}.pdf`;
+            if (item.resumeId) {
+              try {
+                await updateResumeApi(item.resumeId, { title: newBase });
+              } catch (e: any) {
+                uni.showToast({ title: e?.message || 'Rename failed', icon: 'none' });
+                return;
+              }
+            }
+            item.name = newName;
+            uni.showToast({ title: 'Renamed', icon: 'success' });
+          },
+        });
       } else if (res.tapIndex === 1) {
+        const item = resumeList.value[idx];
+        if (!item.fileUrl) {
+          uni.showToast({ title: 'File URL not available', icon: 'none' });
+          return;
+        }
         uni.setClipboardData({
-          data: `https://ipd-project/resume/share/${encodeURIComponent(resumeList.value[idx].name)}`,
+          data: item.fileUrl,
           success: () => uni.showToast({ title: 'Share link copied', icon: 'none' }),
           fail: () => uni.showToast({ title: 'Copy failed, please retry', icon: 'none' })
         });
@@ -204,21 +354,18 @@ const handleMore = (idx: number) => {
           title: 'Confirm Delete',
           content: 'Are you sure you want to delete this resume?',
           success: async (r) => {
-            if (r.confirm) {
-              const item = resumeList.value[idx];
-              resumeList.value.splice(idx, 1);
-              // If the item has a real backend ID, also delete from server
-              if (item?.resumeId) {
-                try {
-                  await uni.request({
-                    url: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/resumes/${item.resumeId}`,
-                    method: 'DELETE',
-                    header: { Authorization: `Bearer ${uni.getStorageSync('token')}` },
-                  });
-                } catch { /* best-effort */ }
+            if (!r.confirm) return;
+            const item = resumeList.value[idx];
+            if (item?.resumeId) {
+              try {
+                await deleteResumeApi(item.resumeId);
+              } catch (e: any) {
+                uni.showToast({ title: e?.message || 'Delete failed', icon: 'none' });
+                return;
               }
-              uni.showToast({ title: 'Deleted', icon: 'success' });
             }
+            resumeList.value.splice(idx, 1);
+            uni.showToast({ title: 'Deleted', icon: 'success' });
           },
         });
       }
@@ -229,6 +376,11 @@ const handleMore = (idx: number) => {
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   topSafeHeight.value = getTopSafeHeight();
+});
+
+// Tab pages are kept alive across navigation; onShow re-fires every time
+// the page becomes visible (including after login -> switchTab back).
+onShow(() => {
   loadResumes();
 });
 </script>
@@ -263,65 +415,59 @@ onMounted(() => {
   line-height: var(--line-height-caption);
 }
 
-.hero-card {
-  margin: 16px 0 24px;
-  padding: 24px 20px;
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
-  border-radius: 20px;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
-}
-
-.hero-deco {
-  position: absolute;
-  top: -30px;
-  right: -30px;
-  width: 120px;
-  height: 120px;
-  border-radius: 60px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.hero-left {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  margin-right: auto;
-}
-
-.hero-count {
-  font-size: 40px;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -2px;
-}
-
-.hero-unit {
-  font-size: 15px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
-}
-
 .section-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin: 16px 0 14px;
 }
-
+.section-titles { display: flex; flex-direction: column; gap: 2px; }
 .section-title {
   font-size: var(--font-section);
   font-weight: 700;
   color: var(--text-primary);
 }
+.section-sub { font-size: 12px; color: var(--text-tertiary); }
 
-.section-count {
-  font-size: var(--font-caption);
-  color: var(--text-tertiary);
+.section-action {
+  padding: 6px 12px;
+  background: #eff6ff;
+  border-radius: 999px;
+  border: 1px solid #dbeafe;
+}
+.section-action:active { background: #dbeafe; }
+.section-action-text { font-size: 13px; color: #2563eb; font-weight: 600; }
+
+/* Skeleton placeholders shown during initial load.
+   HCI: visibility of system status -- a shimmering layout previews
+   what's coming, which feels much faster than a centered spinner. */
+.skeleton-list { display: flex; flex-direction: column; gap: 10px; }
+.skel-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.skel-square {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f7fafc 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s infinite;
+  flex-shrink: 0;
+}
+.skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.skel-line {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f7fafc 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s infinite;
+}
+.skel-w40 { width: 40%; }
+.skel-w70 { width: 70%; }
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .resume-list {
@@ -337,8 +483,8 @@ onMounted(() => {
   background: #ffffff;
   border-radius: var(--radius-md);
   padding: 16px;
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .rc-icon-wrap { margin-right: 14px; flex-shrink: 0; }
@@ -409,12 +555,12 @@ onMounted(() => {
 .add-card {
   display: flex;
   align-items: center;
-  border: 1.5px dashed #a5b4fc;
+  border: 1.5px dashed #93c5fd;
   background: #ffffff;
   border-radius: 16px;
   padding: 16px;
   gap: 14px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-xs);
   transition: all 0.2s;
 }
 
@@ -445,6 +591,31 @@ onMounted(() => {
 
 .bottom-safe {
   height: calc(var(--tab-bar-height, 50px) + 20px);
+}
+
+.empty-state {
+  padding: 24px 0 28px;
+}
+
+.empty-icon {
+  display: block;
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.empty-desc {
+  display: block;
+  margin: 8px 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 /* ---- Action sheet ---- */

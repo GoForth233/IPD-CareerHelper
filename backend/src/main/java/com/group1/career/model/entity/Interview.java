@@ -45,6 +45,10 @@ public class Interview {
     @Column(name = "report_mongo_id", length = 50)
     private String reportMongoId;
 
+    /** Cached AI-generated report (JSON serialized InterviewReportDto). */
+    @Column(name = "report_json", columnDefinition = "LONGTEXT")
+    private String reportJson;
+
     @CreationTimestamp
     @Column(name = "started_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
