@@ -37,6 +37,14 @@ public class AssessmentRecord {
     @Column(name = "result_json", columnDefinition = "json")
     private String resultJson;
 
+    /**
+     * AI-generated personalised insight, cached on the row so we never
+     * re-pay the LLM cost for an already-evaluated quiz attempt. Stored as
+     * a JSON string {strengths, growth, suggestedRoles[]}.
+     */
+    @Column(name = "ai_insight", columnDefinition = "LONGTEXT")
+    private String aiInsight;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

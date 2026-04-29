@@ -30,7 +30,9 @@
 
     <!-- Greeting -->
     <view class="greeting-row">
-      <text class="greeting-text">Hello, {{ userInfo.nickname || 'Guest' }}</text>
+      <text class="greeting-kicker">Career Loop</text>
+      <text class="greeting-title">Hello, {{ userInfo.nickname || 'Guest' }}</text>
+      <text class="greeting-text">Pick one task and keep moving. Your core tools are one tap away.</text>
     </view>
 
     <!-- Core feature grid -->
@@ -53,7 +55,7 @@
         </view>
         <text class="feature-label">AI Resume</text>
       </view>
-      <view class="feature-item" @click="navTo('/pages/interview/index')">
+      <view class="feature-item" @click="navTo('/pages/interview/start')">
         <view class="feature-icon icon-interview">
           <text class="fi-char">&#x1F3A4;</text>
         </view>
@@ -72,9 +74,10 @@
     <view class="feed-section" v-if="filteredFeedList.length > 0">
       <view class="feed-header">
         <text class="feed-title">Career Insights</text>
-        <text class="feed-more" v-if="!searchQuery" @click="showAllFeed = !showAllFeed">
-          {{ showAllFeed ? 'Show Less ›' : 'View All ›' }}
-        </text>
+        <view class="feed-more" v-if="!searchQuery" @click="showAllFeed = !showAllFeed">
+          <text class="feed-more-text">{{ showAllFeed ? 'Show Less' : 'View All' }}</text>
+          <text class="feed-more-arrow">›</text>
+        </view>
       </view>
 
       <view v-if="showAllFeed || searchQuery" class="feed-grid">
@@ -304,11 +307,12 @@ const handleAvatarClick = () => {
   flex: 1;
   display: flex;
   align-items: center;
-  height: 38px;
+  height: 42px;
   background: #ffffff;
-  border-radius: 19px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
   padding: 0 16px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-xs);
 }
 
 .search-icon-wrap {
@@ -370,29 +374,56 @@ const handleAvatarClick = () => {
 
 /* ---- Greeting ---- */
 .greeting-row {
-  padding: 12px 20px 4px;
+  padding: 18px 20px 6px;
+}
+
+.greeting-kicker {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-color);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.greeting-title {
+  display: block;
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .greeting-text {
-  font-size: var(--font-body);
-  font-weight: 500;
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 
 /* ---- Feature grid ---- */
 .feature-grid {
   display: flex;
-  justify-content: space-between;
-  padding: 20px 24px 8px;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px 8px;
 }
 
 .feature-item {
+  width: calc(50% - 6px);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
+  align-items: flex-start;
+  gap: 12px;
   min-width: 0;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
 }
 
 .feature-icon {
@@ -434,13 +465,12 @@ const handleAvatarClick = () => {
 }
 
 .feature-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #1e293b;
-  letter-spacing: 0.02em;
-  text-align: center;
+  text-align: left;
   line-height: 1.25;
-  min-height: 32px;
+  min-height: 36px;
   display: -webkit-box;
   line-clamp: 2;
   -webkit-line-clamp: 2;
@@ -468,9 +498,17 @@ const handleAvatarClick = () => {
   letter-spacing: -0.3px;
 }
 
+/* Bigger touch target so View All is reachable without precise aim (HCI: WCAG 2.5.5) */
 .feed-more {
-  font-size: 13px;
-  color: #2563eb; font-weight: 500;
+  display: flex; align-items: center; gap: 4px;
+  min-height: 44px; padding: 0 6px;
+  margin-right: -6px; /* keep alignment flush with right edge */
+}
+.feed-more-text {
+  font-size: 13px; color: #2563eb; font-weight: 600;
+}
+.feed-more-arrow {
+  font-size: 16px; color: #2563eb; line-height: 1;
 }
 
 .feed-scroll {
@@ -494,8 +532,8 @@ const handleAvatarClick = () => {
   background: #ffffff;
   border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.10);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   flex-shrink: 0;
   transition: transform 0.15s;
 }

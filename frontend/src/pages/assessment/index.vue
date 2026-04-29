@@ -1,6 +1,6 @@
 <template>
   <view class="assessment-container" :class="{ 'is-dark': darkPref }">
-    <view class="status-bar-spacer"></view>
+    <view class="status-bar-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
       <view class="back-btn" @click="goBack">
@@ -9,6 +9,11 @@
       </view>
       <text class="page-title">Assessment</text>
       <view class="header-action"></view>
+    </view>
+
+    <view class="page-summary">
+      <text class="summary-title">Build your profile first</text>
+      <text class="summary-text">These tests feed your Skill Map and AI advisor, so the first step should feel clear and low-friction.</text>
     </view>
 
     <view class="flow-bar">
@@ -25,8 +30,8 @@
       </view>
       <view class="card-body">
         <view class="progress-info">
-          <text class="progress-text">0 completed</text>
-          <text class="progress-label">2 assessments available</text>
+          <text class="progress-text">{{ completedCount }} completed</text>
+          <text class="progress-label">{{ totalCount }} assessments available</text>
         </view>
         <view class="radar-placeholder">
           <text class="radar-icon">🧭</text>
@@ -35,52 +40,86 @@
     </view>
 
     <view class="section-title">Featured Assessments</view>
-    <view class="assessment-list">
-      <view class="assessment-card" @click="startQuiz('mbti')">
-        <view class="card-left">
-          <view class="icon-box mbti-icon">🧠</view>
-          <view class="card-info">
-            <text class="a-title">MBTI Personality Test</text>
-            <text class="a-desc">Discover your personality type and career tendencies</text>
-            <view class="tags">
-              <text class="tag">⏱ 5 min</text>
-              <text class="tag tag-blue">93 Qs</text>
-            </view>
-          </view>
-        </view>
-        <view class="card-right">
-          <button class="btn-start">Start</button>
-        </view>
-      </view>
 
-      <view class="assessment-card" @click="startQuiz('holland')">
+    <!-- Skeleton while scales load -->
+    <view class="skeleton-list" v-if="loading">
+      <view class="skel-card" v-for="i in 2" :key="i">
+        <view class="skel-square"></view>
+        <view class="skel-lines">
+          <view class="skel-line skel-w70"></view>
+          <view class="skel-line skel-w40"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="assessment-list" v-else-if="scales.length > 0">
+      <view
+        class="assessment-card"
+        v-for="(s, idx) in scales"
+        :key="s.scaleId"
+        @click="startQuiz(s)"
+      >
         <view class="card-left">
-          <view class="icon-box holland-icon">🎯</view>
+          <view class="icon-box" :class="idx === 0 ? 'mbti-icon' : 'holland-icon'">{{ iconFor(s.title) }}</view>
           <view class="card-info">
-            <text class="a-title">Holland Interest Inventory</text>
-            <text class="a-desc">Explore ideal work environments that match your interests</text>
+            <text class="a-title">{{ s.title }}</text>
+            <text class="a-desc">{{ s.description }}</text>
             <view class="tags">
-              <text class="tag">⏱ 8 min</text>
-              <text class="tag tag-blue">120 Qs</text>
+              <text class="tag">⏱ ~{{ estimateMinutes(s.questionCount) }} min</text>
+              <text class="tag tag-blue">{{ s.questionCount }} Qs</text>
+              <text class="tag tag-done" v-if="completedScales.has(s.scaleId)">✓ Done</text>
             </view>
           </view>
         </view>
         <view class="card-right">
-          <button class="btn-start">Start</button>
+          <view class="btn-start">{{ completedScales.has(s.scaleId) ? 'Retake' : 'Start' }}</view>
         </view>
       </view>
+    </view>
+
+    <view class="empty-state" v-else>
+      <text class="empty-icon">📝</text>
+      <text class="empty-text">No assessments available yet</text>
+      <text class="empty-desc">The administrator hasn't published any quiz banks. Check back later.</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import { getTopSafeHeight } from '@/utils/safeArea';
+import {
+  getAssessmentScalesApi,
+  getMyAssessmentRecordsApi,
+  type AssessmentScale,
+} from '@/api/assessment';
 
 const darkPref = ref(false);
+const topSafeHeight = ref(52);
+const loading = ref(true);
+const scales = ref<AssessmentScale[]>([]);
+const completedScales = ref<Set<number>>(new Set());
 
-const startQuiz = (type: string) => {
+const totalCount = computed(() => scales.value.length);
+const completedCount = computed(() => completedScales.value.size);
+
+const iconFor = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes('mbti')) return '🧠';
+  if (t.includes('holland')) return '🎯';
+  return '📋';
+};
+
+const estimateMinutes = (questionCount?: number) => {
+  // ~12 sec / question, rounded to nearest minute, floor at 1.
+  const n = questionCount ?? 0;
+  return Math.max(1, Math.round((n * 12) / 60));
+};
+
+const startQuiz = (s: AssessmentScale) => {
   uni.navigateTo({
-    url: `/pages/assessment/quiz?type=${type}`
+    url: `/pages/assessment/quiz?scaleId=${s.scaleId}&title=${encodeURIComponent(s.title)}`,
   });
 };
 
@@ -88,14 +127,38 @@ const goBack = () => {
   uni.navigateBack({ delta: 1 });
 };
 
+const loadAll = async () => {
+  loading.value = true;
+  try {
+    const [scaleList, records] = await Promise.all([
+      getAssessmentScalesApi(),
+      // The records call is best-effort -- a guest who somehow lands here
+      // shouldn't see a hard error, just an empty completed-set.
+      getMyAssessmentRecordsApi().catch(() => []),
+    ]);
+    scales.value = scaleList || [];
+    completedScales.value = new Set((records || []).map((r) => r.scaleId));
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed to load', icon: 'none' });
+    scales.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  topSafeHeight.value = getTopSafeHeight();
+});
+
+// Re-fetch on focus so a freshly completed quiz shows its "Done" pill.
+onShow(() => {
+  loadAll();
 });
 </script>
 
 <style scoped>
 .status-bar-spacer {
-  height: calc(var(--status-bar-height, 20px) + 8px);
   width: 100%;
   flex-shrink: 0;
 }
@@ -104,8 +167,28 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding: 0 2px;
+}
+
+.page-summary {
+  margin-bottom: 16px;
+}
+
+.summary-title {
+  display: block;
+  font-size: 28px;
+  line-height: 1.12;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.summary-text {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475569;
 }
 
 .back-btn {
@@ -148,9 +231,10 @@ onMounted(() => {
 .flow-pill {
   flex: 1;
   background: #ffffff;
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 12px 14px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-xs);
 }
 
 .flow-step {
@@ -236,11 +320,13 @@ onMounted(() => {
 
 .assessment-card {
   background-color: #ffffff;
+  border: 1px solid var(--border-color);
   border-radius: 20px;
   padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease;
 }
 
@@ -291,23 +377,68 @@ onMounted(() => {
 .card-right { margin-left: 12px; }
 
 .btn-start {
-  background-color: #f2f2f7;
+  background-color: #eff6ff;
   color: #2563eb;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
   padding: 0 16px;
   height: 32px;
   line-height: 32px;
-  border: none;
-  margin: 0;
+  border: 1px solid #dbeafe;
+  display: flex; align-items: center; justify-content: center;
+  letter-spacing: 0.02em;
 }
 
-.assessment-card:active .btn-start { background-color: #e5e5ea; }
+.assessment-card:active .btn-start { background-color: #dbeafe; }
+
+.tag-done { color: #16a34a; background: #dcfce7; }
+
+/* Skeleton placeholders shown during initial load. */
+.skeleton-list { display: flex; flex-direction: column; gap: 16px; }
+.skel-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex; align-items: center; gap: 16px;
+}
+.skel-square {
+  width: 48px; height: 48px; border-radius: 24px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f7fafc 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s infinite;
+  flex-shrink: 0;
+}
+.skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.skel-line {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f7fafc 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s infinite;
+}
+.skel-w40 { width: 40%; }
+.skel-w70 { width: 70%; }
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+}
+.empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+.empty-text { font-size: 16px; font-weight: 700; color: #475569; display: block; margin-bottom: 8px; }
+.empty-desc { font-size: 13px; color: #94a3b8; line-height: 1.5; }
 
 .is-dark { background-color: #0f172a; }
 
 .is-dark .page-title,
+.is-dark .summary-title,
 .is-dark .section-title,
 .is-dark .a-title { color: #f8fafc; }
 
@@ -315,6 +446,7 @@ onMounted(() => {
 .is-dark .assessment-card { background-color: #1e293b; }
 
 .is-dark .a-desc,
+.is-dark .summary-text,
 .is-dark .flow-desc,
 .is-dark .tag { color: #94a3b8; }
 </style>

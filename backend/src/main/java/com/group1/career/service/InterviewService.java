@@ -35,5 +35,18 @@ public interface InterviewService {
      * Get interview by ID
      */
     Interview getInterviewById(Long interviewId);
+
+    /**
+     * Fetch the interview and verify the caller owns it.
+     * Throws FORBIDDEN otherwise. Use this in every controller endpoint
+     * that mutates or reads interview state.
+     */
+    Interview assertOwnership(Long interviewId, Long userId);
+
+    /**
+     * Persist a serialized report JSON onto the interview row and update
+     * its final_score in one transaction.
+     */
+    Interview saveReport(Long interviewId, String reportJson, Integer overallScore);
 }
 

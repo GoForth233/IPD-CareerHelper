@@ -90,7 +90,7 @@
           :class="{ 'send-active': inputText.trim().length > 0 }"
           @click="sendMessage"
         >
-          <text class="send-arrow">↑</text>
+          <text class="send-label">Send</text>
         </view>
       </view>
     </view>
@@ -447,10 +447,12 @@ onMounted(() => {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 0.5px solid rgba(60, 60, 67, 0.1);
-  padding: 10px 16px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  /* In mp-weixin the system tab bar is rendered OUTSIDE the page viewport,
+     so 100vh / bottom:0 already sits flush with the tab bar's top edge.
+     Adding `--tab-bar-height` here was double-counting and left a fat gap. */
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
   position: fixed;
-  bottom: var(--tab-bar-height, 50px);
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 10;
@@ -480,8 +482,9 @@ onMounted(() => {
 }
 
 .send-btn {
-  width: 36px;
+  min-width: 64px;
   height: 36px;
+  padding: 0 14px;
   border-radius: 18px;
   background: #e5e5ea;
   display: flex;
@@ -496,10 +499,14 @@ onMounted(() => {
   background: #2563eb;
 }
 
-.send-arrow {
-  color: #ffffff;
-  font-size: 18px;
+.send-label {
+  color: #94a3b8;
+  font-size: 14px;
   font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.send-active .send-label {
+  color: #ffffff;
 }
 
 /* ---- Dark mode ---- */

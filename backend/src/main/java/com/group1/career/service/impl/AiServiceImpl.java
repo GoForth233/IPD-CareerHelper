@@ -65,10 +65,13 @@ public class AiServiceImpl implements AiService {
                     .uri(URI.create(API_URL))
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(110)) // hard cap so the request never hangs forever
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
+            long aiStart = System.currentTimeMillis();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("[AI] {} ms, status={}, prompt={} chars", System.currentTimeMillis() - aiStart, response.statusCode(), requestBody.length());
 
             if (response.statusCode() == 200) {
                 // 3. Parse Response

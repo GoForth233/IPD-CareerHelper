@@ -1,8 +1,16 @@
 <template>
   <view class="chat-container" :class="{ 'is-dark': darkPref }">
     <view class="interview-info" v-if="interview">
-      <text class="position">{{ interview.positionName }}</text>
-      <text class="difficulty">{{ interview.difficulty }}</text>
+      <view class="session-copy">
+        <text class="position">{{ interview.positionName }}</text>
+        <text class="session-text">Respond in complete answers and keep each reply focused on one example or argument.</text>
+      </view>
+      <view class="info-actions">
+        <text class="difficulty">{{ interview.difficulty }}</text>
+        <view class="end-link" @click="endInterview">
+          <text class="end-link-text">End</text>
+        </view>
+      </view>
     </view>
 
     <scroll-view scroll-y class="chat-area" :scroll-top="99999" :scroll-with-animation="true">
@@ -18,6 +26,7 @@
             <view class="dot"></view>
             <view class="dot"></view>
           </view>
+          <text v-if="typingElapsed > 2" class="typing-timer">{{ typingElapsed }}s</text>
         </view>
       </view>
     </scroll-view>
@@ -35,19 +44,21 @@
         :class="{ 'send-active': inputText.trim() && !aiTyping }"
         @click="sendMessage"
       >
-        <text class="send-arrow">↑</text>
+        <text class="send-label">Send</text>
       </view>
-    </view>
-
-    <view class="action-bar">
-      <button class="btn-end" @click="endInterview">End Interview</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getInterviewByIdApi, getInterviewMessagesApi, sendInterviewMessageApi, endInterviewApi } from '@/api/interview';
+import {
+  getInterviewByIdApi,
+  getInterviewMessagesApi,
+  sendInterviewMessageApi,
+  endInterviewApi,
+  generateGreetingApi,
+} from '@/api/interview';
 import type { Interview, InterviewMessage } from '@/api/interview';
 
 const interviewId = ref<number>(0);
@@ -55,6 +66,24 @@ const interview = ref<Interview | null>(null);
 const messages = ref<InterviewMessage[]>([]);
 const inputText = ref('');
 const aiTyping = ref(false);
+const typingElapsed = ref(0);
+let typingTimer: any = null;
+
+const startTypingTimer = () => {
+  typingElapsed.value = 0;
+  if (typingTimer) clearInterval(typingTimer);
+  typingTimer = setInterval(() => {
+    typingElapsed.value += 1;
+  }, 1000);
+};
+
+const stopTypingTimer = () => {
+  if (typingTimer) {
+    clearInterval(typingTimer);
+    typingTimer = null;
+  }
+  typingElapsed.value = 0;
+};
 const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
 
 onMounted(async () => {
@@ -67,11 +96,19 @@ onMounted(async () => {
       interview.value = await getInterviewByIdApi(interviewId.value);
       messages.value = await getInterviewMessagesApi(interviewId.value);
       
+      // First time entering this session: ask the backend to generate the
+      // AI interviewer's opening question. The endpoint is idempotent —
+      // if a greeting already exists it just returns it.
       if (messages.value.length === 0) {
         aiTyping.value = true;
-        await sendInterviewMessageApi(interviewId.value, 'Hello, I am ready for the interview.');
-        messages.value = await getInterviewMessagesApi(interviewId.value);
-        aiTyping.value = false;
+        startTypingTimer();
+        try {
+          const greeting = await generateGreetingApi(interviewId.value);
+          if (greeting) messages.value = [greeting];
+        } finally {
+          aiTyping.value = false;
+          stopTypingTimer();
+        }
       }
     } catch (error) {
       console.error('Failed to load interview:', error);
@@ -86,6 +123,7 @@ const sendMessage = async () => {
   messages.value.push({ interviewId: interviewId.value, role: 'USER', content: text });
   inputText.value = '';
   aiTyping.value = true;
+  startTypingTimer();
 
   try {
     const response = await sendInterviewMessageApi(interviewId.value, text);
@@ -95,6 +133,7 @@ const sendMessage = async () => {
     uni.showToast({ title: 'Send failed', icon: 'none' });
   } finally {
     aiTyping.value = false;
+    stopTypingTimer();
   }
 };
 
@@ -106,12 +145,17 @@ const endInterview = () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          const score = Math.min(messages.value.filter(m => m.role === 'USER').length * 10, 100);
-          await endInterviewApi(interviewId.value, score);
-          uni.showToast({ title: `Interview ended · Score: ${score}`, icon: 'success' });
-          setTimeout(() => { uni.navigateBack(); }, 1500);
-        } catch (error) {
+          // Score is now produced by the AI report endpoint, not the client.
+          await endInterviewApi(interviewId.value);
+          uni.showToast({ title: 'Interview ended', icon: 'success' });
+          // Jump straight to the report screen; it will trigger the AI
+          // evaluation on first open and cache it on the interview row.
+          setTimeout(() => {
+            uni.redirectTo({ url: `/pages/interview/report?interviewId=${interviewId.value}` });
+          }, 800);
+        } catch (error: any) {
           console.error('Failed to end interview:', error);
+          uni.showToast({ title: error?.message || 'Failed to end', icon: 'none' });
         }
       }
     }
@@ -130,14 +174,53 @@ const endInterview = () => {
 
 .interview-info {
   background: linear-gradient(135deg, #2563eb, #1e40af);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 16px 20px;
   display: flex; justify-content: space-between; align-items: center;
   flex-shrink: 0;
+  gap: 12px;
 }
 
 .position { font-size: 16px; font-weight: 700; color: #fff; }
 
-.difficulty { font-size: 14px; color: rgba(255, 255, 255, 0.8); }
+.session-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.info-actions {
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+
+.difficulty {
+  font-size: 12px; color: rgba(255, 255, 255, 0.85);
+  background: rgba(255,255,255,0.18);
+  padding: 4px 10px; border-radius: 999px;
+  font-weight: 600;
+}
+
+/* End is intentionally low-emphasis: it lives at the top corner so a thumb
+   can't accidentally hit it during fast typing in the bottom half of the screen. */
+.end-link {
+  min-width: 44px; min-height: 44px;
+  padding: 8px 12px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+}
+.end-link:active { background: rgba(255,255,255,0.12); }
+.end-link-text {
+  font-size: 14px; font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
 
 .chat-area {
   flex: 1; padding: 16px;
@@ -162,13 +245,21 @@ const endInterview = () => {
 }
 
 .message.ai .msg-content {
-  background: #fff; color: #1e293b;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  color: #1e293b;
   border-radius: 4px 20px 20px 20px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Typing dots */
+.typing { display: flex; align-items: center; gap: 8px; }
 .typing-dots { display: flex; gap: 5px; padding: 4px 6px; align-items: center; }
+.typing-timer {
+  font-size: 11px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
 
 .dot {
   width: 6px; height: 6px; border-radius: 3px;
@@ -200,7 +291,8 @@ const endInterview = () => {
 .ph { color: #94a3b8; }
 
 .send-btn {
-  width: 38px; height: 38px; border-radius: 19px;
+  min-width: 64px; height: 38px; padding: 0 14px;
+  border-radius: 19px;
   background: #e5e5ea; display: flex;
   align-items: center; justify-content: center;
   flex-shrink: 0; transition: background 0.2s;
@@ -208,30 +300,17 @@ const endInterview = () => {
 
 .send-active { background: #2563eb; }
 
-.send-arrow { color: #ffffff; font-size: 18px; font-weight: 700; }
-
-.action-bar {
-  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.92);
+.send-label {
+  color: #94a3b8; font-size: 14px; font-weight: 700; letter-spacing: 0.02em;
 }
-
-.btn-end {
-  background: #fef2f2; color: #ef4444;
-  border-radius: 14px; width: 100%; height: 44px; line-height: 44px;
-  font-size: 15px; font-weight: 600; border: none;
-}
-
-.btn-end:active { background: #fee2e2; }
+.send-active .send-label { color: #ffffff; }
 
 /* Dark mode */
 .is-dark { background-color: #0f172a; }
 
 .is-dark .message.ai .msg-content { background: #1e293b; color: #f8fafc; box-shadow: none; }
 
-.is-dark .input-area,
-.is-dark .action-bar { background: rgba(15, 23, 42, 0.92); border-color: #334155; }
+.is-dark .input-area { background: rgba(15, 23, 42, 0.92); border-color: #334155; }
 
 .is-dark .chat-input { background: #1e293b; border-color: #334155; color: #f8fafc; }
-
-.is-dark .btn-end { background: #1e293b; }
 </style>

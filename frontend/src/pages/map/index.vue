@@ -13,80 +13,57 @@
       </view>
     </view>
 
+    <view class="page-intro">
+      <text class="intro-title">Learning roadmap</text>
+      <text class="intro-text">Use the timeline to see what is complete, what is active now, and what unlocks next for this role.</text>
+    </view>
+
     <!-- Role header card -->
     <view class="role-card">
       <view class="role-info">
-        <text class="role-name" @click="switchRole">{{ currentRole }}</text>
-        <text class="role-desc">Skill progression & career development roadmap</text>
+        <text class="role-name" @click="switchRole">{{ currentPath?.name || 'Pick a role' }}</text>
+        <text class="role-desc">{{ currentPath?.description || 'Skill progression & career development roadmap' }}</text>
       </view>
       <view class="progress-ring">
-        <text class="ring-val">45%</text>
+        <text class="ring-val">{{ overallPercent }}%</text>
       </view>
     </view>
 
-    <!-- Demo notice -->
-    <view class="demo-notice">
-      <text class="demo-text">📌 Demo: Tap any stage node to view skill details</text>
+    <!-- Loading skeleton -->
+    <view class="skeleton-list" v-if="loading">
+      <view class="skel-card" v-for="i in 4" :key="i">
+        <view class="skel-line skel-w40"></view>
+        <view class="skel-line skel-w70"></view>
+        <view class="skel-line skel-w90"></view>
+      </view>
     </view>
 
-    <!-- Skill timeline -->
-    <view class="timeline">
+    <!-- Empty state -->
+    <view class="empty-state" v-else-if="nodes.length === 0">
+      <text class="empty-icon">🗺️</text>
+      <text class="empty-text">No roadmap yet</text>
+      <text class="empty-sub">This role's learning path hasn't been published.</text>
+    </view>
+
+    <!-- Real skill timeline -->
+    <view class="timeline" v-else>
       <view class="tl-line"></view>
-
-      <!-- L1: Completed -->
-      <view class="tl-node" @click="openDetail(0)">
-        <view class="tl-dot dot-done">✅</view>
-        <view class="tl-card card-done">
-          <text class="tl-level">L1 · Fundamentals</text>
-          <text class="tl-title">HTML / CSS</text>
-          <text class="tl-desc">Semantic markup, Flexbox & Grid layout, responsive design, CSS animations</text>
-          <view class="tl-badge badge-done">
-            <text class="badge-text">Completed</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- L2: In Progress -->
-      <view class="tl-node" @click="openDetail(1)">
-        <view class="tl-dot dot-active">
-          <view class="pulse-ring"></view>
-          🔥
-        </view>
-        <view class="tl-card card-active">
-          <text class="tl-level">L2 · Core Skills</text>
-          <text class="tl-title">JavaScript / TypeScript</text>
-          <text class="tl-desc">ES6+ syntax, event loop, Promise async, TS generics & type system</text>
-          <view class="tl-progress">
-            <view class="tl-progress-bg">
-              <view class="tl-progress-fill" style="width: 60%;"></view>
+      <view
+        class="tl-node"
+        v-for="(node, idx) in displayNodes"
+        :key="node.nodeId"
+        @click="openDetail(node)"
+      >
+        <view class="tl-dot" :class="dotClass(node)">{{ dotIcon(node) }}</view>
+        <view class="tl-card" :class="cardClass(node)">
+          <text class="tl-level">L{{ node.level }} · Stage {{ idx + 1 }}</text>
+          <text class="tl-title">{{ node.name }}</text>
+          <text class="tl-desc" v-if="node.description">{{ node.description }}</text>
+          <view class="tl-meta-row">
+            <text class="tl-meta" v-if="node.estimatedHours">~{{ node.estimatedHours }} h</text>
+            <view class="tl-badge" :class="badgeClass(node)">
+              <text class="badge-text">{{ statusLabel(node) }}</text>
             </view>
-            <text class="tl-progress-num">60%</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- L3: Locked -->
-      <view class="tl-node" @click="openDetail(2)">
-        <view class="tl-dot dot-locked">🔒</view>
-        <view class="tl-card card-locked">
-          <text class="tl-level">L3 · Framework Proficiency</text>
-          <text class="tl-title">Vue3 / React</text>
-          <text class="tl-desc">Composition API, virtual DOM, state management, SSR basics</text>
-          <view class="tl-badge badge-locked">
-            <text class="badge-text">Locked</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- L4: Locked -->
-      <view class="tl-node" @click="openDetail(3)">
-        <view class="tl-dot dot-locked">🔒</view>
-        <view class="tl-card card-locked">
-          <text class="tl-level">L4 · Architecture & Leadership</text>
-          <text class="tl-title">Engineering & DevOps</text>
-          <text class="tl-desc">CI/CD pipelines, micro-frontends, performance profiling, team management</text>
-          <view class="tl-badge badge-locked">
-            <text class="badge-text">Locked</text>
           </view>
         </view>
       </view>
@@ -96,95 +73,263 @@
 
     <!-- Detail sheet -->
     <view class="sheet-mask" v-if="showDetail" @click="showDetail = false"></view>
-    <view class="detail-sheet" :class="{ 'sheet-open': showDetail }">
+    <view class="detail-sheet" :class="{ 'sheet-open': showDetail }" v-if="selectedNode">
       <view class="sheet-handle"></view>
       <view class="sheet-header">
-        <text class="sheet-title">{{ detailData.title }}</text>
-        <text class="sheet-mastery">Mastery: {{ detailData.mastery }}</text>
+        <text class="sheet-title">{{ selectedNode.name }}</text>
+        <text class="sheet-mastery">{{ statusLabel(selectedNode) }} · ~{{ selectedNode.estimatedHours || 10 }} h</text>
       </view>
       <view class="sheet-section">
-        <text class="sheet-label">Core Topics</text>
+        <text class="sheet-label">What this stage covers</text>
+        <text class="sheet-advice">{{ selectedNode.description || 'Description coming soon.' }}</text>
+      </view>
+      <view class="sheet-section" v-if="prerequisiteName">
+        <text class="sheet-label">Prerequisite</text>
         <view class="topic-tags">
-          <view class="topic-tag" v-for="(t, i) in detailData.topics" :key="i">
-            <text class="topic-text">{{ t }}</text>
-          </view>
+          <view class="topic-tag"><text class="topic-text">{{ prerequisiteName }}</text></view>
         </view>
       </view>
-      <view class="sheet-section">
-        <text class="sheet-label">Learning Advice</text>
-        <text class="sheet-advice">{{ detailData.advice }}</text>
-      </view>
-      <button class="sheet-btn" @click="openLink(detailData.url, detailData.title)">Start Learning</button>
+      <view
+        class="sheet-btn"
+        :class="{ 'sheet-btn-disabled': isLocked(selectedNode) }"
+        @click="toggleNodeStatus(selectedNode)"
+      ><text class="sheet-btn-text">{{ ctaLabel(selectedNode) }}</text></view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { openLink } from '@/utils/openLink';
+import { ref, computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import {
+  getCareerPathsApi,
+  getPathNodesApi,
+  getUserProgressApi,
+  unlockNodeApi,
+  completeNodeApi,
+  type CareerPath,
+  type CareerNode,
+  type UserCareerProgress,
+} from '@/api/career';
 
 const darkPref = ref(false);
 const topSafeHeight = ref(44);
 const showDetail = ref(false);
-const currentRole = ref('Frontend Developer');
+const loading = ref(true);
 
-const detailDataList = [
-  {
-    title: 'HTML / CSS',
-    mastery: '100%',
-    topics: ['HTML5 Semantics', 'Flexbox & Grid', 'Responsive Design', 'CSS Animations'],
-    advice: 'You\'ve completed the fundamentals. Consider diving into accessibility (WCAG standards) and CSS-in-JS solutions to broaden your toolkit.',
-    url: 'https://www.freecodecamp.org/learn/2022/responsive-web-design/'
-  },
-  {
-    title: 'JavaScript / TypeScript',
-    mastery: '60%',
-    topics: ['ES6+ Features', 'Event Loop', 'Promise & Async/Await', 'TS Generics'],
-    advice: 'Focus on understanding the event loop and microtask queue deeply. Practice implementing Promise.all from scratch. For TypeScript, master generics and utility types — they\'re interview favorites.',
-    url: 'https://javascript.info/'
-  },
-  {
-    title: 'Vue3 / React',
-    mastery: '0%',
-    topics: ['Composition API', 'Virtual DOM Diffing', 'Pinia / Redux', 'SSR with Nuxt/Next'],
-    advice: 'Complete L2 first to unlock this stage. Once ready, start with Vue3 Composition API since you\'re already using it in this project.',
-    url: 'https://vuejs.org/guide/introduction.html'
-  },
-  {
-    title: 'Engineering & DevOps',
-    mastery: '0%',
-    topics: ['Webpack / Vite Config', 'CI/CD Pipelines', 'Micro-frontend Architecture', 'Performance Profiling'],
-    advice: 'This is the senior-level stage. Focus on building real CI/CD pipelines and understanding build tool internals. Leading a team project will accelerate growth here.',
-    url: 'https://roadmap.sh/frontend'
+const paths = ref<CareerPath[]>([]);
+const currentPath = ref<CareerPath | null>(null);
+const nodes = ref<CareerNode[]>([]);
+const progress = ref<UserCareerProgress[]>([]);
+const selectedNode = ref<CareerNode | null>(null);
+
+/**
+ * Order nodes the way the timeline reads top-to-bottom: by level first,
+ * then by sortOrder, then nodeId. Backend already sorts by level, but
+ * we re-sort defensively in case multiple levels share an order.
+ */
+const displayNodes = computed(() =>
+  [...nodes.value].sort((a, b) => {
+    if (a.level !== b.level) return a.level - b.level;
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || (a.nodeId ?? 0) - (b.nodeId ?? 0);
+  }),
+);
+
+const progressByNode = computed(() => {
+  const map = new Map<number, UserCareerProgress>();
+  progress.value.forEach((p) => map.set(p.nodeId, p));
+  return map;
+});
+
+/**
+ * Status of a node for the current user. We treat parent_id as a
+ * prerequisite: a node is LOCKED until its parent is COMPLETED.
+ */
+const nodeStatus = (n: CareerNode): 'COMPLETED' | 'IN_PROGRESS' | 'UNLOCKED' | 'LOCKED' => {
+  const p = progressByNode.value.get(n.nodeId ?? -1);
+  if (p?.status === 'COMPLETED') return 'COMPLETED';
+  if (p?.status === 'UNLOCKED') return 'IN_PROGRESS';
+  // No parent OR parent already completed -> available to start.
+  if (!n.parentId || n.parentId === 0) return 'UNLOCKED';
+  const parent = nodes.value.find((x) => x.nodeId === n.parentId);
+  const parentDone = parent && progressByNode.value.get(parent.nodeId ?? -1)?.status === 'COMPLETED';
+  return parentDone ? 'UNLOCKED' : 'LOCKED';
+};
+
+const isLocked = (n: CareerNode | null) => !!n && nodeStatus(n) === 'LOCKED';
+
+const dotClass = (n: CareerNode) => {
+  const s = nodeStatus(n);
+  if (s === 'COMPLETED') return 'dot-done';
+  if (s === 'IN_PROGRESS') return 'dot-active';
+  if (s === 'LOCKED') return 'dot-locked';
+  return 'dot-ready';
+};
+const dotIcon = (n: CareerNode) => {
+  const s = nodeStatus(n);
+  if (s === 'COMPLETED') return '✓';
+  if (s === 'IN_PROGRESS') return '…';
+  if (s === 'LOCKED') return '🔒';
+  return '●';
+};
+const cardClass = (n: CareerNode) => {
+  const s = nodeStatus(n);
+  if (s === 'COMPLETED') return 'card-done';
+  if (s === 'IN_PROGRESS') return 'card-active';
+  if (s === 'LOCKED') return 'card-locked';
+  return 'card-ready';
+};
+const badgeClass = (n: CareerNode) => {
+  const s = nodeStatus(n);
+  if (s === 'COMPLETED') return 'badge-done';
+  if (s === 'IN_PROGRESS') return 'badge-active';
+  if (s === 'LOCKED') return 'badge-locked';
+  return 'badge-ready';
+};
+const statusLabel = (n: CareerNode) => {
+  switch (nodeStatus(n)) {
+    case 'COMPLETED':   return 'Completed';
+    case 'IN_PROGRESS': return 'In Progress';
+    case 'LOCKED':      return 'Locked';
+    default:            return 'Available';
   }
-];
+};
+const ctaLabel = (n: CareerNode) => {
+  switch (nodeStatus(n)) {
+    case 'COMPLETED':   return 'Mark as In Progress';
+    case 'IN_PROGRESS': return 'Mark as Completed';
+    case 'LOCKED':      return 'Locked - finish prerequisite first';
+    default:            return 'Start Learning';
+  }
+};
 
-const detailData = ref(detailDataList[0]);
+const overallPercent = computed(() => {
+  if (nodes.value.length === 0) return 0;
+  const done = nodes.value.filter((n) => nodeStatus(n) === 'COMPLETED').length;
+  return Math.round((done / nodes.value.length) * 100);
+});
 
-const openDetail = (idx: number) => {
-  detailData.value = detailDataList[idx];
+const prerequisiteName = computed(() => {
+  const n = selectedNode.value;
+  if (!n || !n.parentId || n.parentId === 0) return '';
+  return nodes.value.find((x) => x.nodeId === n.parentId)?.name ?? '';
+});
+
+const openDetail = (node: CareerNode) => {
+  selectedNode.value = node;
   showDetail.value = true;
 };
 
-const goBack = () => {
-  uni.navigateBack({ delta: 1 });
+const goBack = () => uni.navigateBack({ delta: 1 });
+
+const getUid = (): number => {
+  const v = uni.getStorageSync('userId');
+  const n = Number(v);
+  return !isNaN(n) && n > 0 ? n : 0;
 };
 
-const switchRole = () => {
+/**
+ * The unlock endpoint creates an UNLOCKED row; complete promotes it to
+ * COMPLETED. We treat the CTA as a 3-state cycle: ready -> unlocked ->
+ * completed -> back to unlocked. Locked nodes are no-ops.
+ */
+const toggleNodeStatus = async (node: CareerNode) => {
+  if (isLocked(node)) return;
+  const uid = getUid();
+  if (!uid) {
+    uni.showToast({ title: 'Please sign in first', icon: 'none' });
+    return;
+  }
+  const status = nodeStatus(node);
+  try {
+    if (status === 'IN_PROGRESS') {
+      await completeNodeApi(uid, node.nodeId!);
+      uni.showToast({ title: 'Marked as completed', icon: 'success' });
+    } else if (status === 'COMPLETED') {
+      // Re-unlock to revisit; backend just updates the row's status.
+      await unlockNodeApi(uid, node.nodeId!);
+      uni.showToast({ title: 'Reopened', icon: 'none' });
+    } else {
+      await unlockNodeApi(uid, node.nodeId!);
+      uni.showToast({ title: 'Stage started', icon: 'success' });
+    }
+    await refreshProgress();
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Update failed', icon: 'none' });
+  }
+  showDetail.value = false;
+};
+
+const refreshProgress = async () => {
+  const uid = getUid();
+  if (!uid) {
+    progress.value = [];
+    return;
+  }
+  try {
+    progress.value = (await getUserProgressApi(uid)) || [];
+  } catch { progress.value = []; }
+};
+
+const loadPath = async (path: CareerPath) => {
+  currentPath.value = path;
+  loading.value = true;
+  try {
+    const [nodeList, _] = await Promise.all([
+      getPathNodesApi(path.pathId!),
+      refreshProgress(),
+    ]);
+    nodes.value = nodeList || [];
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed to load roadmap', icon: 'none' });
+    nodes.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
+const switchRole = async () => {
+  if (paths.value.length === 0) return;
   uni.showActionSheet({
-    itemList: ['Frontend Developer', 'Backend Developer', 'Product Manager', 'Data Analyst'],
-    success: (res) => {
-      const roles = ['Frontend Developer', 'Backend Developer', 'Product Manager', 'Data Analyst'];
-      currentRole.value = roles[res.tapIndex];
-      uni.showToast({ title: `Switched to ${currentRole.value}`, icon: 'none' });
+    itemList: paths.value.map((p) => p.name),
+    success: async (res) => {
+      const picked = paths.value[res.tapIndex];
+      if (picked) await loadPath(picked);
     }
   });
+};
+
+const loadAll = async () => {
+  loading.value = true;
+  try {
+    paths.value = await getCareerPathsApi();
+    if (paths.value.length === 0) {
+      loading.value = false;
+      return;
+    }
+    // Default to the first path; assessment can override via storage hint.
+    const hint = uni.getStorageSync('assessment_recommended_role');
+    const preferred = paths.value.find((p) =>
+      hint && (p.name?.toLowerCase().includes(String(hint).toLowerCase()) || p.code === hint),
+    );
+    await loadPath(preferred || paths.value[0]);
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed to load paths', icon: 'none' });
+    loading.value = false;
+  }
 };
 
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   const systemInfo = uni.getSystemInfoSync();
   topSafeHeight.value = (systemInfo.statusBarHeight || 20) + 8;
+  loadAll();
+});
+
+// Re-pull progress when the page becomes visible -- if a user marks a
+// node from a different page in the future, the timeline stays in sync.
+onShow(() => {
+  refreshProgress();
 });
 </script>
 
@@ -203,7 +348,27 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0 14px;
+  padding: 6px 0 12px;
+}
+
+.page-intro {
+  margin-bottom: 18px;
+}
+
+.intro-title {
+  display: block;
+  font-size: 28px;
+  line-height: 1.12;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.intro-text {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475569;
 }
 
 .back-btn {
@@ -234,9 +399,10 @@ onMounted(() => {
 
 .role-card {
   background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px; padding: 24px; color: #ffffff;
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 16px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  margin-bottom: 16px; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
 }
 
 .role-info { flex: 1; }
@@ -255,7 +421,9 @@ onMounted(() => {
 .ring-val { font-size: 16px; font-weight: 700; color: #60a5fa; }
 
 .demo-notice {
-  background: #eff6ff; border-radius: 12px; padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 12px; padding: 10px 14px;
   margin-bottom: 20px;
 }
 
@@ -299,8 +467,11 @@ onMounted(() => {
 .dot-locked { background: #f1f5f9; opacity: 0.6; }
 
 .tl-card {
-  background: #ffffff; border-radius: 16px; padding: 18px;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
 }
 
 .card-done { border-left: 3px solid #22c55e; }
@@ -373,19 +544,81 @@ onMounted(() => {
 .sheet-advice { font-size: 14px; color: #475569; line-height: 1.6; }
 
 .sheet-btn {
-  width: 100%; background: #2563eb; color: #ffffff;
-  font-size: 16px; font-weight: 600; border-radius: 14px;
-  height: 48px; line-height: 48px; border: none; margin-top: 8px;
+  width: 100%; background: #2563eb;
+  border-radius: 14px;
+  height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 8px;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.32);
+  transition: background 0.15s;
+}
+.sheet-btn-text { color: #ffffff; font-size: 16px; font-weight: 700; }
+.sheet-btn:active { background: #1d4ed8; }
+.sheet-btn-disabled { background: #cbd5e1; box-shadow: none; }
+.sheet-btn-disabled .sheet-btn-text { color: #ffffff; opacity: 0.85; }
+
+/* Dot + card variants for the new "ready" status (parent done, not yet started) */
+.dot-ready { background: #eff6ff; color: #2563eb; font-weight: 800; }
+.card-ready { border-left: 3px solid #c7d2fe; }
+
+/* Inline meta row (estimated hours + status badge) on each timeline card */
+.tl-meta-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.tl-meta {
+  font-size: 11px; color: #64748b; font-weight: 600;
+  background: #f1f5f9; padding: 3px 8px; border-radius: 999px;
 }
 
-.sheet-btn:active { background: #1d4ed8; }
+/* Status badges */
+.tl-badge { padding: 3px 10px; border-radius: 999px; }
+.badge-text { font-size: 11px; font-weight: 700; }
+.badge-done   { background: #dcfce7; }
+.badge-done   .badge-text { color: #15803d; }
+.badge-active { background: #dbeafe; }
+.badge-active .badge-text { color: #1d4ed8; }
+.badge-locked { background: #f1f5f9; }
+.badge-locked .badge-text { color: #94a3b8; }
+.badge-ready  { background: #eff6ff; }
+.badge-ready  .badge-text { color: #2563eb; }
+
+/* Skeleton */
+.skeleton-list { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.skel-card {
+  background: #ffffff; border: 1px solid var(--border-color); border-radius: 16px;
+  padding: 18px; display: flex; flex-direction: column; gap: 8px;
+}
+.skel-line {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f7fafc 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s infinite;
+}
+.skel-w40 { width: 40%; }
+.skel-w70 { width: 70%; }
+.skel-w90 { width: 90%; }
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  background: #ffffff; border: 1px solid var(--border-color);
+  border-radius: 20px;
+}
+.empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+.empty-text { font-size: 16px; font-weight: 700; color: #475569; display: block; margin-bottom: 8px; }
+.empty-sub { font-size: 13px; color: #94a3b8; line-height: 1.5; }
 
 /* Dark mode */
 .is-dark { background: #0f172a; }
 
 .is-dark .nav-title,
+.is-dark .intro-title,
 .is-dark .tl-title,
 .is-dark .sheet-title { color: #f8fafc; }
+
+.is-dark .intro-text { color: #94a3b8; }
 
 .is-dark .tl-card,
 .is-dark .detail-sheet { background: #1e293b; }

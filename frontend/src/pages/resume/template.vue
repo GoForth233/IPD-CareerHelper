@@ -19,6 +19,10 @@
           <input class="input" v-model="formData.phone" type="number" placeholder="Enter your phone number" placeholder-class="placeholder-text" />
         </view>
         <view class="form-item">
+          <text class="label">Email</text>
+          <input class="input" v-model="formData.email" placeholder="your@email.com" placeholder-class="placeholder-text" />
+        </view>
+        <view class="form-item">
           <text class="label">Target Role</text>
           <input class="input" v-model="formData.targetRole" placeholder="e.g. Frontend Developer" placeholder-class="placeholder-text" />
         </view>
@@ -60,20 +64,31 @@
       </view>
     </view>
 
-    <!-- Section 3: Experience -->
+    <!-- Section 3: Skills -->
+    <view class="form-group">
+      <text class="group-title">Core Skills</text>
+      <view class="form-card">
+        <view class="form-item">
+          <text class="label">Skills</text>
+          <input class="input" v-model="formData.skills" placeholder="e.g. Vue3, Node.js, Python" placeholder-class="placeholder-text" />
+        </view>
+      </view>
+    </view>
+
+    <!-- Section 4: Experience -->
     <view class="form-group">
       <text class="group-title">Internship & Project Experience</text>
       <view class="form-card textarea-card">
-        <textarea 
-          class="textarea" 
+        <textarea
+          class="textarea"
           v-model="formData.experience"
-          placeholder="Briefly describe your key project experience or internship. Don't worry about writing style — AI will polish it using the STAR method..." 
+          placeholder="Briefly describe your key project experience or internship. Don't worry about writing style — AI will polish it using the STAR method..."
           placeholder-class="placeholder-text"
-          maxlength="500"
+          maxlength="800"
           @input="onTextareaInput"
         />
         <view class="textarea-footer">
-          <text class="word-count">{{ experienceLength }} / 500</text>
+          <text class="word-count">{{ experienceLength }} / 800</text>
         </view>
       </view>
     </view>
@@ -87,19 +102,23 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { generateResumeFromTemplateApi } from '@/api/resume';
 
 const degreeOptions = ['Associate', 'Bachelor', 'Master', 'Doctorate'];
 const selectedDegree = ref('');
 const selectedYear = ref('');
 const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
+const submitting = ref(false);
 
 const formData = ref({
   name: '',
   phone: '',
+  email: '',
   targetRole: '',
   city: '',
   university: '',
   major: '',
+  skills: '',
   experience: '',
 });
 
@@ -117,19 +136,42 @@ const onTextareaInput = (e: any) => {
   formData.value.experience = e.detail.value;
 };
 
-const handleGenerate = () => {
+const handleGenerate = async () => {
   if (!formData.value.name || !formData.value.targetRole) {
     uni.showToast({ title: 'Please fill in name and target role', icon: 'none' });
     return;
   }
-  uni.showLoading({ title: 'AI generating...' });
-  setTimeout(() => {
+  const userId = Number(uni.getStorageSync('userId'));
+  if (!userId || isNaN(userId) || userId <= 0) {
+    uni.showToast({ title: 'Please log in first', icon: 'none' });
+    return;
+  }
+  submitting.value = true;
+  uni.showLoading({ title: 'AI generating...', mask: true });
+  try {
+    await generateResumeFromTemplateApi({
+      userId,
+      name: formData.value.name,
+      phone: formData.value.phone,
+      email: formData.value.email,
+      targetRole: formData.value.targetRole,
+      city: formData.value.city,
+      university: formData.value.university,
+      major: formData.value.major,
+      degree: selectedDegree.value,
+      graduationYear: selectedYear.value,
+      skills: formData.value.skills,
+      experience: formData.value.experience,
+    });
     uni.hideLoading();
-    uni.showToast({ title: 'Generated successfully', icon: 'success' });
-    setTimeout(() => {
-      uni.navigateBack();
-    }, 1500);
-  }, 2000);
+    uni.showToast({ title: 'Resume generated!', icon: 'success' });
+    setTimeout(() => uni.navigateBack(), 1200);
+  } catch (e: any) {
+    uni.hideLoading();
+    uni.showToast({ title: e?.message || 'Generation failed', icon: 'none' });
+  } finally {
+    submitting.value = false;
+  }
 };
 </script>
 

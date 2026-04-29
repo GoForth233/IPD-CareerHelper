@@ -1,10 +1,12 @@
 package com.group1.career.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.group1.career.interceptor.AuthInterceptor;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.service.AiService;
 import com.group1.career.service.InterviewService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,30 +37,30 @@ public class InterviewControllerTest {
     @MockitoBean
     private AiService aiService;
 
+    @MockitoBean
+    private AuthInterceptor authInterceptor;
+
     @Autowired
     private ObjectMapper objectMapper;
+
+    @BeforeEach
+    public void bypassAuth() throws Exception {
+        when(authInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("API Test: Start Interview")
     public void testStartInterview_Success() throws Exception {
-        // Prepare
+        // userId is no longer in the body; resolved server-side from JWT.
         InterviewController.StartInterviewRequest request = new InterviewController.StartInterviewRequest();
-        request.setUserId(1L);
         request.setResumeId(100L);
         request.setPositionName("Java Developer");
         request.setDifficulty("Normal");
 
         Interview mockInterview = Interview.builder()
-                .interviewId(1L)
-                .userId(1L)
-                .positionName("Java Developer")
-                .status("ONGOING")
-                .build();
+                .interviewId(1L).userId(1L).positionName("Java Developer").status("ONGOING").build();
+        when(interviewService.startInterview(anyLong(), anyLong(), anyString(), anyString())).thenReturn(mockInterview);
 
-        when(interviewService.startInterview(anyLong(), anyLong(), anyString(), anyString()))
-                .thenReturn(mockInterview);
-
-        // Execute & Verify
         mockMvc.perform(post("/api/interviews/start")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -70,22 +72,15 @@ public class InterviewControllerTest {
     @Test
     @DisplayName("API Test: Send Interview Message")
     public void testSendMessage_Success() throws Exception {
-        // Prepare
         Long interviewId = 1L;
         InterviewController.SendMessageRequest request = new InterviewController.SendMessageRequest();
         request.setContent("Tell me about yourself");
 
-        // Mock the service to save user message and generate AI response
-        Interview mockInterview = Interview.builder()
-                .interviewId(interviewId)
-                .positionName("Java Developer")
-                .build();
-        
+        Interview mockInterview = Interview.builder().interviewId(interviewId).positionName("Java Developer").build();
         when(interviewService.getInterviewById(interviewId)).thenReturn(mockInterview);
         when(interviewService.getInterviewMessages(interviewId)).thenReturn(Arrays.asList());
-        when(aiService.chat(anyList())).thenReturn("Thank you for sharing. Can you tell me about your experience with Java?");
+        when(aiService.chat(anyList())).thenReturn("Thank you for sharing. Can you tell me about your Java experience?");
 
-        // Execute & Verify
         mockMvc.perform(post("/api/interviews/{interviewId}/message", interviewId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -98,26 +93,15 @@ public class InterviewControllerTest {
     @Test
     @DisplayName("API Test: Get Interview Messages")
     public void testGetMessages_Success() throws Exception {
-        // Prepare
         Long interviewId = 1L;
         List<InterviewMessage> messages = Arrays.asList(
-                InterviewMessage.builder()
-                        .msgId(1L)
-                        .interviewId(interviewId)
-                        .role("AI")
-                        .content("Hello, let's start the interview")
-                        .build(),
-                InterviewMessage.builder()
-                        .msgId(2L)
-                        .interviewId(interviewId)
-                        .role("USER")
-                        .content("Sure, I'm ready")
-                        .build()
+                InterviewMessage.builder().msgId(1L).interviewId(interviewId).role("AI")
+                        .content("Hello, let's start the interview").build(),
+                InterviewMessage.builder().msgId(2L).interviewId(interviewId).role("USER")
+                        .content("Sure, I'm ready").build()
         );
-
         when(interviewService.getInterviewMessages(interviewId)).thenReturn(messages);
 
-        // Execute & Verify
         mockMvc.perform(get("/api/interviews/{interviewId}/messages", interviewId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
@@ -128,50 +112,31 @@ public class InterviewControllerTest {
     @Test
     @DisplayName("API Test: End Interview")
     public void testEndInterview_Success() throws Exception {
-        // Prepare
         Long interviewId = 1L;
-        InterviewController.EndInterviewRequest request = new InterviewController.EndInterviewRequest();
-        request.setFinalScore(85);
-
+        // The end endpoint no longer accepts a client-supplied score.
+        // Final score is now produced by the report endpoint via AI evaluation.
         Interview completedInterview = Interview.builder()
-                .interviewId(interviewId)
-                .status("COMPLETED")
-                .finalScore(85)
-                .build();
+                .interviewId(interviewId).status("COMPLETED").build();
+        when(interviewService.endInterview(interviewId, null)).thenReturn(completedInterview);
 
-        when(interviewService.endInterview(interviewId, 85)).thenReturn(completedInterview);
-
-        // Execute & Verify
-        mockMvc.perform(post("/api/interviews/{interviewId}/end", interviewId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post("/api/interviews/{interviewId}/end", interviewId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.finalScore").value(85));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
     }
 
     @Test
     @DisplayName("API Test: Get User Interview History")
     public void testGetUserInterviews_Success() throws Exception {
-        // Prepare
         Long userId = 1L;
         List<Interview> interviews = Arrays.asList(
-                Interview.builder()
-                        .interviewId(1L)
-                        .userId(userId)
-                        .positionName("Backend Dev")
-                        .status("COMPLETED")
-                        .finalScore(90)
-                        .build()
+                Interview.builder().interviewId(1L).userId(userId)
+                        .positionName("Backend Dev").status("COMPLETED").finalScore(90).build()
         );
-
         when(interviewService.getUserInterviews(userId)).thenReturn(interviews);
 
-        // Execute & Verify
         mockMvc.perform(get("/api/interviews/user/{userId}", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].positionName").value("Backend Dev"))
                 .andExpect(jsonPath("$.data[0].finalScore").value(90));
     }
 }
-

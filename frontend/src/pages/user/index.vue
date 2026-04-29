@@ -2,6 +2,11 @@
   <view class="user-page" :class="{ 'is-dark': darkPref }">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
+    <view class="page-header">
+      <text class="page-title">Profile</text>
+      <text class="page-subtitle">Manage your account, preferences, and career assets.</text>
+    </view>
+
     <!-- Header card: logged in -->
     <view class="header-card" v-if="isLoggedIn">
       <view class="header-avatar" @click="handleAvatarClick">
@@ -14,7 +19,10 @@
       <view class="header-info">
         <text class="header-name">{{ userInfo.nickname || 'User' }}</text>
         <text class="header-school" v-if="userInfo.school">{{ userInfo.school }}</text>
-        <text class="header-school edit-btn" v-else @click.stop="showProfileEdit = true">Tap to complete your profile</text>
+      </view>
+      <view class="header-edit" @click.stop="openProfileEdit">
+        <text class="header-edit-text">{{ userInfo.school ? 'Edit' : 'Complete' }}</text>
+        <text class="header-edit-arrow">›</text>
       </view>
     </view>
 
@@ -70,21 +78,21 @@
         <text class="menu-icon">🔤</text>
         <text class="menu-text">Font Size</text>
         <view class="font-pills">
-          <text 
-            class="pill" 
+          <view
+            class="pill"
             :class="{ 'pill-active': fontPref === 'compact' }"
             @click="setFont('compact')"
-          >Sm</text>
-          <text 
-            class="pill" 
+          ><text>Sm</text></view>
+          <view
+            class="pill"
             :class="{ 'pill-active': fontPref === 'standard' }"
             @click="setFont('standard')"
-          >Md</text>
-          <text 
-            class="pill" 
+          ><text>Md</text></view>
+          <view
+            class="pill"
             :class="{ 'pill-active': fontPref === 'large' }"
             @click="setFont('large')"
-          >Lg</text>
+          ><text>Lg</text></view>
         </view>
       </view>
     </view>
@@ -150,6 +158,17 @@ const isLoggedIn = computed(() => !!userId.value);
 
 const goLogin = () => {
   uni.reLaunch({ url: LOGIN_PAGE });
+};
+
+const openProfileEdit = () => {
+  // Pre-populate the form with whatever we already know so the user is
+  // editing, not retyping. (HCI: recognition over recall.)
+  editForm.value = {
+    school: userInfo.value.school || '',
+    major: userInfo.value.major || '',
+    gradYear: userInfo.value.gradYear || '',
+  };
+  showProfileEdit.value = true;
 };
 
 const goResumes = () => {
@@ -271,27 +290,56 @@ onMounted(() => {
   flex-direction: column;
   background: var(--page-ios-gray);
   padding: 0 20px;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 140px); /* 预留给底部登出按钮的空间，避免小屏幕重叠 */
+  padding-bottom: calc(env(safe-area-inset-bottom) + 28px);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   box-sizing: border-box;
-  position: relative; /* 为底部绝对定位做参照 */
 }
 
 .bottom-section {
-  position: absolute;
-  bottom: 0;
-  left: 20px;
-  right: 20px;
+  margin-top: auto;
 }
 
 .status-spacer { width: 100%; }
 
+.page-header {
+  padding: 8px 0 6px;
+}
+
+.page-title {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.page-subtitle {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Edit/Complete chip on the header card — affords tappability with both
+   a label and a chevron (HCI: signifiers, recognition over recall) */
+.header-edit {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 8px 6px 8px 12px;
+  border-radius: 999px;
+  min-height: 32px;
+}
+.header-edit:active { background: rgba(255, 255, 255, 0.28); }
+.header-edit-text { color: #ffffff; font-size: 13px; font-weight: 600; }
+.header-edit-arrow { color: #ffffff; font-size: 16px; line-height: 1; padding-right: 6px; }
+
 /* Header card */
 .header-card {
   background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
-  border-radius: 20px; padding: 24px 20px; margin: 8px 0 16px;
+  border-radius: 20px; padding: 24px 20px; margin: 12px 0 16px;
   display: flex; align-items: center; gap: 16px;
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
 }
 
 .header-guest {
@@ -333,7 +381,7 @@ onMounted(() => {
   background: #ffffff; border-radius: 16px;
   padding: 16px 0; margin-bottom: 24px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-item {
@@ -363,7 +411,7 @@ onMounted(() => {
   background: #ffffff; border-radius: 16px;
   overflow: hidden; margin-bottom: 24px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .menu-item {
@@ -396,10 +444,15 @@ onMounted(() => {
 
 .font-pills { display: flex; gap: 6px; }
 
+/* Each pill needs >=44pt for thumb access (HCI: Apple HIG / WCAG 2.5.5).
+   Inner <text> stays small for visual rhythm. */
 .pill {
-  padding: 4px 14px; border-radius: 8px;
-  font-size: 13px; font-weight: 500; color: #64748b;
+  min-width: 44px; min-height: 32px;
+  padding: 6px 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; color: #64748b;
   background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
 }
 
 .pill-active { background: #2563eb; color: #ffffff; }
@@ -409,7 +462,7 @@ onMounted(() => {
   width: 100%; height: 48px; background: #ffffff;
   color: #ef4444; font-size: 15px; font-weight: 600;
   border-radius: 16px; line-height: 48px; border: 1px solid var(--border-color);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-xs);
 }
 
 .btn-logout:active { background: #fef2f2; }

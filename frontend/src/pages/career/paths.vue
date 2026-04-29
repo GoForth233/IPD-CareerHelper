@@ -1,8 +1,18 @@
 <template>
   <view class="paths-page" :class="{ 'is-dark': darkPref }">
+    <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
+    <view class="nav-row">
+      <view class="back-btn" @click="goBack">
+        <text class="back-icon">‹</text>
+        <text class="back-text">Back</text>
+      </view>
+      <text class="nav-title">Career Paths</text>
+      <view style="width:64px;"></view>
+    </view>
+
     <view class="header">
       <text class="title">Career Paths</text>
-      <text class="subtitle">Choose your career direction</text>
+      <text class="subtitle">Choose a direction first, then drill into the skills and milestones that define progress for that track.</text>
     </view>
 
     <view class="path-list">
@@ -21,6 +31,7 @@
     <view class="empty" v-if="paths.length === 0 && !loading">
       <text class="empty-icon">🗺️</text>
       <text class="empty-text">No career paths available</text>
+      <text class="empty-desc">Initialize the starter dataset to load example roles and their learning roadmaps.</text>
       <button class="btn-primary" @click="initializePaths">Initialize Paths</button>
     </view>
   </view>
@@ -28,14 +39,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
 import { getCareerPathsApi, initializeCareerPathsApi, type CareerPath } from '@/api/career';
 
 const paths = ref<CareerPath[]>([]);
 const loading = ref(false);
 const darkPref = ref(false);
+const topSafeHeight = ref(52);
+
+const goBack = () => uni.navigateBack({ delta: 1 });
 
 onMounted(async () => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  topSafeHeight.value = getTopSafeHeight();
   await loadPaths();
 });
 
@@ -72,12 +88,33 @@ const viewPath = (path: CareerPath) => {
 .paths-page {
   min-height: 100vh;
   background-color: var(--page-ios-gray);
-  padding: 24px 20px;
+  padding: 0 20px 24px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   box-sizing: border-box;
 }
 
-.header { margin-bottom: 28px; padding: 0 4px; }
+.status-spacer { width: 100%; }
+
+.nav-row {
+  display: flex; align-items: center;
+  height: 44px; padding: 0 2px; margin-bottom: 4px;
+}
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 2px;
+  color: #2563eb; width: 64px;
+}
+
+.back-icon { font-size: 24px; font-weight: 300; line-height: 1; }
+.back-text { font-size: 16px; font-weight: 500; }
+
+.nav-title {
+  flex: 1; text-align: center;
+  font-size: 17px; font-weight: 600;
+  color: #0f172a; letter-spacing: -0.3px;
+}
+
+.header { margin-bottom: 20px; padding: 0 2px; }
 
 .title {
   font-size: var(--font-hero);
@@ -89,16 +126,17 @@ const viewPath = (path: CareerPath) => {
 }
 
 .subtitle {
-  font-size: var(--font-caption);
-  color: var(--text-tertiary);
+  font-size: 14px;
+  color: var(--text-secondary);
   display: block;
-  line-height: var(--line-height-caption);
+  line-height: 1.5;
 }
 
 .path-list { display: flex; flex-direction: column; gap: 12px; }
 
 .path-card {
   background-color: #ffffff;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 18px;
   display: flex;
@@ -146,6 +184,14 @@ const viewPath = (path: CareerPath) => {
   display: block; margin-bottom: 24px;
 }
 
+.empty-desc {
+  display: block;
+  margin: -14px 0 24px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
 .btn-primary {
   background: var(--primary-color);
   color: #fff;
@@ -162,6 +208,8 @@ const viewPath = (path: CareerPath) => {
 
 /* Dark mode */
 .is-dark { background-color: #0f172a; }
+
+.is-dark .nav-title { color: #f8fafc; }
 
 .is-dark .title,
 .is-dark .path-name { color: #f8fafc; }

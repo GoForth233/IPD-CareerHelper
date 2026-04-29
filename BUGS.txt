@@ -51,7 +51,7 @@ Status: [ ] 未修复   [x] 已修复
   文件: frontend/src/pages/login/index.vue, 第 163-178 行
   问题: uni.showLoading 后等待 1500ms，直接写死假 userId 和 userInfo。
         没有调用 uni.login 获取 code，没有后端换取 openid，没有真实 session。
-  状态: [ ]
+  状态: [x] (前端 wxLogin 已调用 uni.login + wechatLoginApi；后端 UserServiceImpl.wechatLogin 走 jscode2session)
 
 [LOGIN-03] [LOW] 忘记密码只展示联系邮件，没有实际找回流程
   文件: frontend/src/pages/login/index.vue, 第 105-112 行
@@ -92,30 +92,30 @@ Status: [ ] 未修复   [x] 已修复
   文件: frontend/src/pages/resume/index.vue, 第 128-137 行
   问题: 没有调用任何文件上传接口，用 setTimeout 900ms 后直接 unshift 到内存数组。
         刷新页面后上传的文件消失。
-  状态: [ ]
+  状态: [x] (uni.chooseMessageFile -> uploadResumeFile -> /api/files/upload (OSS) -> createResumeApi 入库)
 
 [RESUME-03] [HIGH] Rename 没有输入框，直接追加 "_renamed.pdf"
   文件: frontend/src/pages/resume/index.vue, 第 164-169 行
   问题: 用户点击 Rename 后，文件名被自动改为 "{原名}_renamed.pdf"，用户无法输入自定义名称。
         应使用 uni.showModal 的 editable input 或自定义弹窗。
-  状态: [ ]
+  状态: [x] (改用 uni.showModal editable input + updateResumeApi 同步后端)
 
 [RESUME-04] [HIGH] Share Link 使用假域名，生成的链接完全不可用
   文件: frontend/src/pages/resume/index.vue, 第 171-174 行
   问题: 生成 https://ipd-project/resume/share/{name} 并复制到剪贴板。
         该域名不存在，链接无法访问。且简历是私人文件，"分享"本身的设计也需要重新考量。
-  状态: [ ]
+  状态: [x] (复制真实 OSS fileUrl；后续 Sprint 2 改为后端短链 + 预签名)
 
 [RESUME-05] [MEDIUM] Preview 按钮弹出"不支持预览"提示，功能等于不存在
   文件: frontend/src/pages/resume/index.vue, 第 149-156 行
   问题: handlePreview 直接 showModal 告知用户"PDF preview is not supported"，
         没有尝试用 uni.openDocument 或 webview 打开文件。
-  状态: [ ]
+  状态: [x] (uni.downloadFile + uni.openDocument 真实预览 PDF)
 
 [RESUME-06] [MEDIUM] 删除操作没有后端 API 调用，只从内存数组删除
   文件: frontend/src/pages/resume/index.vue
   问题: 删除简历后刷新页面（或从后端重新加载数据后）文件仍会出现。
-  状态: [ ]
+  状态: [x] (调用 deleteResumeApi -> DELETE /api/resumes/{id})
 
 --------------------------------------------------------------------------------
   五、简历模板 / RESUME TEMPLATE (pages/resume/template.vue)
@@ -125,17 +125,17 @@ Status: [ ] 未修复   [x] 已修复
   文件: frontend/src/pages/resume/template.vue, 第 120-133 行
   问题: handleGenerate 等待 2000ms 后 showToast "Generated successfully" 并 navigateBack。
         没有后端 AI 调用，没有创建简历记录，用户填写的所有信息白费。
-  状态: [ ]
+  状态: [x] (POST /api/resume-gen/from-template -> Qwen 生成 HTML -> OpenHTMLtoPDF -> OSS -> Resume 入库)
 
 [TEMPLATE-02] [HIGH] 生成完成后直接返回上一页，填写内容未保存
   文件: frontend/src/pages/resume/template.vue
   问题: navigateBack 之前没有任何数据提交，表单数据随页面销毁消失。
-  状态: [ ]
+  状态: [x] (表单现在提交到后端生成真实 PDF 入库)
 
 [TEMPLATE-03] [LOW] 简历信息字段过少，缺少 email、学历、工作经历等核心字段
   文件: frontend/src/pages/resume/template.vue
   问题: 仅有 name / phone / targetRole / city，对生成有效简历信息严重不足。
-  状态: [ ]
+  状态: [x] (新增 email / degree / gradYear / skills / experience 字段)
 
 --------------------------------------------------------------------------------
   六、AI 简历诊断 / RESUME AI (pages/resume-ai/index.vue)
@@ -145,24 +145,24 @@ Status: [ ] 未修复   [x] 已修复
   文件: frontend/src/pages/resume-ai/index.vue, 第 94-104 行
   问题: itemList 写死 ['Frontend_Developer_2026_Fall.pdf', 'Fullstack_General_v2.pdf']，
         与用户真实上传的简历没有任何关联。
-  状态: [ ]
+  状态: [x] (调用 getUserResumesApi 列出真实简历, 并传递 resumeId)
 
 [RESUMEAI-02] [CRITICAL] 整个 AI 诊断流程是假的 setTimeout 序列，没有调用 AI API
   文件: frontend/src/pages/resume-ai/index.vue, 第 107-134 行
   问题: startAnalysis 用多个 setTimeout 推进进度条，4 秒后直接展示写死结果。
         后端已配置 Aliyun Qwen API（application.yml），但完全没有被调用。
-  状态: [ ]
+  状态: [x] (POST /api/resume-diagnosis/analyze 后端拉 OSS PDF -> PDFBox 提取文本 -> Qwen 返回结构化 JSON)
 
 [RESUMEAI-03] [CRITICAL] 诊断结果是完全写死的假数据，与输入内容无关
   文件: frontend/src/pages/resume-ai/index.vue, 第 53-73 行
   问题: 评分固定 85 分，优点/不足内容固定，不管用户选哪份简历、输入什么 JD，结果都一样。
-  状态: [ ]
+  状态: [x] (UI 现为循环渲染 result.strengths/weaknesses/suggestions 真实返回)
 
 [RESUMEAI-04] [HIGH] "Generate Tailored Resume" 没有实际生成任何简历
   文件: frontend/src/pages/resume-ai/index.vue, 第 137-146 行
   问题: generateTailored 等待 2000ms 后 showToast "Resume tailored!" 并跳转到 Resume Hub。
         没有创建任何简历记录，Resume Hub 中不会出现新简历。
-  状态: [ ]
+  状态: [x] (POST /api/resume-gen/tailor 生成新 PDF 入库，跳转后 Hub 可见)
 
 --------------------------------------------------------------------------------
   七、职业评估 / ASSESSMENT

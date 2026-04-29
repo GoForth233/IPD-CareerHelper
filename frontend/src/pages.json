@@ -96,8 +96,8 @@
 		{
 			"path": "pages/interview/report",
 			"style": {
-				"navigationBarTitleText": "Interview Report",
-				"navigationBarBackgroundColor": "#f5f5f7"
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
 			}
 		},
 		{
@@ -117,22 +117,22 @@
 		{
 			"path": "pages/interview/history",
 			"style": {
-				"navigationBarTitleText": "Interview History",
-				"navigationBarBackgroundColor": "#f5f5f7"
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/career/paths",
 			"style": {
-				"navigationBarTitleText": "Career Paths",
-				"navigationBarBackgroundColor": "#f5f5f7"
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/career/progress",
 			"style": {
-				"navigationBarTitleText": "Career Progress",
-				"navigationBarBackgroundColor": "#f5f5f7"
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
 			}
 		},
 		{

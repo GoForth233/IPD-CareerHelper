@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.UUID;
 
@@ -61,6 +62,65 @@ public class FileServiceImpl implements FileService {
                 ossClient.shutdown();
             }
         }
+    }
+
+    @Override
+    public String uploadBytes(byte[] bytes, String filename, String folder) {
+        if (bytes == null || bytes.length == 0) {
+            throw new BizException("File bytes cannot be empty");
+        }
+        if (folder == null || folder.trim().isEmpty()) folder = "others";
+
+        String extension = filename != null && filename.contains(".")
+                ? filename.substring(filename.lastIndexOf("."))
+                : "";
+        String fileName = folder + "/" + UUID.randomUUID() + extension;
+
+        OSS ossClient = createOssClient();
+        try {
+            ossClient.putObject(ossConfig.getBucketName(), fileName, new ByteArrayInputStream(bytes));
+            String url = "https://" + ossConfig.getBucketName() + "." + ossConfig.getEndpoint() + "/" + fileName;
+            log.info("Bytes uploaded successfully: {}", url);
+            return url;
+        } finally {
+            if (ossClient != null) ossClient.shutdown();
+        }
+    }
+
+    @Override
+    public byte[] downloadBytes(String fileUrlOrKey) {
+        if (fileUrlOrKey == null || fileUrlOrKey.isBlank()) {
+            throw new BizException("Empty file reference");
+        }
+        String objectKey = toObjectKey(fileUrlOrKey);
+        OSS ossClient = createOssClient();
+        try (com.aliyun.oss.model.OSSObject obj = ossClient.getObject(ossConfig.getBucketName(), objectKey);
+             java.io.InputStream in = obj.getObjectContent()) {
+            return in.readAllBytes();
+        } catch (com.aliyun.oss.OSSException | com.aliyun.oss.ClientException e) {
+            log.error("OSS download failed: bucket={}, key={}", ossConfig.getBucketName(), objectKey, e);
+            throw new BizException("Failed to fetch file from OSS: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("OSS stream read failed: key={}", objectKey, e);
+            throw new BizException("Failed to read OSS stream: " + e.getMessage());
+        } finally {
+            if (ossClient != null) ossClient.shutdown();
+        }
+    }
+
+    /**
+     * Strip the scheme + host from a stored OSS URL to recover the bare object key.
+     * Accepts already-bare keys unchanged.
+     */
+    private String toObjectKey(String fileUrlOrKey) {
+        String s = fileUrlOrKey.trim();
+        int idx = s.indexOf("://");
+        if (idx < 0) return s.startsWith("/") ? s.substring(1) : s;
+        int slash = s.indexOf('/', idx + 3);
+        if (slash < 0 || slash + 1 >= s.length()) {
+            throw new BizException("Malformed OSS URL: " + fileUrlOrKey);
+        }
+        return s.substring(slash + 1);
     }
 
     /**

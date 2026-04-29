@@ -4,6 +4,7 @@ import com.group1.career.common.Result;
 import com.group1.career.model.entity.*;
 import com.group1.career.repository.AssessmentOptionRepository;
 import com.group1.career.service.AssessmentService;
+import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 
 @Tag(name = "Assessment API", description = "Endpoints for MBTI/Holland vocational quiz banks")
 @RestController
-@RequestMapping("/assessments")
+@RequestMapping("/api/assessments")
 @RequiredArgsConstructor
 public class AssessmentController {
 
@@ -67,18 +68,21 @@ public class AssessmentController {
     @Operation(summary = "Submit answers and get result")
     @PostMapping("/submit")
     public Result<AssessmentRecord> submit(@RequestBody SubmitDto request) {
+        // userId is resolved from the JWT, never trust the request body for it.
+        Long uid = SecurityUtil.requireCurrentUserId();
         AssessmentRecord record = assessmentService.submitAndScore(
-                request.getUserId(),
+                uid,
                 request.getScaleId(),
                 request.getAnswers()
         );
         return Result.success(record);
     }
 
-    @Operation(summary = "Get user's assessment history")
-    @GetMapping("/records/{userId}")
-    public Result<List<AssessmentRecord>> getUserRecords(@PathVariable Long userId) {
-        return Result.success(assessmentService.getUserRecords(userId));
+    @Operation(summary = "Get current user's assessment history")
+    @GetMapping("/records")
+    public Result<List<AssessmentRecord>> getMyRecords() {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        return Result.success(assessmentService.getUserRecords(uid));
     }
 
     @Operation(summary = "Get a specific assessment record")
@@ -108,7 +112,6 @@ public class AssessmentController {
 
     @Data
     public static class SubmitDto {
-        private Long userId;
         private Long scaleId;
         private Map<Long, Long> answers; // questionId -> optionId
     }

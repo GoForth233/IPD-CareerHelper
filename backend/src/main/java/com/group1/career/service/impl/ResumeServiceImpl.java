@@ -57,4 +57,19 @@ public class ResumeServiceImpl implements ResumeService {
     public Resume updateResume(Resume resume) {
         return resumeRepository.save(resume);
     }
+
+    @Override
+    public Resume assertOwnership(Long resumeId, Long userId) {
+        if (resumeId == null || userId == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED_ERROR);
+        }
+        Resume r = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> new BizException(ErrorCode.RESUME_NOT_FOUND));
+        if (!userId.equals(r.getUserId())) {
+            log.warn("Ownership violation: user {} tried to access resume {} owned by {}",
+                    userId, resumeId, r.getUserId());
+            throw new BizException(ErrorCode.FORBIDDEN);
+        }
+        return r;
+    }
 }

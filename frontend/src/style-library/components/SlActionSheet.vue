@@ -14,7 +14,7 @@
         <text>{{ item }}</text>
       </view>
       <view class="sl-sheet__cancel" @click="onClose">
-        <text>取消</text>
+        <text>Cancel</text>
       </view>
     </view>
   </view>

@@ -77,6 +77,10 @@ onHide(() => {
   --space-xl: 20px;
   --space-2xl: 24px;
 
+  --page-gutter: 20px;
+  --page-gutter-tight: 16px;
+  --content-max-width: 560px;
+
   /* Custom tab bar list height (uni-app default ~50px); pad scroll areas above it */
   --tab-bar-height: 50px;
 }
@@ -104,6 +108,91 @@ page {
   background-color: var(--bg-color);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--page-ios-gray);
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.app-page-header {
+  padding: 8px 0 18px;
+}
+
+.app-page-kicker {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--primary-color);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.app-page-title {
+  display: block;
+  font-size: var(--font-hero);
+  line-height: 1.15;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.app-page-subtitle {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.app-section-title {
+  display: block;
+  font-size: var(--font-section);
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.app-section-meta {
+  font-size: var(--font-caption);
+  color: var(--text-tertiary);
+}
+
+.app-surface {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-empty {
+  padding: 56px 20px 28px;
+  text-align: center;
+}
+
+.app-empty__title {
+  display: block;
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.app-empty__desc {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
 }
 
 /* #ifdef H5 */
@@ -215,5 +304,68 @@ button {
     color: #e2e8f0;
   }
 }
+/* #endif */
+
+/* ============================================================== *
+ *  WeChat Mini-Program parity layer
+ *  -----------------------------------------------------------------
+ *  WeChat's webview renders ~30% lighter box-shadows than Chrome,
+ *  its <button> ships an ::after that overrides our radii/borders,
+ *  and uniapp wrappers default to overflow:hidden which clips
+ *  shadows. The H5 build doesn't suffer any of this, hence the
+ *  visual gap. The block below reaches feature-parity for mp-weixin.
+ * ============================================================== */
+/* #ifdef MP-WEIXIN */
+
+/* 1) Boost shadow strength to compensate for the dimmer mp renderer.
+      Re-declare the variables both on :root and page so the cascade
+      lands regardless of which selector the renderer respects. */
+:root,
+page {
+  --shadow-xs: 0 1px 4px rgba(15, 23, 42, 0.10);
+  --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.12);
+  --shadow-card: 0 6px 18px rgba(15, 23, 42, 0.14);
+  --shadow-lg: 0 10px 28px rgba(15, 23, 42, 0.18);
+}
+
+/* 2) Kill WeChat's native <button> decoration so our own
+      border / radius / shadow / background actually show up. */
+button {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  line-height: inherit;
+  border: none;
+}
+button::after {
+  border: none !important;
+  border-radius: 0 !important;
+  content: none !important;
+}
+
+/* 3) Containers that own a box-shadow must NOT clip themselves.
+      `border-radius` alone does NOT clip a shadow — only
+      `overflow:hidden` does. uniapp's wrappers sometimes inherit
+      hidden, which is why your shadows "vanish" on the device. */
+.ui-card,
+.card,
+.panel,
+.section-card,
+.app-surface,
+.ui-card-strong {
+  overflow: visible;
+}
+
+/* 4) Inputs and textareas in mp-weixin do not inherit font-size /
+      color cleanly. Pin them explicitly so the look matches H5. */
+.ui-input,
+.input,
+textarea.ui-input,
+input,
+textarea {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
 /* #endif */
 </style>

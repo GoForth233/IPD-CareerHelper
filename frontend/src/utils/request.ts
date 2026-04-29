@@ -29,6 +29,10 @@ const request = <T>(options: UniApp.RequestOptions & { silent?: boolean }): Prom
 
     // 2. Execute Request
     uni.request({
+      // AI-backed endpoints (diagnose / tailor / from-template) take 30-90s.
+      // WeChat's default 60s timeout will silently abort long requests, so
+      // raise the floor to 120s. Individual callers can override per-request.
+      timeout: 120_000,
       ...options,
       url: `${BASE_URL}${options.url}`, // Auto-prepend Base URL
       header,

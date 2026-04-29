@@ -1,49 +1,88 @@
 <template>
   <view class="report-container" :class="{ 'is-dark': darkPref }">
-    <view class="report-header">
-      <text class="r-title">Interview Report</text>
-      <text class="r-sub">Role: Frontend Developer | Duration: 12m 45s</text>
+    <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
+    <view class="nav-row">
+      <view class="back-btn" @click="goBack">
+        <text class="back-icon">‹</text>
+        <text class="back-text">Back</text>
+      </view>
+      <text class="nav-title">Interview Report</text>
+      <view style="width:64px;"></view>
     </view>
 
-    <!-- Overall score -->
-    <view class="score-card">
-      <view class="score-ring-box">
-        <view class="score-ring">
-          <text class="score-num">85</text>
-        </view>
-        <text class="score-label">Overall Score</text>
-      </view>
-      <view class="score-summary">
-        <text class="score-eval">Excellent</text>
-        <text class="score-desc">Solid technical foundation with clear and logical expression. Keep practicing under-pressure scenarios.</text>
-      </view>
+    <!-- Loading state while AI evaluates -->
+    <view class="loading-state" v-if="loading">
+      <view class="spinner"></view>
+      <text class="loading-title">Evaluating your interview...</text>
+      <text class="loading-sub">The AI is analyzing every answer in your transcript. This usually takes 10-30 seconds.</text>
     </view>
 
-    <!-- Dimensions breakdown -->
-    <view class="dims-section">
-      <text class="section-title">Dimension Breakdown</text>
-      <view class="dims-card">
-        <view class="dim-row" v-for="(d, i) in dimensions" :key="i">
-          <text class="dim-name">{{ d.name }}</text>
-          <view class="dim-bar-bg">
-            <view class="dim-bar-fill" :class="'bar-' + i" :style="{ width: d.score + '%' }"></view>
+    <!-- Error state -->
+    <view class="error-state" v-else-if="errorMsg">
+      <text class="err-title">Could not load report</text>
+      <text class="err-detail">{{ errorMsg }}</text>
+      <button class="btn-retry" @click="loadReport">Retry</button>
+    </view>
+
+    <template v-else-if="report">
+      <view class="report-header">
+        <text class="r-title">Interview Report</text>
+        <text class="r-sub">{{ report.positionName }} · {{ report.difficulty }}{{ report.durationSeconds ? ' · ' + formatDuration(report.durationSeconds) : '' }}</text>
+        <text class="r-desc">{{ report.textSummary || 'Use the breakdown below to identify which parts of your interview performance are already stable and which ones still need practice.' }}</text>
+      </view>
+
+      <!-- Overall score -->
+      <view class="score-card">
+        <view class="score-ring-box">
+          <view class="score-ring" :class="scoreRingClass">
+            <text class="score-num" :class="scoreNumClass">{{ report.overallScore }}</text>
           </view>
-          <text class="dim-score">{{ d.score }}</text>
+          <text class="score-label">Overall Score</text>
+        </view>
+        <view class="score-summary">
+          <text class="score-eval" :class="scoreNumClass">{{ scoreLabel }}</text>
+          <text class="score-desc">{{ report.totalQuestions }} question{{ report.totalQuestions === 1 ? '' : 's' }} answered. Review the dimensions below to see where to focus next.</text>
         </view>
       </view>
-    </view>
 
-    <!-- AI advice -->
-    <view class="advice-section">
-      <text class="section-title">AI Interviewer Feedback</text>
-      <view class="advice-card" v-for="(a, i) in adviceList" :key="i">
-        <text class="advice-icon">{{ a.icon }}</text>
-        <view class="advice-body">
-          <text class="advice-title">{{ a.title }}</text>
-          <text class="advice-detail">{{ a.detail }}</text>
+      <!-- Dimensions breakdown -->
+      <view class="dims-section">
+        <text class="section-title">Dimension Breakdown</text>
+        <view class="dims-card">
+          <view class="dim-row" v-for="(d, i) in dimensions" :key="i">
+            <text class="dim-name">{{ d.name }}</text>
+            <view class="dim-bar-bg">
+              <view class="dim-bar-fill" :class="'bar-' + i" :style="{ width: d.score + '%' }"></view>
+            </view>
+            <text class="dim-score">{{ d.score }}</text>
+          </view>
         </view>
       </view>
-    </view>
+
+      <!-- Strengths -->
+      <view class="advice-section" v-if="report.strengths && report.strengths.length">
+        <text class="section-title">Strengths</text>
+        <view class="advice-card good" v-for="(a, i) in report.strengths" :key="'s' + i">
+          <text class="advice-icon">✓</text>
+          <view class="advice-body">
+            <text class="advice-title">{{ a.title }}</text>
+            <text class="advice-detail">{{ a.detail }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- Improvements -->
+      <view class="advice-section" v-if="report.improvements && report.improvements.length">
+        <text class="section-title">Areas to Improve</text>
+        <view class="advice-card warn" v-for="(a, i) in report.improvements" :key="'i' + i">
+          <text class="advice-icon">!</text>
+          <view class="advice-body">
+            <text class="advice-title">{{ a.title }}</text>
+            <text class="advice-detail">{{ a.detail }}</text>
+          </view>
+        </view>
+      </view>
+    </template>
 
     <!-- Bottom action -->
     <view class="bottom-bar">
@@ -53,36 +92,83 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
+import { getInterviewReportApi, type InterviewReport } from '@/api/interview';
 
 const darkPref = ref(false);
+const topSafeHeight = ref(52);
+const loading = ref(true);
+const errorMsg = ref('');
+const report = ref<InterviewReport | null>(null);
+const interviewId = ref<number>(0);
 
-const dimensions = ref([
-  { name: 'Technical', score: 90 },
-  { name: 'Communication', score: 82 },
-  { name: 'Logic', score: 85 },
-  { name: 'Resilience', score: 75 },
-]);
+const goBack = () => uni.navigateBack({ delta: 1 });
 
-const adviceList = ref([
-  {
-    icon: '🎯',
-    title: 'Structure your project showcases',
-    detail: 'When presenting project experience, use the STAR method (Situation → Task → Action → Result) to clearly convey your role and impact. Quantify results wherever possible, e.g. "reduced load time by 40%."',
-  },
-  {
-    icon: '💡',
-    title: 'Improve stress responses',
-    detail: 'Under pressure questions, take a 2-second pause to structure your thoughts before answering. Practice answering "What is your biggest weakness?" with genuine self-awareness instead of a disguised strength.',
-  },
-]);
+const dimensions = computed(() => {
+  const r = report.value?.radarChart;
+  if (!r) return [] as Array<{ name: string; score: number }>;
+  return [
+    { name: 'Technical', score: r.technical },
+    { name: 'Communication', score: r.communication },
+    { name: 'Logic', score: r.logic },
+    { name: 'Expression', score: r.expression },
+    { name: 'Resilience', score: r.pressureResistance },
+  ];
+});
+
+const scoreLabel = computed(() => {
+  const s = report.value?.overallScore ?? 0;
+  if (s >= 85) return 'Excellent';
+  if (s >= 70) return 'Good';
+  if (s >= 55) return 'Fair';
+  return 'Needs Work';
+});
+
+const scoreNumClass = computed(() => {
+  const s = report.value?.overallScore ?? 0;
+  if (s >= 70) return 'tone-good';
+  if (s >= 55) return 'tone-warn';
+  return 'tone-bad';
+});
+
+const scoreRingClass = computed(() => 'ring-' + scoreNumClass.value);
+
+const formatDuration = (seconds: number) => {
+  if (!seconds || seconds < 0) return '';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+};
+
+const loadReport = async () => {
+  if (!interviewId.value) {
+    errorMsg.value = 'Missing interview id';
+    loading.value = false;
+    return;
+  }
+  loading.value = true;
+  errorMsg.value = '';
+  try {
+    report.value = await getInterviewReportApi(interviewId.value);
+  } catch (e: any) {
+    errorMsg.value = e?.message || 'Failed to generate report';
+  } finally {
+    loading.value = false;
+  }
+};
 
 const backToLobby = () => {
-  uni.navigateBack({ delta: 2 });
+  uni.reLaunch({ url: '/pages/interview/index' });
 };
 
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  topSafeHeight.value = getTopSafeHeight();
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1] as any;
+  interviewId.value = parseInt(currentPage.options?.interviewId || '0');
+  loadReport();
 });
 </script>
 
@@ -90,10 +176,31 @@ onMounted(() => {
 .report-container {
   min-height: 100vh;
   background: #f5f5f7;
-  padding: 24px 20px;
+  padding: 0 20px;
   padding-bottom: calc(100px + env(safe-area-inset-bottom));
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   box-sizing: border-box;
+}
+
+.status-spacer { width: 100%; }
+
+.nav-row {
+  display: flex; align-items: center;
+  height: 44px; padding: 0 2px; margin-bottom: 4px;
+}
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 2px;
+  color: #2563eb; width: 64px;
+}
+
+.back-icon { font-size: 24px; font-weight: 300; line-height: 1; }
+.back-text { font-size: 16px; font-weight: 500; }
+
+.nav-title {
+  flex: 1; text-align: center;
+  font-size: 17px; font-weight: 600;
+  color: #0f172a; letter-spacing: -0.3px;
 }
 
 .report-header { margin-bottom: 24px; }
@@ -105,11 +212,21 @@ onMounted(() => {
 
 .r-sub { font-size: 13px; color: #94a3b8; }
 
+.r-desc {
+  display: block;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
 /* Score card */
 .score-card {
-  background: #ffffff; border-radius: 24px; padding: 28px 24px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 24px; padding: 28px 24px;
   display: flex; gap: 20px; align-items: center; margin-bottom: 28px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .score-ring-box {
@@ -126,16 +243,26 @@ onMounted(() => {
   display: flex; justify-content: center; align-items: center;
 }
 
-.score-num { font-size: 28px; font-weight: 800; color: #15803d; }
+.score-num { font-size: 28px; font-weight: 800; }
+.score-num.tone-good { color: #15803d; }
+.score-num.tone-warn { color: #b45309; }
+.score-num.tone-bad  { color: #b91c1c; }
+
+.ring-tone-good { background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(135deg, #22c55e, #16a34a); }
+.ring-tone-warn { background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(135deg, #f59e0b, #d97706); }
+.ring-tone-bad  { background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(135deg, #ef4444, #dc2626); }
 
 .score-label { font-size: 12px; color: #94a3b8; font-weight: 500; }
 
 .score-summary { flex: 1; }
 
 .score-eval {
-  font-size: 20px; font-weight: 700; color: #15803d;
+  font-size: 20px; font-weight: 700;
   display: block; margin-bottom: 6px;
 }
+.score-eval.tone-good { color: #15803d; }
+.score-eval.tone-warn { color: #b45309; }
+.score-eval.tone-bad  { color: #b91c1c; }
 
 .score-desc { font-size: 13px; color: #64748b; line-height: 1.5; }
 
@@ -148,8 +275,10 @@ onMounted(() => {
 }
 
 .dims-card {
-  background: #ffffff; border-radius: 20px; padding: 20px;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 20px; padding: 20px;
+  box-shadow: var(--shadow-sm);
 }
 
 .dim-row {
@@ -179,11 +308,39 @@ onMounted(() => {
 
 .advice-card {
   display: flex; gap: 14px; background: #ffffff;
+  border: 1px solid var(--border-color);
   border-radius: 16px; padding: 18px; margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
-.advice-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+.advice-icon {
+  font-size: 16px; font-weight: 700; flex-shrink: 0;
+  width: 28px; height: 28px; line-height: 28px; text-align: center;
+  border-radius: 14px; color: #fff;
+}
+.advice-card.good .advice-icon { background: #22c55e; }
+.advice-card.warn .advice-icon { background: #f59e0b; }
+
+.loading-state, .error-state {
+  background: #fff; border: 1px solid var(--border-color);
+  border-radius: 20px; padding: 36px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin-top: 12px;
+}
+.loading-title { font-size: 16px; font-weight: 700; color: #0f172a; }
+.loading-sub { font-size: 13px; color: #64748b; line-height: 1.5; text-align: center; }
+.spinner {
+  width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #2563eb;
+  border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.err-title { font-size: 16px; font-weight: 700; color: #b91c1c; }
+.err-detail { font-size: 13px; color: #64748b; text-align: center; line-height: 1.5; }
+.btn-retry {
+  margin-top: 8px; background: #2563eb; color: #fff;
+  border: none; height: 40px; line-height: 40px;
+  font-size: 14px; font-weight: 600; border-radius: 12px; padding: 0 20px;
+}
 
 .advice-body { flex: 1; }
 
@@ -214,6 +371,8 @@ onMounted(() => {
 /* Dark mode */
 .is-dark { background: #0f172a; }
 
+.is-dark .nav-title { color: #f8fafc; }
+
 .is-dark .r-title,
 .is-dark .section-title,
 .is-dark .dim-name,
@@ -225,6 +384,7 @@ onMounted(() => {
 .is-dark .advice-card { background: #1e293b; box-shadow: none; }
 
 .is-dark .score-desc,
+.is-dark .r-desc,
 .is-dark .advice-detail { color: #94a3b8; }
 
 .is-dark .bottom-bar { background: rgba(15, 23, 42, 0.88); border-color: #334155; }

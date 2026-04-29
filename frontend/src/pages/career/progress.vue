@@ -1,7 +1,18 @@
 <template>
   <view class="progress-page" :class="{ 'is-dark': darkPref }">
+    <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
+    <view class="nav-row">
+      <view class="back-btn" @click="goBack">
+        <text class="back-icon">‹</text>
+        <text class="back-text">Back</text>
+      </view>
+      <text class="nav-title">Progress</text>
+      <view style="width:64px;"></view>
+    </view>
+
     <view class="header">
       <text class="title">Learning Progress</text>
+      <text class="subtitle">Track which milestones are complete, currently active, or still locked in this path.</text>
     </view>
 
     <view class="node-list" v-if="nodes.length > 0">
@@ -24,6 +35,7 @@
     <view class="empty" v-else>
       <text class="empty-icon">📚</text>
       <text class="empty-text">No learning records yet</text>
+      <text class="empty-desc">Open the available career paths first, then choose one to start building progress data.</text>
       <button class="btn-primary" @click="goToPaths">View Career Paths</button>
     </view>
   </view>
@@ -31,15 +43,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
 import { getPathNodesApi, getUserProgressApi, type CareerNode, type UserCareerProgress } from '@/api/career';
 
 const nodes = ref<CareerNode[]>([]);
 const progress = ref<UserCareerProgress[]>([]);
 const pathId = ref<number>(1);
 const darkPref = ref(false);
+const topSafeHeight = ref(52);
+
+const goBack = () => uni.navigateBack({ delta: 1 });
 
 onMounted(async () => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  topSafeHeight.value = getTopSafeHeight();
 
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1] as any;
@@ -83,24 +100,55 @@ const goToPaths = () => {
 .progress-page {
   min-height: 100vh;
   background-color: #f5f5f7;
-  padding: 24px 20px;
+  padding: 0 20px 24px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   box-sizing: border-box;
 }
 
-.header { margin-bottom: 24px; }
+.status-spacer { width: 100%; }
+
+.nav-row {
+  display: flex; align-items: center;
+  height: 44px; padding: 0 2px; margin-bottom: 4px;
+}
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 2px;
+  color: #2563eb; width: 64px;
+}
+
+.back-icon { font-size: 24px; font-weight: 300; line-height: 1; }
+.back-text { font-size: 16px; font-weight: 500; }
+
+.nav-title {
+  flex: 1; text-align: center;
+  font-size: 17px; font-weight: 600;
+  color: #0f172a; letter-spacing: -0.3px;
+}
+
+.header { margin-bottom: 20px; }
 
 .title {
   font-size: 28px; font-weight: 800; color: #0f172a;
   letter-spacing: -0.5px; display: block;
 }
 
+.subtitle {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475569;
+}
+
 .node-list { display: flex; flex-direction: column; gap: 10px; }
 
 .node-card {
-  background: #ffffff; border-radius: 16px; padding: 16px 18px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px; padding: 16px 18px;
   display: flex; align-items: center;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .node-dot {
@@ -153,6 +201,14 @@ const goToPaths = () => {
   display: block; margin-bottom: 24px;
 }
 
+.empty-desc {
+  display: block;
+  margin: -14px 0 24px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
 .btn-primary {
   background: #2563eb; color: #fff; font-size: 16px; font-weight: 600;
   border-radius: 14px; height: 48px; line-height: 48px; border: none;
@@ -164,8 +220,13 @@ const goToPaths = () => {
 /* Dark mode */
 .is-dark { background-color: #0f172a; }
 
+.is-dark .nav-title { color: #f8fafc; }
+
 .is-dark .title,
 .is-dark .node-name { color: #f8fafc; }
+
+.is-dark .subtitle,
+.is-dark .empty-desc { color: #94a3b8; }
 
 .is-dark .node-card { background: #1e293b; box-shadow: none; }
 </style>

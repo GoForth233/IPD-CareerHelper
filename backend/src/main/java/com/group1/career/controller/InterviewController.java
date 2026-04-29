@@ -1,14 +1,17 @@
 package com.group1.career.controller;
 
 import com.group1.career.common.Result;
+import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.service.AiService;
 import com.group1.career.service.InterviewService;
+import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -16,6 +19,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Interview chat lifecycle. Every endpoint resolves the caller via JWT
+ * (SecurityUtil) and enforces ownership through InterviewService.assertOwnership.
+ * The userId is never trusted from the request body.
+ */
+@Slf4j
 @Tag(name = "Interview API")
 @RestController
 @RequestMapping("/api/interviews")
@@ -25,21 +34,22 @@ public class InterviewController {
     private final InterviewService interviewService;
     private final AiService aiService;
 
-    @Operation(summary = "Start a new interview (with session guard)")
+    @Operation(summary = "Start a new interview (or reuse an existing ONGOING session)")
     @PostMapping("/start")
     public Result<Interview> startInterview(@RequestBody StartInterviewRequest request) {
-        // Guard: check if user already has an active session
-        List<Interview> activeOnes = interviewService.getUserInterviews(request.getUserId())
+        Long uid = SecurityUtil.requireCurrentUserId();
+
+        // Reuse any existing ONGOING session instead of spawning a duplicate
+        List<Interview> activeOnes = interviewService.getUserInterviews(uid)
                 .stream()
                 .filter(i -> "ONGOING".equals(i.getStatus()))
                 .toList();
         if (!activeOnes.isEmpty()) {
-            // Return the existing session instead of creating a duplicate
             return Result.success(activeOnes.get(0));
         }
 
         Interview interview = interviewService.startInterview(
-                request.getUserId(),
+                uid,
                 request.getResumeId(),
                 request.getPositionName(),
                 request.getDifficulty()
@@ -47,20 +57,32 @@ public class InterviewController {
         return Result.success(interview);
     }
 
-    @Operation(summary = "Get active session status for a user")
-    @GetMapping("/session/status")
-    public Result<SessionStatusDto> getSessionStatus(@RequestParam Long userId) {
-        List<Interview> interviews = interviewService.getUserInterviews(userId);
-        Interview active = interviews.stream()
-                .filter(i -> "ONGOING".equals(i.getStatus()))
-                .findFirst()
-                .orElse(null);
+    @Operation(summary = "Generate the AI interviewer's opening question. Idempotent: " +
+            "returns the existing first message if the conversation is non-empty.")
+    @PostMapping("/{interviewId}/greeting")
+    public Result<InterviewMessage> generateGreeting(@PathVariable Long interviewId) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        Interview interview = interviewService.assertOwnership(interviewId, uid);
 
-        SessionStatusDto status = new SessionStatusDto();
-        status.setHasActiveSession(active != null);
-        status.setActiveInterview(active);
-        status.setTotalCompleted((int) interviews.stream().filter(i -> "COMPLETED".equals(i.getStatus())).count());
-        return Result.success(status);
+        List<InterviewMessage> existing = interviewService.getInterviewMessages(interviewId);
+        if (!existing.isEmpty()) {
+            return Result.success(existing.get(0));
+        }
+
+        String prompt = String.format(
+                "You are a senior technical interviewer for the role of \"%s\" (difficulty: %s). " +
+                "Greet the candidate in ONE short paragraph (2-3 sentences) and ask the very first " +
+                "interview question. Do NOT include explanations, evaluation criteria, or follow-ups. " +
+                "Reply in plain text, no markdown.",
+                interview.getPositionName(),
+                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty()
+        );
+        String greeting = aiService.chat(prompt);
+        if (greeting == null || greeting.isBlank()) {
+            throw new BizException("AI failed to generate the opening question");
+        }
+        interviewService.sendMessage(interviewId, "AI", greeting.trim());
+        return Result.success(interviewService.getInterviewMessages(interviewId).get(0));
     }
 
     @Operation(summary = "Send a message in interview (with AI response)")
@@ -69,83 +91,91 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @RequestBody SendMessageRequest request
     ) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        Interview interview = interviewService.assertOwnership(interviewId, uid);
+
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new BizException("Message content is required");
+        }
+
         // 1. Save user message
         interviewService.sendMessage(interviewId, "USER", request.getContent());
 
-        // 2. Call AI to get response
+        // 2. Build chat completion payload (system + full transcript so far)
         List<Map<String, String>> messages = new ArrayList<>();
-        
-        // Add system prompt for interview
-        Interview interview = interviewService.getInterviewById(interviewId);
-        String systemPrompt = String.format(
-                "You are a professional interviewer for the position of %s. " +
-                "Conduct a technical interview by asking relevant questions and evaluating the candidate's answers. " +
-                "Be professional, encouraging, and provide constructive feedback.",
-                interview.getPositionName()
-        );
-        
         Map<String, String> systemMsg = new HashMap<>();
         systemMsg.put("role", "system");
-        systemMsg.put("content", systemPrompt);
+        systemMsg.put("content", String.format(
+                "You are a professional %s interviewer (difficulty: %s). Continue the interview by " +
+                "briefly evaluating the candidate's last answer and then asking the next focused " +
+                "question. Keep replies short (2-4 sentences). Plain text only, no markdown.",
+                interview.getPositionName(),
+                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty()
+        ));
         messages.add(systemMsg);
 
-        // Add conversation history
-        List<InterviewMessage> history = interviewService.getInterviewMessages(interviewId);
-        for (InterviewMessage msg : history) {
+        for (InterviewMessage msg : interviewService.getInterviewMessages(interviewId)) {
             Map<String, String> historyMsg = new HashMap<>();
-            historyMsg.put("role", msg.getRole().equalsIgnoreCase("USER") ? "user" : "assistant");
+            historyMsg.put("role", "USER".equalsIgnoreCase(msg.getRole()) ? "user" : "assistant");
             historyMsg.put("content", msg.getContent());
             messages.add(historyMsg);
         }
 
         String aiResponse = aiService.chat(messages);
-
-        // 3. Save AI response
         interviewService.sendMessage(interviewId, "AI", aiResponse);
 
         MessageResponse response = new MessageResponse();
         response.setUserMessage(request.getContent());
         response.setAiMessage(aiResponse);
-
         return Result.success(response);
     }
 
     @Operation(summary = "Get interview message history")
     @GetMapping("/{interviewId}/messages")
     public Result<List<InterviewMessage>> getMessages(@PathVariable Long interviewId) {
-        List<InterviewMessage> messages = interviewService.getInterviewMessages(interviewId);
-        return Result.success(messages);
+        Long uid = SecurityUtil.requireCurrentUserId();
+        interviewService.assertOwnership(interviewId, uid);
+        return Result.success(interviewService.getInterviewMessages(interviewId));
     }
 
-    @Operation(summary = "End interview")
+    @Operation(summary = "End interview. Final score is computed lazily by the report endpoint.")
     @PostMapping("/{interviewId}/end")
-    public Result<Interview> endInterview(
-            @PathVariable Long interviewId,
-            @RequestBody EndInterviewRequest request
-    ) {
-        Interview interview = interviewService.endInterview(interviewId, request.getFinalScore());
-        return Result.success(interview);
+    public Result<Interview> endInterview(@PathVariable Long interviewId) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        interviewService.assertOwnership(interviewId, uid);
+        // No score is taken from the client. Pass null so endInterview() only flips state.
+        return Result.success(interviewService.endInterview(interviewId, null));
     }
 
-    @Operation(summary = "Get user's all interviews")
+    @Operation(summary = "Get the current user's interviews (preferred)")
+    @GetMapping("/user/me")
+    public Result<List<Interview>> getMyInterviews() {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        return Result.success(interviewService.getUserInterviews(uid));
+    }
+
+    @Operation(summary = "Get user's all interviews (legacy: path userId must equal JWT subject)")
     @GetMapping("/user/{userId}")
     public Result<List<Interview>> getUserInterviews(@PathVariable Long userId) {
-        List<Interview> interviews = interviewService.getUserInterviews(userId);
-        return Result.success(interviews);
+        Long uid = SecurityUtil.requireCurrentUserId();
+        if (!uid.equals(userId)) {
+            throw new BizException("Cannot list another user's interviews");
+        }
+        return Result.success(interviewService.getUserInterviews(userId));
     }
 
     @Operation(summary = "Get interview by ID")
     @GetMapping("/{interviewId}")
     public Result<Interview> getInterview(@PathVariable Long interviewId) {
-        Interview interview = interviewService.getInterviewById(interviewId);
-        return Result.success(interview);
+        Long uid = SecurityUtil.requireCurrentUserId();
+        return Result.success(interviewService.assertOwnership(interviewId, uid));
     }
 
     // ================= DTO Classes =================
 
     @Data
     public static class StartInterviewRequest {
-        private Long userId;
+        // userId is intentionally absent; resolved from JWT
         private Long resumeId;
         private String positionName;
         private String difficulty; // Easy, Normal, Hard
@@ -161,17 +191,4 @@ public class InterviewController {
         private String userMessage;
         private String aiMessage;
     }
-
-    @Data
-    public static class EndInterviewRequest {
-        private Integer finalScore;
-    }
-
-    @Data
-    public static class SessionStatusDto {
-        private boolean hasActiveSession;
-        private Interview activeInterview;
-        private int totalCompleted;
-    }
 }
-
