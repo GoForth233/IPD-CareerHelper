@@ -15,113 +15,159 @@
       </view>
     </view>
 
-    <view class="question-card">
-      <text class="q-type">Question {{ currentIndex + 1 }}</text>
-      <text class="q-title">{{ currentQuestion.title }}</text>
+    <!-- Loading state while we fetch the question bank -->
+    <view class="loading-state" v-if="loading">
+      <view class="spinner"></view>
+      <text class="loading-text">Loading questions...</text>
     </view>
 
-    <view class="options-list">
-      <view 
-        class="option-item" 
-        :class="{ 'option-selected': currentAnswer === index }"
-        v-for="(option, index) in currentQuestion.options" 
-        :key="index"
-        @click="selectOption(index)"
-      >
-        <view class="option-label">{{ String.fromCharCode(65 + index) }}</view>
-        <text class="option-text">{{ option }}</text>
+    <view class="error-state" v-else-if="errorMsg">
+      <text class="err-title">{{ errorMsg }}</text>
+      <view class="btn-retry" @click="loadQuestions"><text class="btn-retry-text">Retry</text></view>
+    </view>
+
+    <template v-else-if="currentQuestion">
+      <view class="question-card">
+        <text class="q-type">Question {{ currentIndex + 1 }}</text>
+        <text class="q-title">{{ currentQuestion.questionText }}</text>
       </view>
-    </view>
 
-    <view class="bottom-action">
-      <button 
-        class="btn-prev" 
+      <view class="options-list">
+        <view
+          class="option-item"
+          :class="{ 'option-selected': currentAnswerOptionId === opt.optionId }"
+          v-for="opt in currentQuestion.options"
+          :key="opt.optionId"
+          @click="selectOption(opt.optionId)"
+        >
+          <view class="option-label">{{ opt.optionLabel }}</view>
+          <text class="option-text">{{ opt.optionText }}</text>
+        </view>
+      </view>
+    </template>
+
+    <view class="bottom-action" v-if="!loading && !errorMsg">
+      <view
+        class="btn-prev"
         :class="{ 'btn-disabled': currentIndex === 0 }"
         @click="handlePrev"
-      >Previous</button>
-      <button 
-        class="btn-next" 
+      ><text class="btn-prev-text">Previous</text></view>
+      <view
+        class="btn-next"
+        :class="{ 'btn-next-disabled': currentAnswerOptionId == null || submitting }"
         @click="handleNext"
-      >{{ isLastQuestion ? 'View Results' : 'Next' }}</button>
+      ><text class="btn-next-text">{{ submitting ? 'Submitting...' : (isLastQuestion ? 'View Results' : 'Next') }}</text></view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-
-const questions = [
-  {
-    title: 'At social gatherings, you usually:',
-    options: [
-      'Actively meet new people and enjoy the energy of the crowd',
-      'Have deep conversations with a few close friends; large groups drain you'
-    ]
-  },
-  {
-    title: 'When handling daily tasks, you tend to:',
-    options: [
-      'Follow established procedures and plans step by step',
-      'Stay flexible and ready to adapt to new changes and inspiration'
-    ]
-  },
-  {
-    title: 'When facing a complex problem, you first:',
-    options: [
-      'Focus on details and concrete facts, drawing from past experience',
-      'Think about underlying patterns and potential long-term implications'
-    ]
-  }
-];
+import {
+  getScaleQuestionsApi,
+  submitAssessmentApi,
+  type QuizQuestion,
+} from '@/api/assessment';
 
 const currentIndex = ref(0);
 const darkPref = ref(false);
+const loading = ref(true);
+const submitting = ref(false);
+const errorMsg = ref('');
+
+const scaleId = ref<number>(0);
+const scaleTitle = ref('Assessment');
+const questions = ref<QuizQuestion[]>([]);
+
+// answers maps questionId -> selected optionId. Stable across navigation.
 const answers = ref<Record<number, number>>({});
 
-const currentQuestion = computed(() => questions[currentIndex.value]);
-const currentAnswer = computed(() => answers.value[currentIndex.value]);
-const isLastQuestion = computed(() => currentIndex.value === questions.length - 1);
-const progressPercentage = computed(() => ((currentIndex.value + 1) / questions.length) * 100);
+const currentQuestion = computed(() => questions.value[currentIndex.value]);
+const currentAnswerOptionId = computed(() => {
+  const q = currentQuestion.value;
+  return q ? answers.value[q.questionId] : null;
+});
+const isLastQuestion = computed(() => currentIndex.value === questions.value.length - 1);
+const progressPercentage = computed(() =>
+  questions.value.length === 0
+    ? 0
+    : ((currentIndex.value + 1) / questions.value.length) * 100,
+);
 
-const selectOption = (index: number) => {
-  answers.value[currentIndex.value] = index;
+const loadQuestions = async () => {
+  if (!scaleId.value) {
+    errorMsg.value = 'Missing scale id';
+    loading.value = false;
+    return;
+  }
+  loading.value = true;
+  errorMsg.value = '';
+  try {
+    const list = await getScaleQuestionsApi(scaleId.value);
+    questions.value = list || [];
+    if (questions.value.length === 0) {
+      errorMsg.value = 'This quiz has no questions yet.';
+    }
+  } catch (e: any) {
+    errorMsg.value = e?.message || 'Failed to load questions';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const selectOption = (optionId: number) => {
+  const q = currentQuestion.value;
+  if (!q) return;
+  answers.value[q.questionId] = optionId;
+  // Auto-advance feels great on a long quiz, but only when this isn't the
+  // last question -- the final tap should require an explicit submit.
   if (!isLastQuestion.value) {
     setTimeout(() => {
       currentIndex.value++;
-    }, 300);
+    }, 250);
   }
 };
 
 const handlePrev = () => {
-  if (currentIndex.value > 0) {
-    currentIndex.value--;
+  if (currentIndex.value > 0) currentIndex.value--;
+};
+
+const submitQuiz = async () => {
+  if (submitting.value) return;
+  submitting.value = true;
+  uni.showLoading({ title: 'Submitting...' });
+  try {
+    const record = await submitAssessmentApi(scaleId.value, answers.value);
+    uni.hideLoading();
+    uni.redirectTo({
+      url: `/pages/assessment/result?recordId=${record.recordId}`,
+    });
+  } catch (e: any) {
+    uni.hideLoading();
+    uni.showToast({ title: e?.message || 'Submission failed', icon: 'none' });
+  } finally {
+    submitting.value = false;
   }
 };
 
 const handleNext = () => {
-  if (currentAnswer.value === undefined) {
+  if (currentAnswerOptionId.value == null) {
     uni.showToast({ title: 'Please select an option', icon: 'none' });
     return;
   }
-
   if (isLastQuestion.value) {
-    uni.showLoading({ title: 'AI analyzing...' });
-    setTimeout(() => {
-      uni.hideLoading();
-      uni.redirectTo({
-        url: '/pages/assessment/result'
-      });
-    }, 1500);
+    submitQuiz();
   } else {
     currentIndex.value++;
   }
 };
 
 const goBack = () => {
-  if (currentIndex.value > 0) {
+  if (Object.keys(answers.value).length > 0) {
     uni.showModal({
-      title: 'Confirm Exit',
-      content: 'Your progress will be saved for this session. Continue?',
+      title: 'Exit Quiz?',
+      content: 'Your progress will be lost. Are you sure you want to exit?',
+      confirmColor: '#ef4444',
       success: (res) => {
         if (res.confirm) uni.navigateBack({ delta: 1 });
       }
@@ -133,6 +179,15 @@ const goBack = () => {
 
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  // Pull scaleId + title from query params (set by assessment/index.vue).
+  const pages = getCurrentPages();
+  const opts = (pages[pages.length - 1] as any).options || {};
+  scaleId.value = parseInt(opts.scaleId || '0');
+  if (opts.title) {
+    try { scaleTitle.value = decodeURIComponent(opts.title); } catch { /* keep default */ }
+    uni.setNavigationBarTitle({ title: scaleTitle.value });
+  }
+  loadQuestions();
 });
 </script>
 
@@ -219,21 +274,59 @@ onMounted(() => {
   display: flex; gap: 16px;
 }
 
+/* Custom-rendered buttons (using <view>) so mp-weixin's native <button>
+   default styles can't override our colours. */
 .btn-prev {
-  flex: 1; background-color: #ffffff; color: #007aff;
-  font-size: 17px; font-weight: 600; border-radius: 16px;
-  height: 52px; line-height: 52px; border: none;
+  flex: 1; background-color: #ffffff;
+  border-radius: 16px;
+  height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-color);
 }
-
-.btn-disabled { color: #c7c7cc; background-color: #f2f2f7; }
+.btn-prev-text {
+  color: #2563eb; font-size: 17px; font-weight: 600;
+}
+.btn-disabled .btn-prev-text { color: #c7c7cc; }
+.btn-disabled { background-color: #f2f2f7; border-color: transparent; }
 
 .btn-next {
-  flex: 2; background-color: #007aff; color: #ffffff;
-  font-size: 17px; font-weight: 600; border-radius: 16px;
-  height: 52px; line-height: 52px; border: none;
+  flex: 2; background-color: #2563eb;
+  border-radius: 16px;
+  height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.32);
+  transition: background 0.15s, opacity 0.15s;
 }
+.btn-next-text {
+  color: #ffffff; font-size: 17px; font-weight: 700;
+}
+.btn-next:active { background-color: #1d4ed8; }
+.btn-next-disabled { background-color: #cbd5e1; box-shadow: none; }
+.btn-next-disabled .btn-next-text { color: #ffffff; opacity: 0.85; }
 
-.btn-next:active { background-color: #0062cc; }
+/* Loading + error states */
+.loading-state, .error-state {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 60px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  margin-top: 24px;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid #e2e8f0; border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: quiz-spin 0.9s linear infinite;
+}
+@keyframes quiz-spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: #475569; }
+.err-title { font-size: 15px; color: #b91c1c; font-weight: 600; }
+.btn-retry {
+  background: #2563eb; height: 40px; padding: 0 24px;
+  border-radius: 12px; display: flex; align-items: center;
+}
+.btn-retry-text { color: #fff; font-size: 14px; font-weight: 600; }
 
 .is-dark { background-color: #0f172a; }
 

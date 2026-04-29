@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.model.entity.*;
 import com.group1.career.repository.*;
+import com.group1.career.service.AiService;
 import com.group1.career.service.AssessmentService;
+import com.group1.career.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,8 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final AssessmentRecordRepository recordRepository;
     private final AssessmentAnswerRepository answerRepository;
     private final ObjectMapper objectMapper;
+    private final AiService aiService;
+    private final NotificationService notificationService;
 
     @Override
     public List<AssessmentScale> getAllScales() {
@@ -93,7 +97,80 @@ public class AssessmentServiceImpl implements AssessmentService {
         answerEntities.forEach(a -> a.setRecordId(recordId));
         answerRepository.saveAll(answerEntities);
 
+        // Best-effort AI insight generation. We swallow failures and just
+        // leave aiInsight null -- the result page will fall back to the
+        // generic copy and the user still gets their portrait + dimensions.
+        String aiInsight = generateAiInsight(scale.getTitle(), portrait, traitsJson);
+        if (aiInsight != null) {
+            record.setAiInsight(aiInsight);
+            record = recordRepository.save(record);
+        }
+
+        // Push a notification so this result is reachable from Messages too.
+        notificationService.push(
+                userId,
+                "ASSESSMENT_DONE",
+                scale.getTitle() + " completed",
+                "Your result: " + (portrait == null || portrait.isBlank() ? "calculated" : portrait) +
+                        ". Tap to read the full breakdown.",
+                "/pages/assessment/result?recordId=" + record.getRecordId()
+        );
+
         return record;
+    }
+
+    /**
+     * Ask the LLM for a personalised, JSON-structured analysis of this
+     * particular result. Returns the raw JSON string ready to be stored
+     * verbatim in {@code ai_insight}, or {@code null} if anything goes wrong.
+     */
+    private String generateAiInsight(String scaleTitle, String portrait, String traitsJson) {
+        if (portrait == null || portrait.isBlank() || "N/A".equals(portrait)) return null;
+        try {
+            String prompt = """
+                    You are a senior career counsellor analysing a candidate's %s assessment result.
+                    The candidate's profile code is "%s" and their per-dimension scores are: %s.
+
+                    Reply with ONLY a single JSON object, no markdown fences and no prose around it,
+                    matching this exact schema:
+                    {
+                      "strengths": "2-3 sentences describing concrete career strengths this profile suggests, including which kinds of work it suits.",
+                      "growth": "2-3 sentences describing the most useful growth areas to work on, framed as actionable advice (not weaknesses).",
+                      "suggestedRoles": ["a short list of 3-5 well-suited job titles"]
+                    }
+
+                    Be specific and grounded in the candidate's actual code -- do not give generic
+                    advice that would apply to any code. Tone: warm, direct, no clichés.
+                    """.formatted(scaleTitle, portrait, traitsJson);
+
+            long t0 = System.currentTimeMillis();
+            String raw = aiService.chat(prompt);
+            log.info("[assessment] AI insight took {} ms for portrait={}", System.currentTimeMillis() - t0, portrait);
+
+            String cleaned = stripJsonFences(raw);
+            // Validate the model returned parseable JSON before persisting it.
+            objectMapper.readTree(cleaned);
+            return cleaned;
+        } catch (Exception e) {
+            log.warn("[assessment] AI insight generation failed: {}", e.toString());
+            return null;
+        }
+    }
+
+    /** Some Qwen replies wrap JSON in ```json ... ``` fences -- strip them. */
+    private String stripJsonFences(String raw) {
+        if (raw == null) return "";
+        String s = raw.trim();
+        if (s.startsWith("```")) {
+            int firstNewline = s.indexOf('\n');
+            if (firstNewline >= 0) s = s.substring(firstNewline + 1);
+            if (s.endsWith("```")) s = s.substring(0, s.length() - 3);
+        }
+        // Sometimes the model returns extra text before/after the JSON object.
+        int start = s.indexOf('{');
+        int end = s.lastIndexOf('}');
+        if (start >= 0 && end > start) s = s.substring(start, end + 1);
+        return s.trim();
     }
 
     @Override
