@@ -1,5 +1,8 @@
 # Local config with credentials (do not commit)
 backend/src/main/resources/application-local.yml
+backend/src/main/resources/application.yml
+backend/src/main/resources/application-*.yml
+!backend/src/main/resources/application.yml.example
 
 # OS generated files
 .DS_Store
@@ -19,6 +22,7 @@ Thumbs.db
 
 # Environment files
 frontend/.env.*
+!frontend/.env.*.example
 
 # Node modules
 node_modules/
