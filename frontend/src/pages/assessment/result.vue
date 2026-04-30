@@ -58,7 +58,16 @@
     </template>
 
     <view class="bottom-action" v-if="!loading && !errorMsg">
-      <view class="btn-primary" @click="goMap"><text class="btn-primary-text">View Recommended Career Map</text></view>
+      <view
+        v-if="primarySuggestedRole"
+        class="btn-primary practice-cta"
+        @click="practiceInterview"
+      >
+        <text class="btn-primary-text">Practice an Interview as {{ primarySuggestedRole }}</text>
+      </view>
+      <view class="btn-primary" :class="{ 'btn-secondary-tone': !!primarySuggestedRole }" @click="goMap">
+        <text class="btn-primary-text">View Recommended Career Map</text>
+      </view>
       <view class="btn-secondary" @click="goBack"><text class="btn-secondary-text">Back to Assessment</text></view>
     </view>
   </view>
@@ -70,6 +79,7 @@ import {
   getAssessmentRecordApi,
   type AssessmentRecord,
 } from '@/api/assessment';
+import { updatePreferencesApi } from '@/api/user';
 
 const darkPref = ref(false);
 const loading = ref(true);
@@ -265,11 +275,40 @@ const loadResult = async () => {
 };
 
 const goMap = () => {
-  // Cache the dominant code so the map page can pick a recommended role.
   if (record.value?.resultSummary) {
     uni.setStorageSync('assessment_recommended_role', record.value.resultSummary);
   }
   uni.navigateTo({ url: '/pages/map/index?from=assessment' });
+};
+
+/**
+ * The first AI-suggested role for this profile. Used as the headline CTA
+ * label so the user can jump straight from "I'm an INFP" to "okay, let me
+ * practice a UX Researcher interview" with one tap. Empty when the AI
+ * insight failed and we have no concrete roles to suggest.
+ */
+const primarySuggestedRole = computed(() => {
+  const roles = insight.value.suggestedRoles;
+  return roles && roles.length > 0 ? roles[0] : '';
+});
+
+/**
+ * Bridge from assessment → interview without making the user re-type the role.
+ * Persists the chosen role into the cross-tool snapshot (so resume diagnosis
+ * + interview start + AI assistant all see it next time), then navigates.
+ * The snapshot write is best-effort — even if the network blips we still
+ * navigate so the user doesn't get stranded.
+ */
+const practiceInterview = async () => {
+  const role = primarySuggestedRole.value;
+  if (!role) return;
+  uni.setStorageSync('assessment_recommended_role', role);
+  try {
+    await updatePreferencesApi({ targetRole: role });
+  } catch {
+    // Snapshot write failed -- non-fatal, we still hand off to the interview start page.
+  }
+  uni.navigateTo({ url: `/pages/interview/start?suggestedRole=${encodeURIComponent(role)}` });
 };
 
 const goBack = () => {
@@ -394,6 +433,24 @@ onMounted(() => {
 }
 .btn-primary-text { color: #ffffff; font-size: 17px; font-weight: 700; }
 .btn-primary:active { background-color: #1d4ed8; }
+
+/* Hero CTA when an AI-suggested role exists -- gradient fill so it visually
+   leads against the standard solid blue secondary action below it. */
+.btn-primary.practice-cta {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 8px 22px rgba(99, 102, 241, 0.36);
+}
+.btn-primary.practice-cta:active { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+
+/* When the practice CTA is present we tone down the map button so the eye
+   prioritises the practice action without making the secondary disappear. */
+.btn-primary.btn-secondary-tone {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
+}
+.btn-primary.btn-secondary-tone .btn-primary-text { color: #2563eb; }
+.btn-primary.btn-secondary-tone:active { background-color: #f1f5f9; }
 
 .btn-secondary {
   width: 100%; height: 44px;

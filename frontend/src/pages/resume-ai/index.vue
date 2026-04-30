@@ -34,7 +34,7 @@
           class="jd-input"
           v-model="jdText"
           :maxlength="4000"
-          placeholder="Paste the target job description here. AI will diagnose your resume against it..."
+          :placeholder="jdPlaceholder"
           placeholder-class="ph"
         ></textarea>
       </view>
@@ -102,6 +102,7 @@ import {
   type Resume,
   type DiagnosisResult,
 } from '@/api/resume';
+import { getProfileSnapshotApi } from '@/api/user';
 
 const selectedResume = ref('');
 const selectedResumeId = ref<number | null>(null);
@@ -136,6 +137,38 @@ const loadResumes = async () => {
     userResumes.value = [];
   }
 };
+
+/**
+ * Auto-pick the user's most recent resume so they don't have to tap into
+ * the picker on every visit. Only applies when nothing is selected yet —
+ * if the user explicitly chose a different one, we leave that alone.
+ * Also drops a JD placeholder hint based on their assessment-suggested role
+ * so the empty textarea isn't a blank wall to fill.
+ */
+const applyPrefill = async () => {
+  try {
+    const snap = await getProfileSnapshotApi();
+    const lastResumeId = snap?.resume?.lastResumeId;
+    if (lastResumeId && !selectedResumeId.value) {
+      const match = userResumes.value.find((r) => r.resumeId === lastResumeId);
+      if (match) {
+        selectedResumeId.value = match.resumeId!;
+        selectedResume.value = match.title || `Resume #${match.resumeId}`;
+      }
+    }
+    const targetRole = snap?.preferences?.targetRole;
+    if (targetRole && !jdText.value) {
+      // We can't fabricate a real JD, but we can lower the activation cost
+      // by suggesting the role the user is interested in -- they'll usually
+      // paste a real JD on top of (or instead of) this stub.
+      jdPlaceholder.value = `Paste a "${targetRole}" job description here. Tip: from your assessment we know this is a role you're considering — paste the JD from a real listing for the most accurate diagnosis.`;
+    }
+  } catch {
+    // Snapshot is best-effort.
+  }
+};
+
+const jdPlaceholder = ref('Paste the target job description here. AI will diagnose your resume against it...');
 
 const selectResume = () => {
   if (!userResumes.value.length) {
@@ -264,10 +297,11 @@ const generateTailored = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   topSafeHeight.value = getTopSafeHeight();
-  loadResumes();
+  await loadResumes();
+  await applyPrefill();
 });
 </script>
 

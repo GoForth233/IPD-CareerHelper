@@ -7,8 +7,30 @@
 
     <view class="form-card">
       <view class="form-item">
-        <text class="label">Target Position</text>
-        <picker :range="positions" @change="onPositionChange">
+        <text class="label">Mode</text>
+        <view class="mode-grid">
+          <view
+            v-for="item in modes"
+            :key="item.value"
+            :class="['mode-card', selectedMode === item.value ? 'active' : '']"
+            @click="selectedMode = item.value as 'voice' | 'text'"
+          >
+            <view class="mode-head">
+              <text class="mode-icon">{{ item.icon }}</text>
+              <text class="mode-name">{{ item.label }}</text>
+              <text v-if="item.badge" class="mode-badge">{{ item.badge }}</text>
+            </view>
+            <text class="mode-desc">{{ item.desc }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="label-row">
+          <text class="label">Target Position</text>
+          <text v-if="prefillSource" class="label-hint">{{ prefillSource }}</text>
+        </view>
+        <picker :range="positions" :value="selectedPositionIndex" @change="onPositionChange">
           <view class="picker-box" :class="{ 'picker-filled': selectedPosition }">
             <text class="picker-val" :class="{ 'has-val': selectedPosition }">{{ selectedPosition || 'Tap to choose a role' }}</text>
             <text class="picker-arrow">›</text>
@@ -40,7 +62,7 @@
         <text class="expect-icon">⏱</text>
         <view class="expect-body">
           <text class="expect-h">~10 minutes</text>
-          <text class="expect-p">A short, focused session. End any time from the top-right.</text>
+          <text class="expect-p">A short, focused session. End any time with the button at the bottom.</text>
         </view>
       </view>
       <view class="expect-row">
@@ -71,21 +93,29 @@
         @click="startInterview"
       >
         <text class="btn-primary-label" v-if="loading">Starting...</text>
-        <text class="btn-primary-label" v-else>{{ selectedPosition ? 'Start Interview' : 'Choose a position to begin' }}</text>
+        <text class="btn-primary-label" v-else>{{ selectedPosition ? (selectedMode === 'voice' ? 'Start Voice Interview' : 'Start Text Interview') : 'Choose a position to begin' }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { startInterviewApi } from '@/api/interview';
+import { getProfileSnapshotApi, updatePreferencesApi } from '@/api/user';
 import { LOGIN_PAGE } from '@/utils/auth';
 
-const positions = ['Java Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer', 'Product Manager', 'Data Analyst'];
+const positions = ref<string[]>(['Java Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer', 'Product Manager', 'Data Analyst']);
 const selectedPosition = ref('');
 const selectedPositionIndex = ref(0);
 const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
+
+/**
+ * Tells the user *why* a position came pre-selected — e.g. "From your INFP
+ * assessment" or "From your last interview" — so the prefill doesn't feel
+ * magic / wrong. Empty string when nothing is prefilled.
+ */
+const prefillSource = ref('');
 
 const difficulties = [
   { label: 'Easy',   value: 'Easy',   desc: 'Conversational warm-up' },
@@ -93,12 +123,94 @@ const difficulties = [
   { label: 'Hard',   value: 'Hard',   desc: 'Senior-level deep dive' },
 ];
 const selectedDifficulty = ref('Normal');
+
+// Voice is the recommended path — it's the differentiated experience and
+// what real interviews feel like. We keep Text as the fallback for users
+// without a quiet space or with poor mic permissions.
+const modes = [
+  { label: 'Voice',  value: 'voice', icon: '🎤', badge: 'Recommended', desc: 'Talk to the AI interviewer with your camera on' },
+  { label: 'Text',   value: 'text',  icon: '⌨',  badge: '',            desc: 'Classic chat — best in noisy environments' },
+];
+// Persist the user's last choice so returning users land on their preference.
+const selectedMode = ref<'voice' | 'text'>(
+  (uni.getStorageSync('interview_mode') as 'voice' | 'text') || 'voice'
+);
 const loading = ref(false);
 
 const onPositionChange = (e: any) => {
-  selectedPositionIndex.value = e.detail.value;
-  selectedPosition.value = positions[e.detail.value];
+  const idx = Number(e.detail.value);
+  selectedPositionIndex.value = idx;
+  selectedPosition.value = positions.value[idx];
+  // Manual choice -- the prefill hint no longer applies, so clear it.
+  prefillSource.value = '';
 };
+
+/**
+ * If the picker doesn't already include the candidate role, prepend it so
+ * we can preselect it without losing the standard options. Returns the
+ * index where the role lives in the picker after this call.
+ */
+const ensurePositionExists = (role: string): number => {
+  const existing = positions.value.findIndex((p) => p.toLowerCase() === role.toLowerCase());
+  if (existing >= 0) return existing;
+  positions.value = [role, ...positions.value];
+  return 0;
+};
+
+/**
+ * Pull cross-tool portrait from the backend on entry so the user lands on
+ * a form that's already filled in with their last role / mode preference.
+ * Order of precedence:
+ *   1. Explicit `?suggestedRole=` query (just clicked a CTA elsewhere)
+ *   2. Snapshot preferences.targetRole (set by the assessment CTA earlier)
+ *   3. Snapshot interview.positionName (last interview's position)
+ * If none of the above we leave the picker empty so the CTA gates on a manual choice.
+ */
+const applyPrefill = async () => {
+  const pages = getCurrentPages();
+  const opts = (pages[pages.length - 1] as any).options || {};
+  const fromQuery = opts.suggestedRole ? decodeURIComponent(opts.suggestedRole) : '';
+
+  if (fromQuery) {
+    const idx = ensurePositionExists(fromQuery);
+    selectedPositionIndex.value = idx;
+    selectedPosition.value = positions.value[idx];
+    prefillSource.value = 'From your assessment';
+    return;
+  }
+
+  try {
+    const snap = await getProfileSnapshotApi();
+    const targetRole = snap?.preferences?.targetRole;
+    const lastPos = snap?.interview?.positionName;
+    const lastMode = snap?.preferences?.interviewMode;
+
+    if (targetRole) {
+      const idx = ensurePositionExists(targetRole);
+      selectedPositionIndex.value = idx;
+      selectedPosition.value = positions.value[idx];
+      prefillSource.value = snap?.assessment ? 'From your assessment' : 'Recently chosen';
+    } else if (lastPos) {
+      const idx = ensurePositionExists(lastPos);
+      selectedPositionIndex.value = idx;
+      selectedPosition.value = positions.value[idx];
+      prefillSource.value = 'From your last interview';
+    }
+
+    // The mode prefilled on storage takes priority -- only fall back to the
+    // server snapshot when local storage was empty (fresh device).
+    const localMode = uni.getStorageSync('interview_mode') as 'voice' | 'text' | '';
+    if (!localMode && (lastMode === 'voice' || lastMode === 'text')) {
+      selectedMode.value = lastMode;
+    }
+  } catch {
+    // Snapshot is best-effort -- if it blows up we just leave the form empty.
+  }
+};
+
+onMounted(() => {
+  applyPrefill();
+});
 
 const startInterview = async () => {
   if (!selectedPosition.value) {
@@ -124,11 +236,20 @@ const startInterview = async () => {
       difficulty: selectedDifficulty.value
     });
 
+    uni.setStorageSync('interview_mode', selectedMode.value);
+    // Mirror the choice into the cross-tool snapshot so the assistant
+    // and the next session both know the user's preferred mode. Best-effort.
+    updatePreferencesApi({
+      targetRole: selectedPosition.value,
+      interviewMode: selectedMode.value,
+    }).catch(() => { /* snapshot writes are non-blocking */ });
+
     uni.showToast({ title: 'Interview started', icon: 'success' });
+    const targetPath = selectedMode.value === 'voice'
+      ? `/pages/interview/room?interviewId=${interview.interviewId}`
+      : `/pages/interview/chat?interviewId=${interview.interviewId}`;
     setTimeout(() => {
-      uni.navigateTo({
-        url: `/pages/interview/chat?interviewId=${interview.interviewId}`
-      });
+      uni.navigateTo({ url: targetPath });
     }, 800);
   } catch (error: any) {
     console.error(error);
@@ -182,6 +303,58 @@ const startInterview = async () => {
   font-size: 15px; font-weight: 700; color: #0f172a;
   margin-bottom: 12px; display: block;
 }
+
+/* Inline hint next to a label, e.g. "From your assessment" — explains the
+   provenance of an auto-filled value so the prefill feels intentional rather
+   than mysterious. */
+.label-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.label-row .label { margin-bottom: 0; }
+.label-hint {
+  font-size: 11px; font-weight: 600;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+/* Mode picker — same affordance language as the difficulty cards so the
+   form reads as a single coherent group. Voice is the hero so we reach
+   for the brand gradient when active. */
+.mode-grid { display: flex; gap: 10px; }
+.mode-card {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px;
+  border: 2px solid #e2e8f0; border-radius: 14px;
+  background: #ffffff;
+  transition: all 0.15s;
+  min-height: 96px;
+}
+.mode-head { display: flex; align-items: center; gap: 8px; }
+.mode-icon { font-size: 20px; line-height: 1; }
+.mode-name { font-size: 14px; font-weight: 700; color: #1e293b; }
+.mode-badge {
+  margin-left: auto;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.04em;
+  background: #ecfdf5; color: #047857;
+  padding: 2px 6px; border-radius: 999px;
+  text-transform: uppercase;
+}
+.mode-desc { font-size: 11.5px; color: #64748b; line-height: 1.45; }
+
+.mode-card.active {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+.mode-card.active .mode-name { color: #ffffff; }
+.mode-card.active .mode-desc { color: rgba(255, 255, 255, 0.85); }
+.mode-card.active .mode-badge { background: rgba(255, 255, 255, 0.22); color: #ffffff; }
+.mode-card:active { transform: scale(0.97); }
 
 /* Position picker -- clearer empty/filled affordance */
 .picker-box {
@@ -266,16 +439,18 @@ const startInterview = async () => {
 }
 
 /* Custom-rendered button (just a styled <view>) -- guaranteed colour fidelity
-   on mp-weixin where native <button> defaults are aggressive. */
+   on mp-weixin where native <button> defaults are aggressive.
+   We hardcode colours here rather than using CSS vars to guarantee contrast
+   is never accidentally broken by a variable resolution issue. */
 .btn-primary {
   width: 100%;
-  background: var(--primary-color);
-  border-radius: var(--btn-radius);
-  height: var(--btn-height-lg);
+  background: #2563eb;
+  border-radius: 16px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.32);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.36);
   transition: background 0.15s, opacity 0.15s;
 }
 
@@ -286,13 +461,18 @@ const startInterview = async () => {
   letter-spacing: 0.01em;
 }
 
-.btn-primary:active { background: var(--primary-hover); }
+.btn-primary:active { background: #1d4ed8; }
 
+/* Disabled = no position selected. Use a mid-grey background with dark text
+   so "Choose a position to begin" is legible — white-on-lightgrey fails WCAG. */
 .btn-disabled {
-  background: #cbd5e1;
+  background: #e2e8f0;
   box-shadow: none;
 }
-.btn-disabled .btn-primary-label { color: #ffffff; opacity: 0.85; }
+.btn-disabled .btn-primary-label {
+  color: #64748b;
+  font-weight: 600;
+}
 
 /* Dark mode */
 .is-dark { background-color: #0f172a; }
@@ -306,8 +486,10 @@ const startInterview = async () => {
 .is-dark .form-card,
 .is-dark .expect-card { background: #1e293b; border-color: #334155; box-shadow: none; }
 
-.is-dark .picker-box,
-.is-dark .diff-card { border-color: #334155; background: #0f172a; }
+.is-dark .picker-box { border-color: #334155; background: #0f172a; }
+.is-dark .diff-card:not(.active) { border-color: #334155; background: #0f172a; }
+.is-dark .mode-card:not(.active) { border-color: #334155; background: #0f172a; }
+.is-dark .mode-name { color: #f8fafc; }
 
 .is-dark .picker-val { color: #64748b; }
 
@@ -316,5 +498,12 @@ const startInterview = async () => {
 .is-dark .sticky-cta {
   background: rgba(15, 23, 42, 0.92);
   border-color: #334155;
+}
+
+.is-dark .btn-disabled {
+  background: #1e293b;
+}
+.is-dark .btn-disabled .btn-primary-label {
+  color: #94a3b8;
 }
 </style>

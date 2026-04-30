@@ -95,8 +95,13 @@
         <text class="sheet-option-text">Fill from Template</text>
       </view>
       <view class="sheet-option" @click="selectAction('upload')">
-        <text class="sheet-option-icon">📎</text>
-        <text class="sheet-option-text">Upload PDF Resume</text>
+        <view class="sheet-option-col">
+          <view class="sheet-option-row">
+            <text class="sheet-option-icon">📎</text>
+            <text class="sheet-option-text">Upload PDF Resume</text>
+          </view>
+          <text class="sheet-option-hint">Send your PDF to yourself in WeChat first, then select it here</text>
+        </view>
       </view>
       <view class="sheet-cancel" @click="closeSheet">
         <text class="sheet-cancel-text">Cancel</text>
@@ -124,7 +129,10 @@ interface ResumeItem {
   date: string;
   status: 'recent' | 'normal';
   statusLabel: string;
+  /** OSS object key — useful for filename derivation, NOT for opening. */
   fileUrl?: string;
+  /** Short-lived signed URL provided by the backend; safe to share / open. */
+  fileViewUrl?: string;
 }
 
 const resumeList = ref<ResumeItem[]>([]);
@@ -171,6 +179,7 @@ const loadResumes = async () => {
       status: 'recent' as const,
       statusLabel: r.status || 'Active',
       fileUrl: r.fileUrl,
+      fileViewUrl: r.fileViewUrl,
     }));
   } catch (e: any) {
     // Surface the actual error instead of silently showing an empty hub.
@@ -244,6 +253,7 @@ const selectAction = (type: string) => {
             status: 'recent',
             statusLabel: 'Active',
             fileUrl: created.fileUrl,
+            fileViewUrl: created.fileViewUrl,
           });
           uni.showToast({ title: 'Upload successful', icon: 'success' });
         } catch (e: any) {
@@ -340,13 +350,17 @@ const handleMore = (idx: number) => {
         });
       } else if (res.tapIndex === 1) {
         const item = resumeList.value[idx];
-        if (!item.fileUrl) {
+        // Share copies the short-lived presigned URL (15 min) instead of the
+        // raw OSS key. The recipient can open the PDF directly until expiry;
+        // after that they'll need a fresh link.
+        const shareUrl = item.fileViewUrl;
+        if (!shareUrl) {
           uni.showToast({ title: 'File URL not available', icon: 'none' });
           return;
         }
         uni.setClipboardData({
-          data: item.fileUrl,
-          success: () => uni.showToast({ title: 'Share link copied', icon: 'none' }),
+          data: shareUrl,
+          success: () => uni.showToast({ title: 'Share link copied (valid 15 min)', icon: 'none' }),
           fail: () => uni.showToast({ title: 'Copy failed, please retry', icon: 'none' })
         });
       } else if (res.tapIndex === 2) {
@@ -670,6 +684,10 @@ onShow(() => {
 .sheet-option-icon { font-size: 18px; }
 
 .sheet-option-text { font-size: 17px; color: #007aff; }
+
+.sheet-option-col { display: flex; flex-direction: column; gap: 4px; }
+.sheet-option-row { display: flex; align-items: center; gap: 10px; }
+.sheet-option-hint { font-size: 11px; color: #8e8e93; padding-left: 28px; line-height: 1.4; }
 
 .sheet-cancel {
   background: #ffffff;

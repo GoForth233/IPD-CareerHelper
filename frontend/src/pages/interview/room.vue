@@ -1,242 +1,740 @@
 <template>
-  <view class="room-container" :class="{ 'is-dark': darkPref }">
-    <view class="video-bg"></view>
+  <view class="room-page">
+    <!-- ========== Top bar ==========
+         Custom header so we can sit flush over the camera preview without
+         the WeChat default white nav bar reducing contrast. -->
+    <view class="top-bar" :style="{ paddingTop: statusTopPx + 'px' }">
+      <view class="back-btn" @click="confirmExit">
+        <text class="back-icon">‹</text>
+      </view>
+      <view class="top-meta">
+        <text class="top-title">{{ interview?.positionName || 'Mock Interview' }}</text>
+        <text class="top-sub">{{ interview?.difficulty || 'Normal' }} · Voice · EN</text>
+      </view>
+      <!-- End button moved to bottom action zone for better thumb reach -->
+      <view style="width: 48px;"></view>
+    </view>
 
-    <!-- AI main screen -->
-    <view class="main-video">
-      <view class="ai-avatar-wrapper">
-        <view class="ai-avatar">🤖</view>
-        <view class="wave-box" v-if="isAiSpeaking">
-          <view class="bar"></view>
-          <view class="bar"></view>
-          <view class="bar"></view>
-          <view class="bar"></view>
+    <!-- ========== Camera preview ==========
+         Small floating PiP. We render it but never read frames in V1 — the
+         goal here is to make the candidate practise eye-contact / posture
+         under realistic self-pressure. V2 (Sprint C) will sample frames at
+         2 Hz and score body language. -->
+    <!-- #ifdef MP-WEIXIN -->
+    <camera
+      v-if="cameraReady"
+      class="camera-pip"
+      device-position="front"
+      flash="off"
+      :resolution="'medium'"
+      @error="onCameraError"
+    />
+    <view v-else class="camera-pip camera-pip-fallback">
+      <text class="camera-fallback-icon">📷</text>
+      <text class="camera-fallback-text">{{ cameraError || 'Tap to enable camera' }}</text>
+      <view class="camera-enable-btn" @click="requestCamera">
+        <text class="camera-enable-text">Enable</text>
+      </view>
+    </view>
+    <!-- #endif -->
+    <!-- #ifndef MP-WEIXIN -->
+    <view class="camera-pip camera-pip-fallback">
+      <text class="camera-fallback-icon">📷</text>
+      <text class="camera-fallback-text">Camera preview is mini-program only</text>
+    </view>
+    <!-- #endif -->
+
+    <!-- ========== Digital-human avatar ==========
+         Pure-CSS face — we want zero asset dependency for V1. Mouth swaps
+         between three keyframes whenever `aiTalking=true`; when recording
+         we show a soft "listening" pulse instead. Sprint B V2 will swap
+         this for a Live2D / 万相 video stream. -->
+    <view class="avatar-stage">
+      <view
+        class="avatar-shell"
+        :class="{
+          'is-talking': aiTalking,
+          'is-listening': isRecording,
+          'is-thinking': isThinking,
+        }"
+      >
+        <view class="avatar-halo" v-if="aiTalking || isRecording" />
+        <view class="avatar-face">
+          <view class="eyes">
+            <view class="eye left" />
+            <view class="eye right" />
+          </view>
+          <view class="mouth" :class="mouthClass" />
         </view>
       </view>
-      <text class="ai-name">HR Expert — Sarah</text>
-    </view>
 
-    <!-- User picture-in-picture -->
-    <view class="user-video">
-      <text class="user-placeholder">{{ isCameraOn ? '📹' : '🚫' }}</text>
-      <text class="user-state">{{ isCameraOn ? 'Camera on' : 'Camera off' }}</text>
-    </view>
-
-    <!-- Top status bar -->
-    <view class="top-bar">
-      <text class="time-text">{{ formatTime }}</text>
-      <view class="status-badge">REC</view>
-      <view class="device-state">
-        <text class="state-pill" :class="isMicOn ? 'state-on' : 'state-off'">Mic {{ isMicOn ? 'On' : 'Off' }}</text>
-        <text class="state-pill" :class="isCameraOn ? 'state-on' : 'state-off'">Cam {{ isCameraOn ? 'On' : 'Off' }}</text>
+      <view class="avatar-status">
+        <text class="status-dot" :class="statusDotClass" />
+        <text class="status-text">{{ statusLabel }}</text>
       </view>
     </view>
 
-    <!-- Subtitle area -->
-    <view class="subtitle-area">
-      <text class="subtitle-text">{{ currentSubtitle }}</text>
+    <!-- ========== Caption strip ==========
+         Live captions of what the AI just said + what we transcribed. Helps
+         hearing-impaired users and gives a tap-to-replay affordance. -->
+    <view class="caption-card" v-if="lastAiText || lastUserText">
+      <view v-if="lastAiText" class="caption-row">
+        <text class="caption-tag tag-ai">AI</text>
+        <text class="caption-body">{{ lastAiText }}</text>
+        <view class="caption-replay" v-if="lastAudioUrl" @click="replayAudio">
+          <text class="replay-icon">↻</text>
+        </view>
+      </view>
+      <view v-if="lastUserText" class="caption-row caption-user">
+        <text class="caption-tag tag-user">YOU</text>
+        <text class="caption-body">{{ lastUserText }}</text>
+      </view>
     </view>
 
-    <!-- Bottom controls -->
-    <view class="control-bar">
-      <view class="control-btn btn-mic" @click="toggleMic">
-        <text class="c-icon">{{ isMicOn ? '🎙️' : '🔇' }}</text>
+    <!-- ========== Bottom action zone ========== -->
+    <view class="action-zone">
+      <view class="hint" v-if="!isRecording && !aiTalking && !isThinking">
+        <text>{{ recordHint }}</text>
       </view>
-      <view class="control-btn btn-end" @click="endInterview">
-        <text class="c-icon">📞</text>
+
+      <view
+        class="record-btn"
+        :class="{
+          'is-recording': isRecording,
+          'is-disabled': aiTalking || isThinking,
+        }"
+        @touchstart.prevent="onPressStart"
+        @touchend.prevent="onPressEnd"
+        @touchcancel.prevent="onPressEnd"
+        @mousedown.prevent="onPressStart"
+        @mouseup.prevent="onPressEnd"
+        @mouseleave.prevent="onPressEnd"
+      >
+        <view class="record-pulse" v-if="isRecording">
+          <view class="pulse-ring" />
+          <view class="pulse-ring delay-1" />
+          <view class="pulse-ring delay-2" />
+        </view>
+        <text class="record-icon">🎤</text>
+        <text v-if="isRecording" class="record-timer">{{ recordTimerText }}</text>
       </view>
-      <view class="control-btn btn-camera" @click="toggleCamera">
-        <text class="c-icon">{{ isCameraOn ? '📹' : '🚫' }}</text>
+
+      <view class="footer-row">
+        <view class="text-mode-btn" @click="switchToTextMode">
+          <text class="text-mode-icon">⌨</text>
+          <text class="text-mode-label">Switch to text mode</text>
+        </view>
+        <view class="end-btn-bottom" @click="endInterview">
+          <text class="end-btn-bottom-text">End Interview</text>
+        </view>
       </view>
+    </view>
+
+    <!-- ========== Toast ========== -->
+    <view v-if="toast.visible" class="toast" :class="['toast-' + toast.type]">
+      <text>{{ toast.message }}</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
+import {
+  endInterviewApi,
+  getInterviewByIdApi,
+  voiceGreetingApi,
+  voiceTurnApi,
+  type Interview,
+  type VoiceTurnResponse,
+} from '@/api/interview';
 
-const isMicOn = ref(true);
-const isCameraOn = ref(true);
-const isAiSpeaking = ref(true);
-const darkPref = ref(false);
-const currentSubtitle = ref('Hello, I\'m Sarah, your HR interviewer today. We\'ll begin the frontend developer interview shortly. Please start with a one-minute self-introduction.');
+// ───────────────────────── State ─────────────────────────
+const statusTopPx = ref(52);
+const interviewId = ref<number>(0);
+const interview = ref<Interview | null>(null);
 
-const timeSeconds = ref(0);
-const formatTime = ref('00:00');
-let timer: any = null;
+const isRecording = ref(false);
+const isThinking = ref(false); // ASR + AI + TTS in flight
+const aiTalking = ref(false); // AI audio currently playing
 
-onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
-  timer = setInterval(() => {
-    timeSeconds.value++;
-    const m = Math.floor(timeSeconds.value / 60).toString().padStart(2, '0');
-    const s = (timeSeconds.value % 60).toString().padStart(2, '0');
-    formatTime.value = `${m}:${s}`;
-  }, 1000);
+const lastAiText = ref('');
+const lastUserText = ref('');
+const lastAudioUrl = ref('');
 
-  setTimeout(() => {
-    isAiSpeaking.value = false;
-    currentSubtitle.value = '(Waiting for your response...)';
-  }, 6000);
+const recordSeconds = ref(0);
+let recordTimerHandle: ReturnType<typeof setInterval> | null = null;
+const RECORD_MAX_SECONDS = 60;
+
+const cameraReady = ref(false);
+const cameraError = ref('');
+
+const toast = reactive({ visible: false, message: '', type: 'info' as 'success' | 'error' | 'info' });
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Holds the recorder manager and audio context. Both are mini-program /
+// uni-app singletons that live as long as the page does — we lazily
+// initialize so the page can render even when permissions aren't granted.
+let recorderManager: UniNamespace.RecorderManager | null = null;
+let innerAudio: UniNamespace.InnerAudioContext | null = null;
+
+// ───────────────────────── Computed ─────────────────────────
+const recordTimerText = computed(() => {
+  const s = Math.max(0, RECORD_MAX_SECONDS - recordSeconds.value);
+  return `${s}s left`;
 });
 
-onUnmounted(() => {
-  if (timer) clearInterval(timer);
+const statusDotClass = computed(() => {
+  if (aiTalking.value) return 'dot-talking';
+  if (isRecording.value) return 'dot-listening';
+  if (isThinking.value) return 'dot-thinking';
+  return 'dot-idle';
 });
 
-const toggleMic = () => {
-  isMicOn.value = !isMicOn.value;
-  uni.showToast({ title: isMicOn.value ? 'Microphone enabled' : 'Microphone disabled', icon: 'none' });
-  if (!isMicOn.value) {
-    currentSubtitle.value = '(Microphone is off — the interviewer cannot hear you)';
+const statusLabel = computed(() => {
+  if (aiTalking.value) return 'Interviewer speaking…';
+  if (isRecording.value) return 'Listening to you';
+  if (isThinking.value) return 'Thinking…';
+  return 'Ready';
+});
+
+const mouthClass = computed(() => {
+  if (!aiTalking.value) return 'mouth-rest';
+  return 'mouth-talk';
+});
+
+const recordHint = computed(() => {
+  if (!lastAiText.value) return 'Hold the mic and answer the first question';
+  return 'Hold the mic to answer · release to send';
+});
+
+// ───────────────────────── Lifecycle ─────────────────────────
+onMounted(async () => {
+  statusTopPx.value = getTopSafeHeight();
+
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1] as any;
+  interviewId.value = parseInt(currentPage.options?.interviewId || '0');
+
+  if (!interviewId.value) {
+    showToast('Missing interview ID', 'error');
+    setTimeout(() => uni.navigateBack(), 1200);
+    return;
+  }
+
+  try {
+    interview.value = await getInterviewByIdApi(interviewId.value);
+  } catch (e: any) {
+    showToast(e?.message || 'Failed to load interview', 'error');
+    return;
+  }
+
+  initRecorder();
+  initAudio();
+
+  // Camera scope check is non-fatal — if denied we still let the
+  // candidate proceed with audio-only practice.
+  // #ifdef MP-WEIXIN
+  requestCamera();
+  // #endif
+
+  // Auto-play the AI's opening question. Recording is gated until the AI
+  // has finished its first sentence so the candidate doesn't talk over it.
+  await fetchAndPlayGreeting();
+});
+
+onBeforeUnmount(() => {
+  cleanupRecording();
+  if (innerAudio) {
+    try { innerAudio.stop(); } catch {}
+    try { innerAudio.destroy(); } catch {}
+    innerAudio = null;
+  }
+});
+
+// ───────────────────────── Setup helpers ─────────────────────────
+const initRecorder = () => {
+  recorderManager = uni.getRecorderManager();
+
+  recorderManager.onStart(() => {
+    isRecording.value = true;
+    recordSeconds.value = 0;
+    if (recordTimerHandle) clearInterval(recordTimerHandle);
+    recordTimerHandle = setInterval(() => {
+      recordSeconds.value += 1;
+      if (recordSeconds.value >= RECORD_MAX_SECONDS) {
+        // Hard cap matches Paraformer's short-clip sweet spot — anything
+        // longer is split-recognized which adds noticeable latency.
+        stopRecordingAndSend();
+      }
+    }, 1000);
+  });
+
+  recorderManager.onStop((res) => {
+    cleanupRecording();
+    if (!res?.tempFilePath) {
+      showToast('Recording was empty', 'error');
+      return;
+    }
+    if (recordSeconds.value < 1) {
+      showToast('Hold the mic for at least 1 second', 'info');
+      return;
+    }
+    sendVoiceTurn(res.tempFilePath);
+  });
+
+  recorderManager.onError((err) => {
+    cleanupRecording();
+    showToast(err?.errMsg || 'Recorder error', 'error');
+  });
+};
+
+const initAudio = () => {
+  innerAudio = uni.createInnerAudioContext();
+  // Ignore the iOS/Android silent-mode switch so the interviewer's voice
+  // is always audible — without this, a phone on vibrate/silent plays nothing
+  // even though the mouth animation (driven by onPlay) still fires.
+  (innerAudio as any).obeyMuteSwitch = false;
+  innerAudio.onPlay(() => { aiTalking.value = true; });
+  innerAudio.onEnded(() => { aiTalking.value = false; });
+  innerAudio.onStop(() => { aiTalking.value = false; });
+  innerAudio.onError((err: any) => {
+    aiTalking.value = false;
+    showToast(err?.errMsg || 'Audio playback failed', 'error');
+  });
+};
+
+// #ifdef MP-WEIXIN
+const requestCamera = () => {
+  uni.authorize({
+    scope: 'scope.camera',
+    success: () => {
+      cameraReady.value = true;
+      cameraError.value = '';
+    },
+    fail: () => {
+      cameraReady.value = false;
+      cameraError.value = 'Camera not enabled';
+    },
+  });
+};
+
+const onCameraError = (e: any) => {
+  cameraReady.value = false;
+  cameraError.value = e?.detail?.errMsg || 'Camera failed';
+};
+// #endif
+
+// ───────────────────────── Recording flow ─────────────────────────
+const onPressStart = () => {
+  if (aiTalking.value || isThinking.value || isRecording.value) return;
+  if (!recorderManager) initRecorder();
+
+  // mp3 + 16 kHz + mono matches what Paraformer-realtime-v2 wants and
+  // keeps the upload small (~24 KB / sec) so even a 4G network gets the
+  // payload to us inside 1s for a typical 15-second answer.
+  recorderManager!.start({
+    duration: RECORD_MAX_SECONDS * 1000,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    encodeBitRate: 48000,
+    format: 'mp3',
+  });
+};
+
+const onPressEnd = () => {
+  if (!isRecording.value) return;
+  if (recordSeconds.value < 1) {
+    // Treat "tap" as cancel rather than send — avoids surprising the user
+    // with garbage transcripts after an accidental tap.
+    try { recorderManager?.stop(); } catch {}
+    cleanupRecording();
+    showToast('Hold the mic to record', 'info');
+    return;
+  }
+  stopRecordingAndSend();
+};
+
+const stopRecordingAndSend = () => {
+  if (!recorderManager) return;
+  try { recorderManager.stop(); } catch {}
+  // The actual upload is fired from onStop with the temp file path.
+};
+
+const cleanupRecording = () => {
+  isRecording.value = false;
+  if (recordTimerHandle) {
+    clearInterval(recordTimerHandle);
+    recordTimerHandle = null;
   }
 };
 
-const toggleCamera = () => {
-  isCameraOn.value = !isCameraOn.value;
-  uni.showToast({ title: isCameraOn.value ? 'Camera enabled' : 'Camera disabled', icon: 'none' });
+// ───────────────────────── Network ─────────────────────────
+const fetchAndPlayGreeting = async () => {
+  isThinking.value = true;
+  try {
+    const res = await voiceGreetingApi(interviewId.value);
+    applyVoiceResponse(res);
+  } catch (e: any) {
+    showToast(e?.message || 'Failed to load greeting', 'error');
+  } finally {
+    isThinking.value = false;
+  }
+};
+
+const sendVoiceTurn = async (filePath: string) => {
+  isThinking.value = true;
+  try {
+    const res = await voiceTurnApi(interviewId.value, filePath, 'mp3');
+    applyVoiceResponse(res);
+  } catch (e: any) {
+    showToast(e?.message || 'Voice turn failed', 'error');
+  } finally {
+    isThinking.value = false;
+  }
+};
+
+const applyVoiceResponse = (res: VoiceTurnResponse) => {
+  if (res.userText) lastUserText.value = res.userText;
+  lastAiText.value = res.aiText;
+  lastAudioUrl.value = res.audioUrl;
+  playAudio(res.audioUrl);
+};
+
+const playAudio = (url: string) => {
+  if (!innerAudio || !url) return;
+  try { innerAudio.stop(); } catch {}
+  innerAudio.src = url;
+  innerAudio.play();
+};
+
+const replayAudio = () => {
+  if (lastAudioUrl.value) playAudio(lastAudioUrl.value);
+};
+
+// ───────────────────────── Exit / End ─────────────────────────
+const confirmExit = () => {
+  uni.showModal({
+    title: 'Leave interview?',
+    content: 'You can come back to this session from the home page.',
+    success: (m) => { if (m.confirm) uni.navigateBack(); },
+  });
 };
 
 const endInterview = () => {
   uni.showModal({
-    title: 'End Interview',
-    content: 'Are you sure you want to end this mock interview and generate the review report?',
-    confirmColor: '#ff3b30',
-    success: (res) => {
-      if (res.confirm) {
-        uni.showLoading({ title: 'Generating report...' });
-        setTimeout(() => {
-          uni.hideLoading();
-          uni.redirectTo({ url: '/pages/interview/report' });
-        }, 2000);
+    title: 'End interview',
+    content: 'We\'ll generate your AI-graded report next. Continue?',
+    confirmColor: '#ef4444',
+    success: async (m) => {
+      if (!m.confirm) return;
+      try {
+        await endInterviewApi(interviewId.value);
+        uni.redirectTo({ url: `/pages/interview/report?interviewId=${interviewId.value}` });
+      } catch (e: any) {
+        showToast(e?.message || 'Failed to end interview', 'error');
       }
-    }
+    },
   });
+};
+
+const switchToTextMode = () => {
+  uni.redirectTo({ url: `/pages/interview/chat?interviewId=${interviewId.value}` });
+};
+
+// ───────────────────────── Toast ─────────────────────────
+const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  if (toastTimer) clearTimeout(toastTimer);
+  toast.message = message;
+  toast.type = type;
+  toast.visible = true;
+  toastTimer = setTimeout(() => { toast.visible = false; }, 2400);
 };
 </script>
 
 <style scoped>
-.room-container {
-  height: 100vh;
-  background-color: #1c1c1e;
+.room-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  display: flex;
+  flex-direction: column;
   position: relative;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
 }
 
-.video-bg {
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at center, #2c2c2e 0%, #000000 100%);
+/* ========== Top bar ========== */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 12px;
+  z-index: 10;
+}
+.back-btn {
+  width: 40px; height: 40px; border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex; align-items: center; justify-content: center;
+}
+.back-icon { color: #fff; font-size: 26px; line-height: 26px; font-weight: 600; }
+.top-meta { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.top-title { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 0.2px; }
+.top-sub { color: rgba(255, 255, 255, 0.6); font-size: 11px; margin-top: 2px; }
+
+/* ========== Camera PiP ========== */
+.camera-pip {
+  position: absolute;
+  top: 90px;
+  right: 16px;
+  width: 96px;
+  height: 128px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: #000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 5;
+}
+.camera-pip-fallback {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, 0.75);
+  gap: 6px;
+  padding: 8px;
+  text-align: center;
+}
+.camera-fallback-icon { font-size: 22px; }
+.camera-fallback-text {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  line-height: 1.3;
+}
+.camera-enable-btn {
+  background: #2457d6; padding: 4px 10px; border-radius: 999px; margin-top: 2px;
+}
+.camera-enable-text { color: #fff; font-size: 11px; font-weight: 700; }
+
+/* ========== Avatar stage ========== */
+.avatar-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 16px;
   z-index: 1;
 }
-
-.main-video {
-  position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
-  z-index: 2; display: flex; flex-direction: column; align-items: center;
+.avatar-shell {
+  position: relative;
+  width: 220px; height: 220px;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.4s ease;
+}
+.avatar-halo {
+  position: absolute; inset: -22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.35) 0%, transparent 70%);
+  animation: halo-pulse 1.8s ease-in-out infinite;
+}
+@keyframes halo-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.avatar-face {
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #60a5fa 0%, #2563eb 60%, #1e40af 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.55), inset 0 -12px 24px rgba(0, 0, 0, 0.18);
+  animation: breathe 4s ease-in-out infinite;
+}
+.is-talking .avatar-face { animation: talking 0.45s ease-in-out infinite; }
+.is-listening .avatar-face { animation: listen 1.4s ease-in-out infinite; }
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+@keyframes talking {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+@keyframes listen {
+  0%, 100% { transform: scale(1) rotate(-1deg); }
+  50% { transform: scale(1.03) rotate(1deg); }
 }
 
-.ai-avatar-wrapper {
-  width: 120px; height: 120px; border-radius: 60px;
+.eyes { display: flex; gap: 36px; }
+.eye {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: 0 0 12px rgba(248, 250, 252, 0.6);
+  animation: blink 4s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 88%, 100% { transform: scaleY(1); }
+  92%, 96% { transform: scaleY(0.1); }
+}
+
+.mouth {
+  width: 56px; height: 12px; background: #f8fafc; border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.mouth-rest { width: 48px; height: 8px; }
+.mouth-talk { animation: mouth-flap 0.32s ease-in-out infinite; }
+@keyframes mouth-flap {
+  0%, 100% { width: 36px; height: 8px; border-radius: 4px; }
+  33% { width: 56px; height: 22px; border-radius: 12px; }
+  66% { width: 44px; height: 14px; border-radius: 8px; }
+}
+
+.avatar-status {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 14px; border-radius: 999px;
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-idle { background: #64748b; }
+.dot-talking { background: #34d399; box-shadow: 0 0 10px rgba(52, 211, 153, 0.7); }
+.dot-listening { background: #f87171; animation: pulse-dot 0.9s infinite; }
+.dot-thinking { background: #fbbf24; animation: pulse-dot 1.4s infinite; }
+@keyframes pulse-dot { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+.status-text { color: rgba(255, 255, 255, 0.85); font-size: 12px; font-weight: 600; }
+
+/* ========== Caption card ========== */
+.caption-card {
+  margin: 0 16px 12px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.caption-row { display: flex; align-items: flex-start; gap: 10px; }
+.caption-tag {
+  flex-shrink: 0;
+  font-size: 10px; font-weight: 800;
+  padding: 3px 8px; border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+.tag-ai { background: rgba(96, 165, 250, 0.25); color: #bfdbfe; }
+.tag-user { background: rgba(248, 113, 113, 0.22); color: #fecaca; }
+.caption-body {
+  flex: 1; color: #f8fafc; font-size: 13px; line-height: 1.55; word-break: break-word;
+}
+.caption-user .caption-body { color: rgba(255, 255, 255, 0.78); font-size: 12.5px; }
+.caption-replay {
+  width: 28px; height: 28px; border-radius: 14px;
   background: rgba(255, 255, 255, 0.1);
-  display: flex; justify-content: center; align-items: center;
-  margin-bottom: 16px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.replay-icon { color: #f8fafc; font-size: 16px; }
+
+/* ========== Action zone ========== */
+.action-zone {
+  padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  z-index: 2;
+}
+.hint {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px; font-weight: 500;
+  padding: 6px 14px; border-radius: 999px;
 }
 
-.ai-avatar { font-size: 60px; }
+.record-btn {
+  position: relative;
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  box-shadow: 0 12px 28px rgba(239, 68, 68, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.record-btn:active { transform: scale(0.96); }
+.record-icon { font-size: 32px; }
+.record-timer { color: #fff; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
 
-.wave-box {
-  position: absolute; bottom: -10px;
-  display: flex; gap: 4px; align-items: flex-end; height: 20px;
+.record-btn.is-recording {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  box-shadow: 0 16px 36px rgba(248, 113, 113, 0.6);
+}
+.record-btn.is-disabled {
+  background: rgba(100, 116, 139, 0.7);
+  box-shadow: none;
+  pointer-events: none;
+  opacity: 0.6;
 }
 
-.bar {
-  width: 4px; background-color: #0a84ff; border-radius: 2px;
-  animation: sound-wave 0.8s infinite ease-in-out alternate;
+.record-pulse {
+  position: absolute; inset: 0; border-radius: 50%;
+  pointer-events: none;
+}
+.pulse-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid rgba(248, 113, 113, 0.55);
+  animation: ripple 1.8s ease-out infinite;
+}
+.delay-1 { animation-delay: 0.6s; }
+.delay-2 { animation-delay: 1.2s; }
+@keyframes ripple {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
 
-.bar:nth-child(1) { animation-delay: 0.1s; height: 10px; }
-.bar:nth-child(2) { animation-delay: 0.3s; height: 20px; }
-.bar:nth-child(3) { animation-delay: 0.2s; height: 15px; }
-.bar:nth-child(4) { animation-delay: 0.4s; height: 8px; }
-
-@keyframes sound-wave {
-  0% { height: 4px; }
-  100% { height: 20px; }
+.footer-row {
+  margin-top: 6px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
-
-.ai-name { color: #ffffff; font-size: 16px; font-weight: 500; }
-
-.user-video {
-  position: absolute; top: calc(var(--status-bar-height, 47px) + 60px); right: 20px;
-  width: 100px; height: 140px; background-color: #3a3a3c;
-  border-radius: 12px; z-index: 5;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex; justify-content: center; align-items: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+.text-mode-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  flex: 1;
 }
+.text-mode-icon { color: #f8fafc; font-size: 14px; }
+.text-mode-label { color: rgba(255, 255, 255, 0.85); font-size: 12px; font-weight: 600; }
+.text-mode-btn:active { background: rgba(255, 255, 255, 0.16); }
 
-.user-placeholder { font-size: 32px; opacity: 0.75; }
-
-.user-state {
-  position: absolute; bottom: 8px; left: 8px; right: 8px;
-  text-align: center; font-size: 10px; color: rgba(255, 255, 255, 0.8);
+.end-btn-bottom {
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px 20px; border-radius: 999px;
+  background: rgba(239, 68, 68, 0.85);
+  border: 1px solid rgba(239, 68, 68, 0.9);
+  min-width: 110px;
 }
+.end-btn-bottom:active { background: rgba(239, 68, 68, 1); }
+.end-btn-bottom-text { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
 
-.device-state { display: flex; gap: 6px; }
-
-.state-pill { font-size: 10px; padding: 2px 6px; border-radius: 8px; }
-
-.state-on { background: rgba(52, 199, 89, 0.25); color: #9ff0bf; }
-.state-off { background: rgba(255, 59, 48, 0.25); color: #ffb3ad; }
-
-.top-bar {
-  position: absolute; top: calc(var(--status-bar-height, 20px) + 10px); left: 20px;
-  z-index: 5; display: flex; align-items: center; gap: 10px;
-  background: rgba(0, 0, 0, 0.4); padding: 6px 12px; border-radius: 16px;
-  backdrop-filter: blur(10px); flex-wrap: wrap; max-width: calc(100% - 140px);
+/* ========== Toast ========== */
+.toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 80px);
+  left: 16px; right: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  z-index: 99;
+  text-align: center;
+  font-size: 13px; font-weight: 600;
 }
-
-.time-text { color: #ffffff; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
-
-.status-badge {
-  background-color: #ff3b30; color: #ffffff;
-  font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
-}
-
-.subtitle-area {
-  position: absolute; bottom: 160px; left: 20px; right: 20px; z-index: 5;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  padding: 16px; border-radius: 16px;
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
-}
-
-.subtitle-text { color: #ffffff; font-size: 16px; line-height: 1.5; }
-
-.control-bar {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
-  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
-  z-index: 10; display: flex; justify-content: center; align-items: center;
-  gap: 32px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
-}
-
-.control-btn {
-  width: 60px; height: 60px; border-radius: 30px;
-  display: flex; justify-content: center; align-items: center;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  transition: transform 0.2s ease;
-}
-
-.control-btn:active { transform: scale(0.9); }
-
-.btn-end { background-color: #ff3b30; width: 70px; height: 70px; border-radius: 35px; }
-
-.c-icon { font-size: 24px; }
-
-.btn-end .c-icon { font-size: 28px; }
-
-.is-dark .video-bg {
-  background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
-}
+.toast-info { background: rgba(96, 165, 250, 0.95); color: #fff; }
+.toast-success { background: rgba(52, 211, 153, 0.95); color: #022c22; }
+.toast-error { background: rgba(239, 68, 68, 0.95); color: #fff; }
 </style>
