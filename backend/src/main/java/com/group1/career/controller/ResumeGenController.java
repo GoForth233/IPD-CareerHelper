@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,9 +36,6 @@ public class ResumeGenController {
     private final ResumeService resumeService;
     private final FileService fileService;
 
-    @Value("${aliyun.oss.bucket-name}")
-    private String bucketName;
-
     @Operation(summary = "Generate a brand-new resume from template form data")
     @PostMapping("/from-template")
     @Transactional
@@ -50,12 +46,12 @@ public class ResumeGenController {
         String prompt = buildTemplatePrompt(req);
         String html = callAiForHtml(prompt);
 
-        String fileUrl = htmlToPdfAndUpload(html, "resumes/generated");
+        String fileKey = htmlToPdfAndUpload(html, "resumes/generated");
         String title = (req.getTargetRole() == null ? req.getName() : req.getName() + "_" + req.getTargetRole())
                 .replaceAll("\\s+", "_");
         Resume saved = resumeService.createResume(uid, title, req.getTargetRole(),
-                fileUrl, stripTags(html));
-        return Result.success(saved);
+                fileKey, stripTags(html));
+        return Result.success(resumeService.hydrateUrl(saved));
     }
 
     @Operation(summary = "Tailor an existing resume against a Job Description")
@@ -87,16 +83,16 @@ public class ResumeGenController {
         log.info("[tailor] AI rewrite took {} ms ({} html chars)", System.currentTimeMillis() - ts, html.length());
 
         ts = System.currentTimeMillis();
-        String fileUrl = htmlToPdfAndUpload(html, "resumes/tailored");
+        String fileKey = htmlToPdfAndUpload(html, "resumes/tailored");
         log.info("[tailor] PDF render+OSS upload took {} ms", System.currentTimeMillis() - ts);
 
         String title = (base.getTitle() == null ? "Resume" : base.getTitle()) + "_tailored";
         Resume saved = resumeService.createResume(uid, title,
                 req.getJobDescription() != null && req.getJobDescription().length() > 60
                         ? req.getJobDescription().substring(0, 60) : req.getJobDescription(),
-                fileUrl, stripTags(html));
+                fileKey, stripTags(html));
         log.info("[tailor] DONE total {} ms, resumeId={}", System.currentTimeMillis() - t0, saved.getResumeId());
-        return Result.success(saved);
+        return Result.success(resumeService.hydrateUrl(saved));
     }
 
     // ========================= Internals =========================

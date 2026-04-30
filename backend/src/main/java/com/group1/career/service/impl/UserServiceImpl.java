@@ -7,6 +7,7 @@ import com.group1.career.repository.UserAuthRepository;
 import com.group1.career.repository.UserRepository;
 import com.group1.career.repository.RoleRepository;
 import com.group1.career.repository.UserRoleRepository;
+import com.group1.career.service.FileService;
 import com.group1.career.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,10 +32,14 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FileService fileService;
 
     private static final String EMAIL_PASSWORD = "EMAIL_PASSWORD";
     private static final String WECHAT = "WECHAT";
     private static final String DEFAULT_ROLE_CODE = "STUDENT";
+
+    /** Avatars are loaded on every page that shows the user; keep the link alive a bit longer. */
+    private static final long AVATAR_TTL_SECONDS = 30 * 60;
 
     @Value("${wechat.miniapp.appid}")
     private String wechatAppId;
@@ -105,10 +110,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public User updateUser(Long userId, String school, String major, Integer graduationYear) {
+    public User updateUser(Long userId, String nickname, String avatarUrl,
+                           String school, String major, Integer graduationYear) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (nickname != null) user.setNickname(nickname);
+        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
         if (school != null) user.setSchool(school);
         if (major != null) user.setMajor(major);
         if (graduationYear != null) user.setGraduationYear(graduationYear);
@@ -182,5 +190,15 @@ public class UserServiceImpl implements UserService {
 
     private String normalizeIdentifier(String identifier) {
         return identifier == null ? null : identifier.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    public User hydrateUrl(User user) {
+        if (user == null) return null;
+        String key = user.getAvatarUrl();
+        if (key != null && !key.isBlank()) {
+            user.setAvatarViewUrl(fileService.presignedUrl(key, AVATAR_TTL_SECONDS));
+        }
+        return user;
     }
 }

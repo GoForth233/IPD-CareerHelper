@@ -26,8 +26,21 @@ public class User {
     @Column(name = "nickname", length = 64)
     private String nickname;
 
+    /**
+     * OSS object key for the user's avatar, e.g. {@code avatars/uuid.jpg}.
+     * Historically held a full URL; now stores only the key so the same row
+     * survives bucket / endpoint changes. Use {@link #avatarViewUrl} on the
+     * client side.
+     */
     @Column(name = "avatar_url")
     private String avatarUrl;
+
+    /**
+     * Short-lived signed avatar URL populated by {@code UserService.hydrateUrl}
+     * before serialization; never persisted.
+     */
+    @Transient
+    private String avatarViewUrl;
 
     @Column(name = "school", length = 100)
     private String school;
@@ -49,6 +62,17 @@ public class User {
     @Column(name = "status")
     @Builder.Default
     private Integer status = 1;
+
+    /**
+     * Cross-tool user portrait, JSON-serialized {@code UserProfileSnapshot}.
+     * Written when a user finishes an assessment / uploads a resume /
+     * completes an interview, then read back by the AI assistant + interview
+     * start page + resume diagnosis page so each tool inherits what every
+     * other tool already learned. Free-form JSON so we don't have to migrate
+     * the table every time we want to remember something new.
+     */
+    @Column(name = "profile_snapshot", columnDefinition = "json")
+    private String profileSnapshot;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

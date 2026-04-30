@@ -65,12 +65,13 @@ public class AuthController {
         if (!valid) {
             return Result.error(400, "Invalid or expired verification code");
         }
-        return Result.success(userService.register(
+        User registered = userService.register(
                 request.getNickname(),
                 request.getIdentityType(),
                 request.getIdentifier(),
                 request.getCredential()
-        ));
+        );
+        return Result.success(userService.hydrateUrl(registered));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ public class AuthController {
                 request.getCredential()
         );
         String token = com.group1.career.utils.JwtUtils.generateToken(user.getUserId(), "USER");
-        return Result.success(new LoginResponseDto(token, user));
+        return Result.success(new LoginResponseDto(token, userService.hydrateUrl(user)));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -113,7 +114,7 @@ public class AuthController {
     public Result<LoginResponseDto> wechatLogin(@Valid @RequestBody WeChatLoginDto request) {
         User user = userService.wechatLogin(request.getCode());
         String token = com.group1.career.utils.JwtUtils.generateToken(user.getUserId(), "USER");
-        return Result.success(new LoginResponseDto(token, user));
+        return Result.success(new LoginResponseDto(token, userService.hydrateUrl(user)));
     }
 
     // ─────────────────────────────────────────────────────────────
