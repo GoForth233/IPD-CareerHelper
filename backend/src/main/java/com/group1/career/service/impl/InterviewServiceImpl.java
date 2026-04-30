@@ -1,13 +1,17 @@
 package com.group1.career.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.common.ErrorCode;
 import com.group1.career.exception.BizException;
+import com.group1.career.model.dto.UserProfileSnapshot;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.repository.InterviewMessageRepository;
 import com.group1.career.repository.InterviewRepository;
 import com.group1.career.service.InterviewService;
 import com.group1.career.service.NotificationService;
+import com.group1.career.service.UserProfileSnapshotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -25,6 +30,8 @@ public class InterviewServiceImpl implements InterviewService {
     private final InterviewRepository interviewRepository;
     private final InterviewMessageRepository messageRepository;
     private final NotificationService notificationService;
+    private final UserProfileSnapshotService snapshotService;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -86,6 +93,11 @@ public class InterviewServiceImpl implements InterviewService {
                 "/pages/interview/report?interviewId=" + saved.getInterviewId()
         );
 
+        // The detailed report (with strong/weak dimensions) hasn't landed
+        // yet at this point -- saveReport will refresh the snapshot once
+        // the AI report comes back. Here we just record the position+score.
+        mergeIntoSnapshot(saved, null);
+
         return saved;
     }
 
@@ -119,6 +131,69 @@ public class InterviewServiceImpl implements InterviewService {
         if (overallScore != null) {
             interview.setFinalScore(overallScore);
         }
-        return interviewRepository.save(interview);
+        Interview saved = interviewRepository.save(interview);
+        mergeIntoSnapshot(saved, reportJson);
+        return saved;
+    }
+
+    /**
+     * Merge the latest interview into the user's cross-tool portrait so the
+     * AI assistant can give specific, grounded coaching ("you scored 78 on
+     * your last frontend interview, weak in communication") instead of
+     * generic copy. Best-effort -- never fail the interview write because
+     * the snapshot blew up.
+     *
+     * <p>{@code reportJson} may be null when called from {@link #endInterview}
+     * (the AI report hasn't been generated yet); in that case we just record
+     * the position and score, and the next {@link #saveReport} call will
+     * refresh the strong/weak dimensions.
+     */
+    private void mergeIntoSnapshot(Interview interview, String reportJson) {
+        if (interview == null || interview.getUserId() == null) return;
+        try {
+            List<String> strong = new ArrayList<>();
+            List<String> weak = new ArrayList<>();
+            if (reportJson != null && !reportJson.isBlank()) {
+                extractDimensions(reportJson, strong, weak);
+            }
+            snapshotService.mergeInterview(interview.getUserId(), UserProfileSnapshot.InterviewBlock.builder()
+                    .lastInterviewId(interview.getInterviewId())
+                    .positionName(interview.getPositionName())
+                    .difficulty(interview.getDifficulty())
+                    .lastScore(interview.getFinalScore())
+                    .strongDimensions(strong.isEmpty() ? null : strong)
+                    .weakDimensions(weak.isEmpty() ? null : weak)
+                    .completedAt(interview.getEndedAt() != null ? interview.getEndedAt() : LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("[interview] snapshot merge failed for interview {}: {}",
+                    interview.getInterviewId(), e.toString());
+        }
+    }
+
+    /**
+     * Walk the report JSON and tag each dimension as strong (>=80) or weak
+     * (<60). The report shape is the {@code InterviewReportDto} our AI
+     * generates: {@code {"dimensions": [{"name": "...", "score": 75}, ...]}}.
+     * We tolerate missing keys / wrong types so a malformed report just
+     * leaves both lists empty.
+     */
+    private void extractDimensions(String reportJson, List<String> strong, List<String> weak) {
+        try {
+            JsonNode root = objectMapper.readTree(reportJson);
+            JsonNode dims = root.get("dimensions");
+            if (dims == null || !dims.isArray()) return;
+            for (JsonNode d : dims) {
+                JsonNode nameNode = d.get("name");
+                JsonNode scoreNode = d.get("score");
+                if (nameNode == null || !nameNode.isTextual() || scoreNode == null || !scoreNode.isNumber()) continue;
+                String name = nameNode.asText();
+                int score = scoreNode.asInt();
+                if (score >= 80) strong.add(name);
+                else if (score < 60) weak.add(name);
+            }
+        } catch (Exception e) {
+            log.debug("[interview] could not parse report for dimensions: {}", e.toString());
+        }
     }
 }
