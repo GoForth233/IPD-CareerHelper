@@ -9,6 +9,7 @@ import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.repository.InterviewMessageRepository;
 import com.group1.career.repository.InterviewRepository;
+import com.group1.career.service.CheckInService;
 import com.group1.career.service.InterviewService;
 import com.group1.career.service.NotificationService;
 import com.group1.career.service.UserProfileSnapshotService;
@@ -31,21 +32,27 @@ public class InterviewServiceImpl implements InterviewService {
     private final InterviewMessageRepository messageRepository;
     private final NotificationService notificationService;
     private final UserProfileSnapshotService snapshotService;
+    private final CheckInService checkInService;
     private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
-    public Interview startInterview(Long userId, Long resumeId, String positionName, String difficulty) {
+    public Interview startInterview(Long userId, Long resumeId, String positionName, String difficulty, String mode) {
+        String normalizedMode = (mode == null || mode.isBlank()) ? "TEXT" : mode.trim().toUpperCase();
+        if (!"TEXT".equals(normalizedMode) && !"VOICE".equals(normalizedMode)) {
+            normalizedMode = "TEXT";
+        }
         Interview interview = Interview.builder()
                 .userId(userId)
                 .resumeId(resumeId)
                 .positionName(positionName)
                 .difficulty(difficulty)
+                .mode(normalizedMode)
                 .status("ONGOING")
                 .build();
 
         Interview saved = interviewRepository.save(interview);
-        log.info("Started interview {} for user {}", saved.getInterviewId(), userId);
+        log.info("Started interview {} for user {} (mode={})", saved.getInterviewId(), userId, normalizedMode);
         return saved;
     }
 
@@ -97,6 +104,13 @@ public class InterviewServiceImpl implements InterviewService {
         // yet at this point -- saveReport will refresh the snapshot once
         // the AI report comes back. Here we just record the position+score.
         mergeIntoSnapshot(saved, null);
+
+        // Daily check-in. Best-effort.
+        try {
+            checkInService.recordAction(saved.getUserId(), "INTERVIEW");
+        } catch (Exception e) {
+            log.warn("[interview] check-in record failed for user {}: {}", saved.getUserId(), e.toString());
+        }
 
         return saved;
     }
@@ -173,27 +187,49 @@ public class InterviewServiceImpl implements InterviewService {
 
     /**
      * Walk the report JSON and tag each dimension as strong (>=80) or weak
-     * (<60). The report shape is the {@code InterviewReportDto} our AI
-     * generates: {@code {"dimensions": [{"name": "...", "score": 75}, ...]}}.
-     * We tolerate missing keys / wrong types so a malformed report just
-     * leaves both lists empty.
+     * (<60). Two shapes are supported so older reports keep merging:
+     * <ul>
+     *   <li>Current — {@code {"radarChart": {"expression": 78, "logic": 82, ...}}}
+     *       produced by {@code InterviewReportController}.</li>
+     *   <li>Legacy — {@code {"dimensions": [{"name": "logic", "score": 82}, ...]}}.</li>
+     * </ul>
+     * Any parse failure leaves both lists empty rather than failing the merge.
      */
     private void extractDimensions(String reportJson, List<String> strong, List<String> weak) {
         try {
             JsonNode root = objectMapper.readTree(reportJson);
+
+            // Preferred shape: radarChart object whose every numeric field is a dimension.
+            JsonNode radar = root.get("radarChart");
+            if (radar != null && radar.isObject()) {
+                radar.fields().forEachRemaining(e -> {
+                    JsonNode v = e.getValue();
+                    if (v != null && v.isNumber()) {
+                        bucket(e.getKey(), v.asInt(), strong, weak);
+                    }
+                });
+                if (!strong.isEmpty() || !weak.isEmpty()) return;
+            }
+
+            // Legacy shape kept for any reports written before the radarChart cut-over.
             JsonNode dims = root.get("dimensions");
-            if (dims == null || !dims.isArray()) return;
-            for (JsonNode d : dims) {
-                JsonNode nameNode = d.get("name");
-                JsonNode scoreNode = d.get("score");
-                if (nameNode == null || !nameNode.isTextual() || scoreNode == null || !scoreNode.isNumber()) continue;
-                String name = nameNode.asText();
-                int score = scoreNode.asInt();
-                if (score >= 80) strong.add(name);
-                else if (score < 60) weak.add(name);
+            if (dims != null && dims.isArray()) {
+                for (JsonNode d : dims) {
+                    JsonNode nameNode = d.get("name");
+                    JsonNode scoreNode = d.get("score");
+                    if (nameNode == null || !nameNode.isTextual()
+                            || scoreNode == null || !scoreNode.isNumber()) continue;
+                    bucket(nameNode.asText(), scoreNode.asInt(), strong, weak);
+                }
             }
         } catch (Exception e) {
             log.debug("[interview] could not parse report for dimensions: {}", e.toString());
         }
+    }
+
+    private void bucket(String name, int score, List<String> strong, List<String> weak) {
+        if (name == null || name.isBlank()) return;
+        if (score >= 80) strong.add(name);
+        else if (score < 60) weak.add(name);
     }
 }

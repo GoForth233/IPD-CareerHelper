@@ -58,9 +58,15 @@ public class ResumeServiceImpl implements ResumeService {
     @Override
     @Transactional
     public void deleteResume(Long resumeId) {
-        resumeRepository.findById(resumeId)
+        Resume resume = resumeRepository.findById(resumeId)
                 .orElseThrow(() -> new BizException(ErrorCode.RESUME_NOT_FOUND));
         resumeRepository.deleteById(resumeId);
+        // Best-effort: clean up the OSS object so we don't accumulate orphan
+        // PDFs after a delete. deleteObject swallows OSS exceptions itself,
+        // so a transient OSS hiccup never rolls back the DB delete.
+        if (resume.getFileUrl() != null && !resume.getFileUrl().isBlank()) {
+            fileService.deleteObject(resume.getFileUrl());
+        }
         log.info("Deleted resume: {}", resumeId);
     }
 

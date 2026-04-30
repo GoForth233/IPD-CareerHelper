@@ -97,6 +97,15 @@ wechat:
     appid: ${WECHAT_APPID}
     secret: ${WECHAT_SECRET}
 
+# JWT_SECRET is required in prod; absent or short → JwtConfig fails fast.
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS:604800000}
+
+bodylang:
+  sidecar-url: ${BODY_LANG_SIDECAR_URL:http://body-lang:8001}
+  enabled: ${BODY_LANG_ENABLED:true}
+
 logging:
   level:
     root: INFO

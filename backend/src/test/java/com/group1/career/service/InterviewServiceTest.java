@@ -49,6 +49,11 @@ public class InterviewServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    /** Sprint D-1 added a check-in trigger on endInterview; we never assert
+     *  on it here so a no-op mock is enough. */
+    @Mock
+    private com.group1.career.service.CheckInService checkInService;
+
     @InjectMocks
     private InterviewServiceImpl interviewService;
 

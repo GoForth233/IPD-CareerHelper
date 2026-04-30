@@ -7,9 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Pushes jwt.secret / jwt.expiration-ms from application.yml into the static JwtUtils
- * at Spring startup. Keeps JwtUtils' static API stable while letting ops rotate
- * the secret via env var (JWT_SECRET) without code changes.
+ * Pushes {@code jwt.secret} / {@code jwt.expiration-ms} from application.yml
+ * into {@link JwtUtils} at Spring startup.
+ *
+ * <p>The secret must be at least 32 bytes — the application refuses to start
+ * if {@code JWT_SECRET} is missing, so we never silently boot with a stale
+ * dev key. Generate one with {@code openssl rand -hex 32}.</p>
  */
 @Configuration
 @RequiredArgsConstructor
@@ -18,7 +21,7 @@ public class JwtConfig {
     @Value("${jwt.secret:}")
     private String secret;
 
-    @Value("${jwt.expiration-ms:86400000}")
+    @Value("${jwt.expiration-ms:604800000}")
     private long expirationMs;
 
     @PostConstruct

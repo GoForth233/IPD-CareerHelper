@@ -45,5 +45,13 @@ public interface FileService {
      * @return https URL with signature & expiry, or {@code null}
      */
     String presignedUrl(String fileUrlOrKey, long ttlSeconds);
+
+    /**
+     * Delete an object from OSS. Idempotent: a missing or null key is a no-op,
+     * and OSS itself does not 404 on missing keys. Implementations log and
+     * swallow non-fatal errors so callers can call this in cleanup paths
+     * without rolling back the originating transaction.
+     */
+    void deleteObject(String fileUrlOrKey);
 }
 

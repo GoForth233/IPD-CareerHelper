@@ -7,9 +7,20 @@ import java.util.List;
 
 public interface InterviewService {
     /**
-     * Start a new interview
+     * Start a new interview.
+     *
+     * @param mode "TEXT" or "VOICE" — drives where the History page resumes
+     *             ONGOING sessions; nullable, defaults to TEXT.
      */
-    Interview startInterview(Long userId, Long resumeId, String positionName, String difficulty);
+    Interview startInterview(Long userId, Long resumeId, String positionName, String difficulty, String mode);
+
+    /**
+     * Backwards-compatible overload used by older callers / tests. Defaults
+     * the modality to TEXT.
+     */
+    default Interview startInterview(Long userId, Long resumeId, String positionName, String difficulty) {
+        return startInterview(userId, resumeId, positionName, difficulty, "TEXT");
+    }
 
     /**
      * Send a message in interview

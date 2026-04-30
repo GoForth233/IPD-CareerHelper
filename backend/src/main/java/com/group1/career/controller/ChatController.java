@@ -1,5 +1,7 @@
 package com.group1.career.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.common.Result;
 import com.group1.career.service.AiService;
 import com.group1.career.service.UserProfileSnapshotService;
@@ -8,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -16,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Tag(name = "Chat Assistant API", description = "Global AI career assistant with SSE streaming")
 @RestController
 @RequestMapping("/api/chat")
@@ -24,6 +28,7 @@ public class ChatController {
 
     private final AiService aiService;
     private final UserProfileSnapshotService snapshotService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Base persona. The {@link #buildMessages} method appends the user's
@@ -53,10 +58,25 @@ public class ChatController {
             @RequestParam String message,
             @RequestParam(required = false) String historyJson) {
 
-        List<Map<String, String>> history = new ArrayList<>();
-        // In production, parse historyJson from the frontend
+        List<Map<String, String>> history = parseHistory(historyJson);
         List<Map<String, String>> messages = buildMessages(history, message);
         return aiService.streamChat(messages);
+    }
+
+    /**
+     * Decode the conversation history that the frontend serialised on the
+     * query string. We tolerate both raw JSON and URL-encoded payloads, and
+     * silently fall back to an empty list so a corrupt history never breaks
+     * the live message — the user just loses long-term context for that turn.
+     */
+    private List<Map<String, String>> parseHistory(String historyJson) {
+        if (historyJson == null || historyJson.isBlank()) return new ArrayList<>();
+        try {
+            return objectMapper.readValue(historyJson, new TypeReference<List<Map<String, String>>>() {});
+        } catch (Exception e) {
+            log.warn("Failed to parse chat history JSON: {}", e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     private List<Map<String, String>> buildMessages(List<Map<String, String>> history, String userMessage) {

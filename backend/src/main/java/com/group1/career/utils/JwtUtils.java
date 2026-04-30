@@ -4,35 +4,49 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
+/**
+ * JWT helper. Configured at boot from application.yml/${JWT_SECRET} via JwtConfig.
+ * <p>
+ * There is intentionally NO compiled-in fallback secret: a missing or short
+ * JWT_SECRET fails fast in JwtConfig, so production can never silently boot
+ * with a developer key.
+ */
 @Slf4j
 public class JwtUtils {
 
-    // Default fallback (overridable via JwtConfig at startup using jwt.secret in application.yml)
-    private static final String DEFAULT_SECRET = "CareerPlatformSuperSecretKeyThatIsAtLeast32BytesLong!!!";
-    private static volatile Key KEY = Keys.hmacShaKeyFor(DEFAULT_SECRET.getBytes());
+    /** 32 bytes = 256 bits = HS256 minimum. */
+    private static final int MIN_SECRET_BYTES = 32;
 
-    // Token validity (default 24 hours, override via JwtConfig)
+    private static volatile Key KEY;
     private static volatile long EXPIRATION_TIME = 24 * 60 * 60 * 1000L;
 
-    /** Initialized by JwtConfig at Spring startup. Safe to call once at boot. */
+    /**
+     * Initialised by JwtConfig at Spring startup.
+     *
+     * @throws IllegalStateException if {@code secret} is null or shorter than 32 bytes.
+     */
     public static void configure(String secret, long expirationMs) {
-        if (secret != null && secret.getBytes().length >= 32) {
-            KEY = Keys.hmacShaKeyFor(secret.getBytes());
-        } else {
-            log.warn("JWT secret too short (<32 bytes); falling back to default key");
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "JWT secret is missing or shorter than " + MIN_SECRET_BYTES + " bytes. " +
+                    "Set the JWT_SECRET env var to a value generated with `openssl rand -hex 32` " +
+                    "before starting the application."
+            );
         }
+        KEY = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         if (expirationMs > 0) {
             EXPIRATION_TIME = expirationMs;
         }
+        log.info("JWT signing key configured ({} bytes, ttl={}ms)",
+                secret.getBytes(StandardCharsets.UTF_8).length, EXPIRATION_TIME);
     }
 
-    /**
-     * Generate JWT
-     */
     public static String generateToken(Long userId, String role) {
+        ensureConfigured();
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + EXPIRATION_TIME);
 
@@ -45,10 +59,8 @@ public class JwtUtils {
                 .compact();
     }
 
-    /**
-     * Parse Token and return User ID
-     */
     public static Long getUserIdFromToken(String token) {
+        ensureConfigured();
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(KEY)
                 .build()
@@ -57,22 +69,29 @@ public class JwtUtils {
         return Long.parseLong(claims.getSubject());
     }
 
-    /**
-     * Validate Token
-     */
     public static boolean validateToken(String authToken) {
+        ensureConfigured();
         try {
             Jwts.parserBuilder().setSigningKey(KEY).build().parseClaimsJws(authToken);
             return true;
         } catch (ExpiredJwtException e) {
-            log.error("Expired JWT token");
+            log.warn("Expired JWT token");
         } catch (UnsupportedJwtException e) {
-            log.error("Unsupported JWT token");
+            log.warn("Unsupported JWT token");
         } catch (IllegalArgumentException e) {
-            log.error("JWT claims string is empty");
+            log.warn("JWT claims string is empty");
         } catch (JwtException e) {
-            log.error("Invalid JWT signature");
+            log.warn("Invalid JWT signature");
         }
         return false;
+    }
+
+    private static void ensureConfigured() {
+        if (KEY == null) {
+            throw new IllegalStateException(
+                    "JWT not configured. Did Spring start? Did JwtConfig run? " +
+                    "Make sure JWT_SECRET is set in the environment."
+            );
+        }
     }
 }

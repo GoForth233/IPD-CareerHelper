@@ -39,6 +39,14 @@ public class Interview {
     @Builder.Default
     private String status = "ONGOING"; // ONGOING, COMPLETED, CANCELLED
 
+    /**
+     * Interaction modality the candidate chose at start time. Drives where
+     * the History page resumes the session: TEXT → chat.vue, VOICE → room.vue.
+     */
+    @Column(name = "mode", length = 16)
+    @Builder.Default
+    private String mode = "TEXT"; // TEXT, VOICE
+
     @Column(name = "final_score")
     private Integer finalScore;
 

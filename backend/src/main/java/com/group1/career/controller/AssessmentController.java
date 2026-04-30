@@ -1,6 +1,8 @@
 package com.group1.career.controller;
 
+import com.group1.career.common.ErrorCode;
 import com.group1.career.common.Result;
+import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.*;
 import com.group1.career.repository.AssessmentOptionRepository;
 import com.group1.career.service.AssessmentService;
@@ -85,10 +87,16 @@ public class AssessmentController {
         return Result.success(assessmentService.getUserRecords(uid));
     }
 
-    @Operation(summary = "Get a specific assessment record")
+    @Operation(summary = "Get a specific assessment record (owner-only)")
     @GetMapping("/records/detail/{recordId}")
     public Result<AssessmentRecord> getRecord(@PathVariable Long recordId) {
-        return Result.success(assessmentService.getRecord(recordId));
+        Long uid = SecurityUtil.requireCurrentUserId();
+        AssessmentRecord record = assessmentService.getRecord(recordId);
+        // Block IDOR: a caller can only see their own assessment record.
+        if (record == null || !uid.equals(record.getUserId())) {
+            throw new BizException(ErrorCode.FORBIDDEN);
+        }
+        return Result.success(record);
     }
 
     // ================= DTO Classes =================

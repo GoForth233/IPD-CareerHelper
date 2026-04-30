@@ -60,6 +60,17 @@ wechat:
     appid: test-appid
     secret: test-secret
 
+# Phase 1 hardened JwtUtils to fail-fast when JWT_SECRET is missing or
+# shorter than 32 bytes. The test profile injects a deterministic 64-char
+# value so JwtConfig can wire successfully without polluting CI env vars.
+jwt:
+  secret: test-jwt-secret-test-jwt-secret-test-jwt-secret-test-jwt-secret-12
+  expiration-ms: 604800000
+
+bodylang:
+  sidecar-url: ""
+  enabled: false
+
 logging:
   level:
     com.group1.career: DEBUG

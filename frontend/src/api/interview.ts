@@ -7,6 +7,8 @@ export interface Interview {
   positionName: string;
   difficulty: string; // 'Easy', 'Normal', 'Hard'
   status?: string;    // 'ONGOING', 'COMPLETED', 'CANCELLED'
+  /** Modality the candidate started with — drives history resume routing. */
+  mode?: 'TEXT' | 'VOICE';
   finalScore?: number;
   reportMongoId?: string;
   startedAt?: string;
@@ -35,6 +37,8 @@ export const startInterviewApi = (data: {
   resumeId?: number;
   positionName: string;
   difficulty: string;
+  /** TEXT (default) or VOICE — must match what the start page picked. */
+  mode?: 'TEXT' | 'VOICE';
 }) => {
   return request<Interview>({
     url: '/api/interviews/start',
@@ -179,6 +183,9 @@ export interface RadarChartData {
   technical: number;
   pressureResistance: number;
   communication: number;
+  /** Sprint C-1 — composite of eye contact + facial expression + posture.
+   *  Null when the candidate took the text path (no camera frames). */
+  bodyLanguage?: number | null;
 }
 
 export interface AdviceItem {

@@ -4,9 +4,11 @@ import com.group1.career.common.Result;
 import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
+import com.group1.career.model.entity.InterviewQuestion;
 import com.group1.career.service.AiService;
 import com.group1.career.service.FileService;
 import com.group1.career.service.InterviewService;
+import com.group1.career.service.QuestionBankService;
 import com.group1.career.service.VoiceService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 
 /**
@@ -41,6 +44,7 @@ public class InterviewController {
     private final AiService aiService;
     private final VoiceService voiceService;
     private final FileService fileService;
+    private final QuestionBankService questionBankService;
 
     /** Presigned-URL TTL for AI voice replies; long enough that a candidate
      *  who pauses to think can still replay the question without it 403'ing. */
@@ -85,7 +89,8 @@ public class InterviewController {
                 uid,
                 request.getResumeId(),
                 request.getPositionName(),
-                request.getDifficulty()
+                request.getDifficulty(),
+                request.getMode()
         );
         return Result.success(interview);
     }
@@ -102,7 +107,13 @@ public class InterviewController {
             return Result.success(existing.get(0));
         }
 
-        String angle = OPENING_ANGLES[RNG.nextInt(OPENING_ANGLES.length)];
+        // 50% of sessions try to draw from the crowd-sourced bank when a
+        // matching (position, difficulty) question exists. This keeps repeat
+        // candidates from cycling through only the 10 baked-in angles.
+        Optional<InterviewQuestion> drawn = questionBankService.drawForInterview(
+                interview.getPositionName(), interview.getDifficulty());
+        String angle = drawn.map(InterviewQuestion::getContent)
+                .orElseGet(() -> OPENING_ANGLES[RNG.nextInt(OPENING_ANGLES.length)]);
         String prompt = String.format(
                 "You are a senior technical interviewer for the role of \"%s\" (difficulty: %s). " +
                 "Greet the candidate briefly (one sentence) and ask your FIRST interview question, " +
@@ -181,7 +192,10 @@ public class InterviewController {
         if (!existing.isEmpty() && "AI".equalsIgnoreCase(existing.get(0).getRole())) {
             greeting = existing.get(0).getContent();
         } else {
-            String angle = OPENING_ANGLES[RNG.nextInt(OPENING_ANGLES.length)];
+            Optional<InterviewQuestion> drawn = questionBankService.drawForInterview(
+                    interview.getPositionName(), interview.getDifficulty());
+            String angle = drawn.map(InterviewQuestion::getContent)
+                    .orElseGet(() -> OPENING_ANGLES[RNG.nextInt(OPENING_ANGLES.length)]);
             String prompt = String.format(
                     "You are a senior %s interviewer (difficulty: %s) speaking to a candidate by voice. " +
                     "Greet the candidate in ONE short sentence, then ask ONE interview question specifically about: %s. " +
@@ -349,6 +363,8 @@ public class InterviewController {
         private Long resumeId;
         private String positionName;
         private String difficulty; // Easy, Normal, Hard
+        /** TEXT (default) or VOICE — drives History resume routing. */
+        private String mode;
     }
 
     @Data

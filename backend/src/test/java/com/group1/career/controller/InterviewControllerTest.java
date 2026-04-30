@@ -7,6 +7,7 @@ import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.service.AiService;
 import com.group1.career.service.FileService;
 import com.group1.career.service.InterviewService;
+import com.group1.career.service.QuestionBankService;
 import com.group1.career.service.VoiceService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +52,11 @@ public class InterviewControllerTest {
     @MockitoBean
     private FileService fileService;
 
+    /** Phase 4: greeting flow can pull from the crowd-sourced bank with 50% probability;
+     *  every test path stays on the generic angle so we leave it unstubbed. */
+    @MockitoBean
+    private QuestionBankService questionBankService;
+
     @MockitoBean
     private AuthInterceptor authInterceptor;
 
@@ -85,7 +91,7 @@ public class InterviewControllerTest {
         // Controller checks for an existing ONGOING interview before creating
         // a new one — return empty so it falls through to startInterview().
         when(interviewService.getUserInterviews(TEST_UID)).thenReturn(Collections.emptyList());
-        when(interviewService.startInterview(eq(TEST_UID), anyLong(), anyString(), anyString())).thenReturn(mockInterview);
+        when(interviewService.startInterview(eq(TEST_UID), anyLong(), anyString(), anyString(), any())).thenReturn(mockInterview);
 
         mockMvc.perform(post("/api/interviews/start")
                         .contentType(MediaType.APPLICATION_JSON)

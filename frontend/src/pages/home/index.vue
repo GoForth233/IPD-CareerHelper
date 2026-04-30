@@ -1,9 +1,7 @@
 <template>
   <view class="home-page" :class="{ 'is-dark': darkPref }">
-    <!-- Status bar spacer -->
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
-    <!-- Top bar: search + avatar -->
     <view class="top-bar">
       <view class="search-bar">
         <view class="search-icon-wrap" @click="onSearch">
@@ -12,7 +10,7 @@
         <input
           class="search-input"
           v-model="searchQuery"
-          placeholder="Search videos, topics..."
+          placeholder="Search videos, articles, paths..."
           placeholder-class="search-ph"
           @confirm="onSearch"
         />
@@ -28,14 +26,12 @@
       />
     </view>
 
-    <!-- Greeting -->
     <view class="greeting-row">
       <text class="greeting-kicker">Career Loop</text>
       <text class="greeting-title">Hello, {{ userInfo.nickname || 'Guest' }}</text>
-      <text class="greeting-text">Pick one task and keep moving. Your core tools are one tap away.</text>
+      <text class="greeting-text">Pull down to refresh — fresh videos and articles every day.</text>
     </view>
 
-    <!-- Core feature grid -->
     <view class="feature-grid">
       <view class="feature-item" @click="navTo('/pages/assessment/index')">
         <view class="feature-icon icon-assess">
@@ -63,102 +59,172 @@
       </view>
     </view>
 
-    <!-- Search empty state -->
-    <view class="empty-state" v-if="(searchQuery && filteredFeedList.length === 0 && filteredTopicList.length === 0)">
+    <!-- 7-day check-in chip — short, glanceable, taps through to the calendar -->
+    <view v-if="checkin" class="checkin-card" @click="navTo('/pages/checkin/index')">
+      <view class="checkin-left">
+        <text class="checkin-kicker">Daily check-in</text>
+        <text class="checkin-title">{{ checkin.streakDays || 0 }} day streak</text>
+        <text class="checkin-sub">{{ checkin.todayCompleted }}/{{ checkin.todayTotal }} done today · {{ checkin.weeklyDays }}/7 this week</text>
+      </view>
+      <view class="checkin-right">
+        <view class="checkin-bar">
+          <view class="checkin-bar-fill" :style="{ width: checkinPercent + '%' }"></view>
+        </view>
+        <text class="checkin-cta">View calendar ›</text>
+      </view>
+    </view>
+    <view v-if="checkin && (!checkin.streakDays || !checkin.todayCompleted)" class="checkin-tip">
+      <text class="checkin-tip-text">Pick one task below to keep the streak alive.</text>
+    </view>
+
+    <!-- Section 1 — Career Videos (Bilibili) -->
+    <view class="section" v-if="filteredVideos.length > 0">
+      <view class="section-header">
+        <view class="section-titles">
+          <text class="section-title">Career Videos</text>
+          <text class="section-meta">From Bilibili · refreshed daily</text>
+        </view>
+      </view>
+
+      <scroll-view class="hscroll" scroll-x :show-scrollbar="false">
+        <view class="hscroll-track">
+          <view
+            class="video-card"
+            v-for="(v, idx) in filteredVideos"
+            :key="v.id"
+            @click="openLink(v.url, v.title)"
+          >
+            <view class="video-cover" :class="'cover-tone-' + (idx % 4)">
+              <image v-if="v.coverUrl" class="video-cover-img" :src="v.coverUrl" mode="aspectFill" />
+              <view class="play-icon-wrap">
+                <text class="play-icon">▶</text>
+              </view>
+              <view class="duration-badge" v-if="v.durationSec">
+                <text class="duration-text">{{ formatDuration(v.durationSec) }}</text>
+              </view>
+            </view>
+            <view class="video-body">
+              <text class="video-title">{{ v.title }}</text>
+              <view class="video-meta-row">
+                <text class="video-up">{{ v.upName || 'UP' }}</text>
+                <text class="video-views" v-if="v.viewCount">· {{ formatViews(v.viewCount) }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- Section 2 — Career Insights (articles) -->
+    <view class="section" v-if="filteredArticles.length > 0">
+      <view class="section-header">
+        <view class="section-titles">
+          <text class="section-title">Career Insights</text>
+          <text class="section-meta">Read, then act on the next action card</text>
+        </view>
+      </view>
+
+      <view class="article-list">
+        <view
+          class="article-card"
+          v-for="(a, idx) in filteredArticles"
+          :key="a.id"
+          @click="openArticle(a)"
+        >
+          <view class="article-cover" :class="'cover-tone-' + (idx % 4)">
+            <image v-if="a.imageUrl" class="article-cover-img" :src="a.imageUrl" mode="aspectFill" />
+          </view>
+          <view class="article-body">
+            <text class="article-title">{{ a.title }}</text>
+            <text v-if="a.summary" class="article-summary">{{ a.summary }}</text>
+            <view class="article-tag" v-if="a.category">
+              <text class="article-tag-text">{{ a.category }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Section 3 — Career Consultations -->
+    <view class="section" v-if="filteredConsultations.length > 0">
+      <view class="section-header">
+        <view class="section-titles">
+          <text class="section-title">From the Field</text>
+          <text class="section-meta">Short tips from HRs and senior engineers</text>
+        </view>
+      </view>
+
+      <view class="consult-list">
+        <view
+          class="consult-card"
+          v-for="c in filteredConsultations"
+          :key="c.id"
+        >
+          <view class="consult-head">
+            <text class="consult-title">{{ c.title }}</text>
+            <text v-if="c.author" class="consult-author">{{ c.author }}</text>
+          </view>
+          <text v-if="c.body" class="consult-body">{{ c.body }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Section 4 — Career path spotlights -->
+    <view class="section" v-if="filteredCareerCards.length > 0">
+      <view class="section-header">
+        <view class="section-titles">
+          <text class="section-title">Career Paths</text>
+          <text class="section-meta">Explore the full Skill Map</text>
+        </view>
+        <view class="section-more" @click="navTo('/pages/map/index')">
+          <text class="section-more-text">Open Map</text>
+          <text class="section-more-arrow">›</text>
+        </view>
+      </view>
+
+      <view class="path-grid">
+        <view
+          class="path-card"
+          v-for="(p, idx) in filteredCareerCards"
+          :key="p.pathId"
+          :class="'cover-tone-' + (idx % 4)"
+          @click="navTo('/pages/map/index?pathId=' + p.pathId)"
+        >
+          <text class="path-name">{{ p.name }}</text>
+          <text class="path-desc">{{ p.description }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-state"
+          v-if="searchQuery && filteredVideos.length === 0 && filteredArticles.length === 0 && filteredConsultations.length === 0 && filteredCareerCards.length === 0">
       <text class="empty-icon">🔍</text>
       <text class="empty-text">No results found for "{{ searchQuery }}"</text>
       <button class="btn-clear" @click="clearSearch">Clear Search</button>
     </view>
 
-    <!-- Feed section -->
-    <view class="feed-section" v-if="filteredFeedList.length > 0">
-      <view class="feed-header">
-        <text class="feed-title">Career Insights</text>
-        <view class="feed-more" v-if="!searchQuery" @click="showAllFeed = !showAllFeed">
-          <text class="feed-more-text">{{ showAllFeed ? 'Show Less' : 'View All' }}</text>
-          <text class="feed-more-arrow">›</text>
-        </view>
-      </view>
-
-      <view v-if="showAllFeed || searchQuery" class="feed-grid">
-        <view class="feed-card grid-card" v-for="(item, idx) in filteredFeedList" :key="idx" @click="openLink(item.url, item.title)">
-          <view class="card-cover" :class="'cover-tone-' + (idx % 4)">
-            <image class="card-cover-img" v-if="item.thumbnail" :src="item.thumbnail" mode="aspectFill" />
-            <view class="cover-overlay" v-if="item.tag">
-              <text class="cover-tag">{{ item.tag }}</text>
-            </view>
-            <view class="play-icon-wrap" v-if="item.type === 'video'">
-              <text class="play-icon">▶</text>
-            </view>
-          </view>
-          <view class="card-body">
-            <text class="card-title">{{ item.title }}</text>
-            <view class="card-meta-row">
-              <text class="card-meta">{{ item.views ? item.views + ' views' : item.heat || '' }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <scroll-view v-else class="feed-scroll" scroll-x :show-scrollbar="false">
-        <view class="feed-track">
-          <SlCard class="feed-card" v-for="(item, idx) in filteredFeedList" :key="idx" @click="openLink(item.url, item.title)">
-            <view class="card-cover" :class="'cover-tone-' + (idx % 4)">
-              <image class="card-cover-img" v-if="item.thumbnail" :src="item.thumbnail" mode="aspectFill" />
-              <view class="cover-overlay" v-if="item.tag">
-                <text class="cover-tag">{{ item.tag }}</text>
-              </view>
-              <view class="play-icon-wrap" v-if="item.type === 'video'">
-                <text class="play-icon">▶</text>
-              </view>
-            </view>
-            <view class="card-body">
-              <text class="card-title">{{ item.title }}</text>
-              <view class="card-meta-row">
-                <text class="card-meta">{{ item.views ? item.views + ' views' : item.heat || '' }}</text>
-              </view>
-            </view>
-          </SlCard>
-        </view>
-      </scroll-view>
-    </view>
-
-    <!-- Hot topics -->
-    <view class="topics-section" v-if="filteredTopicList.length > 0">
-      <view class="feed-header">
-        <text class="feed-title">Trending Topics</text>
-      </view>
-      <view class="topic-list">
-        <view class="topic-item" v-for="(t, i) in filteredTopicList" :key="i" @click="openLink(t.url, t.title)">
-          <view class="topic-rank" :class="i < 3 ? 'rank-hot' : ''">
-            <text>{{ i + 1 }}</text>
-          </view>
-          <view class="topic-info">
-            <text class="topic-text">{{ t.title }}</text>
-            <text class="topic-heat">{{ t.heat }}</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
     <view class="bottom-safe"></view>
-
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import { openLink } from '@/utils/openLink';
 import { getTopSafeHeight } from '@/utils/safeArea';
-import { getHomeContentApi, type HomeContentItem, type CareerCard } from '@/api/home';
+import {
+  getHomeContentApi,
+  type BiliVideoCard,
+  type HomeArticle,
+  type HomeConsultation,
+  type CareerCard,
+} from '@/api/home';
+import { getCheckInStatusApi, type CheckInStatus } from '@/api/checkin';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 
 const userInfo = ref<{
   nickname: string;
-  /** OSS object key — never display directly. */
   avatarUrl: string;
-  /** Short-lived presigned URL hydrated by the backend. */
   avatarViewUrl?: string;
 }>({
   nickname: '',
@@ -166,10 +232,6 @@ const userInfo = ref<{
   avatarViewUrl: '',
 });
 
-/**
- * Mirror the same priority used by the Profile tab so the same user sees
- * the same avatar everywhere: signed URL → legacy https → static fallback.
- */
 const avatarSrc = computed(() => {
   if (userInfo.value.avatarViewUrl) return userInfo.value.avatarViewUrl;
   const raw = userInfo.value.avatarUrl;
@@ -180,29 +242,46 @@ const avatarSrc = computed(() => {
 const topSafeHeight = ref(88);
 const darkPref = ref(false);
 const searchQuery = ref('');
-const showAllFeed = ref(false);
 
-// No hardcoded fallback content. When the backend has nothing to show,
-// the section is hidden and the empty-state copy invites users to start
-// with an assessment instead of presenting filler videos that don't
-// open inside WeChat MP.
-const feedList = ref<HomeContentItem[]>([]);
-const topicList = ref<HomeContentItem[]>([]);
-
-const filteredFeedList = computed(() => {
-  if (!searchQuery.value) return feedList.value;
-  const q = searchQuery.value.toLowerCase();
-  return feedList.value.filter(item => item.title.toLowerCase().includes(q) || (item.tag || '').toLowerCase().includes(q));
+const videos = ref<BiliVideoCard[]>([]);
+const articles = ref<HomeArticle[]>([]);
+const consultations = ref<HomeConsultation[]>([]);
+const careerCards = ref<CareerCard[]>([]);
+const checkin = ref<CheckInStatus | null>(null);
+const checkinPercent = computed(() => {
+  if (!checkin.value || !checkin.value.todayTotal) return 0;
+  return Math.round((checkin.value.todayCompleted / checkin.value.todayTotal) * 100);
 });
 
-const filteredTopicList = computed(() => {
-  if (!searchQuery.value) return topicList.value;
+// Search filters every section so the home page works as a quick triage tool.
+const matches = (haystack: string | undefined | null, q: string) =>
+  !!haystack && haystack.toLowerCase().includes(q);
+
+const filteredVideos = computed(() => {
+  if (!searchQuery.value) return videos.value;
   const q = searchQuery.value.toLowerCase();
-  return topicList.value.filter(item => item.title.toLowerCase().includes(q));
+  return videos.value.filter(v => matches(v.title, q) || matches(v.upName, q) || matches(v.keyword, q));
+});
+
+const filteredArticles = computed(() => {
+  if (!searchQuery.value) return articles.value;
+  const q = searchQuery.value.toLowerCase();
+  return articles.value.filter(a => matches(a.title, q) || matches(a.summary, q) || matches(a.category, q));
+});
+
+const filteredConsultations = computed(() => {
+  if (!searchQuery.value) return consultations.value;
+  const q = searchQuery.value.toLowerCase();
+  return consultations.value.filter(c => matches(c.title, q) || matches(c.body, q) || matches(c.author, q));
+});
+
+const filteredCareerCards = computed(() => {
+  if (!searchQuery.value) return careerCards.value;
+  const q = searchQuery.value.toLowerCase();
+  return careerCards.value.filter(p => matches(p.name, q) || matches(p.description, q));
 });
 
 const onSearch = () => {
-  // Computed properties automatically update, we just close keyboard here if needed
   uni.hideKeyboard();
 };
 
@@ -210,33 +289,65 @@ const clearSearch = () => {
   searchQuery.value = '';
 };
 
+const formatDuration = (sec: number): string => {
+  if (!sec || sec < 0) return '';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+const formatViews = (n: number): string => {
+  if (n >= 100_000_000) return (n / 100_000_000).toFixed(1) + '亿';
+  if (n >= 10_000) return (n / 10_000).toFixed(1) + '万';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+};
+
+const openArticle = (a: HomeArticle) => {
+  if (!a.url) {
+    uni.showToast({ title: 'No link attached', icon: 'none' });
+    return;
+  }
+  // In-app routes go through navigateTo; external https URLs go through the
+  // shared openLink util (which handles the WeChat MP web-view fallback).
+  if (a.url.startsWith('/pages/')) {
+    uni.navigateTo({ url: a.url });
+  } else {
+    openLink(a.url, a.title);
+  }
+};
+
 const loadHomeContent = async () => {
   try {
     const userId = uni.getStorageSync('userId');
     const numericUserId = Number(userId);
-    const data = await getHomeContentApi(userId && !isNaN(numericUserId) && numericUserId > 0 ? numericUserId : undefined);
+    const data = await getHomeContentApi(
+      userId && !isNaN(numericUserId) && numericUserId > 0 ? numericUserId : undefined
+    );
 
-    // Career cards land in the "Career Insights" feed; tapping one jumps
-    // straight into the matching Skill Map roadmap (paths.vue/progress.vue
-    // were retired in favour of the richer map page).
-    feedList.value = (data?.careerCards || []).map((c: CareerCard) => ({
-      type: 'article' as const,
-      tag: 'Path',
-      title: c.name,
-      heat: c.description,
-      url: `/pages/map/index?pathId=${c.pathId}`,
-    }));
-
-    topicList.value = (data?.articles || []).map((a) => ({
-      type: 'article' as const,
-      title: a.title,
-      heat: a.summary,
-      url: a.imageUrl || '',
-    }));
+    videos.value = data?.videos || [];
+    articles.value = data?.articles || [];
+    consultations.value = data?.consultations || [];
+    careerCards.value = data?.careerCards || [];
   } catch {
-    // Silently fall back to empty lists; sections will hide via v-if.
-    feedList.value = [];
-    topicList.value = [];
+    videos.value = [];
+    articles.value = [];
+    consultations.value = [];
+    careerCards.value = [];
+  }
+};
+
+// Best-effort: failing to load streak should never break the home feed.
+const loadCheckin = async () => {
+  const uid = Number(uni.getStorageSync('userId'));
+  if (!uid || uid <= 0) {
+    checkin.value = null;
+    return;
+  }
+  try {
+    checkin.value = await getCheckInStatusApi();
+  } catch {
+    checkin.value = null;
   }
 };
 
@@ -249,16 +360,32 @@ const syncUserFromStorage = () => {
 
 onMounted(() => {
   syncUserFromStorage();
-
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
-
   topSafeHeight.value = getTopSafeHeight();
-
   loadHomeContent();
+  loadCheckin();
 });
 
 onShow(() => {
   syncUserFromStorage();
+  // Refresh streak on tab return so finishing an interview/assessment
+  // immediately bumps the chip without requiring a pull-to-refresh.
+  loadCheckin();
+});
+
+// Pull-to-refresh: the user wants a fresh batch *now* without waiting for
+// the daily cron. We re-fetch from the same endpoint; the backend rotates
+// per-user pseudo-randomly using dayOfYear+userId so the next morning the
+// batch shifts naturally.
+onPullDownRefresh(async () => {
+  try {
+    await Promise.all([loadHomeContent(), loadCheckin()]);
+    uni.showToast({ title: 'Refreshed', icon: 'success' });
+  } catch {
+    uni.showToast({ title: 'Refresh failed', icon: 'none' });
+  } finally {
+    uni.stopPullDownRefresh();
+  }
 });
 
 const navTo = (url: string) => {
@@ -297,417 +424,238 @@ const handleAvatarClick = () => {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-.status-spacer {
-  width: 100%;
-}
+.status-spacer { width: 100%; }
 
 /* ---- Top bar ---- */
-.top-bar {
-  display: flex;
-  align-items: center;
-  padding: 8px 20px 0;
-  gap: 12px;
-}
-
+.top-bar { display: flex; align-items: center; padding: 8px 20px 0; gap: 12px; }
 .search-bar {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  height: 42px;
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 0 16px;
-  box-shadow: var(--shadow-xs);
+  flex: 1; display: flex; align-items: center;
+  height: 42px; background: #ffffff;
+  border: 1px solid var(--border-color); border-radius: 14px;
+  padding: 0 16px; box-shadow: var(--shadow-xs);
 }
+.search-icon-wrap { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; margin-right: 6px; }
+.search-icon-svg { font-size: 14px; }
+.search-input { flex: 1; font-size: 14px; color: #0f172a; height: 38px; }
+.search-ph { color: #94a3b8; font-size: 14px; }
+.search-clear { padding: 4px; }
+.clear-icon { font-size: 18px; color: #94a3b8; line-height: 1; }
+.user-avatar { width: 36px; height: 36px; border-radius: 18px; background: #e2e8f0; flex-shrink: 0; }
 
-.search-icon-wrap {
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 6px;
+/* ---- Greeting ---- */
+.greeting-row { padding: 18px 20px 6px; }
+.greeting-kicker {
+  display: block; font-size: 11px; font-weight: 700;
+  color: var(--primary-color); letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 6px;
 }
+.greeting-title { display: block; font-size: 30px; line-height: 1.12; font-weight: 800; color: var(--text-primary); }
+.greeting-text { display: block; margin-top: 8px; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
 
-.search-icon-svg {
-  font-size: 14px;
+/* ---- Feature grid ---- */
+.feature-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px 20px 8px; }
+.feature-item {
+  width: calc(50% - 6px);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  background: #ffffff; border: 1px solid var(--border-color);
+  border-radius: 16px; padding: 16px;
+  box-shadow: var(--shadow-sm); box-sizing: border-box;
 }
-
-.search-input {
-  flex: 1;
-  font-size: 14px;
-  color: #0f172a;
-  height: 38px;
+.feature-icon {
+  width: 56px; height: 56px; border-radius: 18px;
+  display: flex; justify-content: center; align-items: center;
+  transition: transform 0.15s ease;
 }
+.feature-icon:active { transform: scale(0.92); }
+.fi-char { font-size: 26px; }
+.icon-assess  { background: linear-gradient(145deg, #dbeafe, #bfdbfe); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12); }
+.icon-map     { background: linear-gradient(145deg, #e0e7ff, #c7d2fe); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12); }
+.icon-ai      { background: linear-gradient(145deg, #fae8ff, #f0abfc 30%, #e9d5ff); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.12); }
+.icon-interview { background: linear-gradient(145deg, #ffedd5, #fed7aa); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.12); }
+.feature-label { font-size: 14px; font-weight: 700; color: #1e293b; line-height: 1.25; min-height: 36px; }
 
-.search-ph {
-  color: #94a3b8;
-  font-size: 14px;
+/* ---- Daily check-in chip ---- */
+.checkin-card {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 16px 20px 0; padding: 14px 16px;
+  background: linear-gradient(135deg, #ecfeff, #cffafe 60%, #a5f3fc);
+  border: 1px solid #bae6fd; border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
+.checkin-card:active { transform: scale(0.99); }
+.checkin-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.checkin-kicker {
+  font-size: 10px; font-weight: 700; color: #0e7490;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.checkin-title { font-size: 18px; font-weight: 800; color: #0c4a6e; line-height: 1.1; }
+.checkin-sub { font-size: 12px; color: #155e75; margin-top: 2px; }
+.checkin-right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  min-width: 110px;
+}
+.checkin-bar {
+  width: 96px; height: 6px; border-radius: 3px;
+  background: rgba(14, 116, 144, 0.18); overflow: hidden;
+}
+.checkin-bar-fill {
+  height: 100%; background: linear-gradient(90deg, #0891b2, #06b6d4);
+  border-radius: 3px; transition: width 0.3s ease;
+}
+.checkin-cta { font-size: 12px; font-weight: 700; color: #0e7490; }
+.checkin-tip {
+  margin: 6px 20px 0; padding: 6px 14px;
+  font-size: 11.5px; color: #64748b; line-height: 1.4;
+}
+.checkin-tip-text { font-size: 11.5px; color: #64748b; }
 
-.search-clear {
-  padding: 4px;
+/* ---- Generic section header ---- */
+.section { padding: 24px 0 0; }
+.section-header {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 20px; margin-bottom: 14px; gap: 12px;
+}
+.section-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.section-title { font-size: var(--font-title); font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
+.section-meta { font-size: 12px; color: var(--text-tertiary); }
+.section-more { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 6px; }
+.section-more-text { font-size: 13px; color: #2563eb; font-weight: 600; }
+.section-more-arrow { font-size: 16px; color: #2563eb; line-height: 1; }
+
+/* ---- Reusable cover tints (used when no image) ---- */
+.cover-tone-0 { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+.cover-tone-1 { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); }
+.cover-tone-2 { background: linear-gradient(135deg, #fae8ff, #f0abfc); }
+.cover-tone-3 { background: linear-gradient(135deg, #ffedd5, #fed7aa); }
+
+/* ---- Horizontal scroller (used by videos) ---- */
+.hscroll { width: 100%; white-space: nowrap; }
+.hscroll-track { display: inline-flex; padding: 0 20px 4px; gap: 16px; padding-right: 40px; }
+
+/* ---- Video card ---- */
+.video-card {
+  display: inline-flex; flex-direction: column;
+  width: 240px; flex-shrink: 0;
+  background: #ffffff; border-radius: var(--radius-md);
+  overflow: hidden; border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm); transition: transform 0.15s;
+}
+.video-card:active { transform: scale(0.98); }
+.video-cover { width: 100%; height: 134px; position: relative; overflow: hidden; background: #e2e8f0; }
+.video-cover-img { width: 100%; height: 100%; display: block; }
+.duration-badge {
+  position: absolute; bottom: 8px; right: 8px;
+  background: rgba(0,0,0,0.55); padding: 2px 8px; border-radius: 6px;
+}
+.duration-text { color: #fff; font-size: 11px; font-weight: 600; }
+.play-icon-wrap {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 40px; height: 40px; border-radius: 20px; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center;
 }
+.play-icon { font-size: 14px; color: #fff; margin-left: 2px; }
+.video-body { padding: 10px 14px 14px; white-space: normal; }
+.video-title {
+  font-size: 14px; font-weight: 600; color: #1e293b; line-height: 1.4;
+  margin-bottom: 6px; display: -webkit-box;
+  line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; height: 38px;
+}
+.video-meta-row { display: flex; align-items: center; gap: 4px; }
+.video-up { font-size: 12px; color: #2563eb; font-weight: 600; }
+.video-views { font-size: 12px; color: #94a3b8; }
 
-.clear-icon {
-  font-size: 18px; color: #94a3b8; line-height: 1;
+/* ---- Article cards (vertical list) ---- */
+.article-list { display: flex; flex-direction: column; gap: 12px; padding: 0 20px; }
+.article-card {
+  display: flex; align-items: stretch; gap: 14px;
+  background: #ffffff; border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s;
+}
+.article-card:active { transform: scale(0.99); }
+.article-cover {
+  width: 96px; height: 96px; flex-shrink: 0;
+  border-radius: 12px; overflow: hidden;
+}
+.article-cover-img { width: 100%; height: 100%; display: block; }
+.article-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.article-title {
+  font-size: 15px; font-weight: 700; color: #0f172a;
+  display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35;
+}
+.article-summary {
+  font-size: 12.5px; color: #64748b; line-height: 1.45;
+  display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.article-tag {
+  align-self: flex-start; margin-top: 4px;
+  background: #eff6ff; padding: 3px 8px; border-radius: 6px;
+}
+.article-tag-text { font-size: 10px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ---- Consultation cards ---- */
+.consult-list { display: flex; flex-direction: column; gap: 12px; padding: 0 20px; }
+.consult-card {
+  background: #ffffff; border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.consult-head { display: flex; flex-direction: column; gap: 4px; }
+.consult-title { font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; }
+.consult-author { font-size: 11px; color: #94a3b8; font-weight: 500; }
+.consult-body { font-size: 13px; color: #475569; line-height: 1.55; white-space: pre-line; }
+
+/* ---- Career path spotlight ---- */
+.path-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 20px; }
+.path-card {
+  width: calc(50% - 6px); box-sizing: border-box;
+  border-radius: var(--radius-md); padding: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);
+}
+.path-name { font-size: 15px; font-weight: 700; color: #0f172a; }
+.path-desc {
+  font-size: 12px; color: #475569; line-height: 1.45;
+  display: -webkit-box; line-clamp: 3; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
 }
 
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  background: #e2e8f0;
-  flex-shrink: 0;
-}
-
-/* ---- Empty search state ---- */
+/* ---- Empty / safe area ---- */
 .empty-state { text-align: center; padding: 60px 20px 20px; }
-
 .empty-icon { font-size: 48px; display: block; margin-bottom: 16px; }
-
-.empty-text {
-  font-size: 15px; color: #64748b; font-weight: 500;
-  display: block; margin-bottom: 24px;
-}
-
+.empty-text { font-size: 15px; color: #64748b; font-weight: 500; display: block; margin-bottom: 24px; }
 .btn-clear {
   background: #2563eb; color: #fff; font-size: 14px; font-weight: 600;
   border-radius: 12px; height: 40px; line-height: 40px; border: none; width: 140px;
 }
-
-/* ---- Greeting ---- */
-.greeting-row {
-  padding: 18px 20px 6px;
-}
-
-.greeting-kicker {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--primary-color);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-
-.greeting-title {
-  display: block;
-  font-size: 30px;
-  line-height: 1.12;
-  font-weight: 800;
-  color: var(--text-primary);
-}
-
-.greeting-text {
-  display: block;
-  margin-top: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-/* ---- Feature grid ---- */
-.feature-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px 20px 8px;
-}
-
-.feature-item {
-  width: calc(50% - 6px);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  min-width: 0;
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-  box-sizing: border-box;
-}
-
-.feature-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: transform 0.15s ease;
-}
-
-.feature-icon:active {
-  transform: scale(0.92);
-}
-
-.fi-char {
-  font-size: 26px;
-}
-
-.icon-assess {
-  background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
-}
-
-.icon-map {
-  background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
-}
-
-.icon-ai {
-  background: linear-gradient(145deg, #fae8ff 0%, #f0abfc 30%, #e9d5ff 100%);
-  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.12);
-}
-
-.icon-interview {
-  background: linear-gradient(145deg, #ffedd5 0%, #fed7aa 100%);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.12);
-}
-
-.feature-label {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1e293b;
-  text-align: left;
-  line-height: 1.25;
-  min-height: 36px;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* ---- Feed section ---- */
-.feed-section {
-  padding: 24px 0 0;
-}
-
-.feed-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  margin-bottom: 14px;
-}
-
-.feed-title {
-  font-size: var(--font-title);
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.3px;
-}
-
-/* Bigger touch target so View All is reachable without precise aim (HCI: WCAG 2.5.5) */
-.feed-more {
-  display: flex; align-items: center; gap: 4px;
-  min-height: 44px; padding: 0 6px;
-  margin-right: -6px; /* keep alignment flush with right edge */
-}
-.feed-more-text {
-  font-size: 13px; color: #2563eb; font-weight: 600;
-}
-.feed-more-arrow {
-  font-size: 16px; color: #2563eb; line-height: 1;
-}
-
-.feed-scroll {
-  width: 100%;
-  white-space: nowrap;
-}
-
-.feed-track {
-  display: inline-flex;
-  padding: 0 20px;
-  gap: 16px;
-  padding-right: 40px;
-}
-
-.feed-grid { display: flex; flex-wrap: wrap; gap: 16px; padding: 0 20px; }
-
-.feed-card {
-  display: inline-flex;
-  flex-direction: column;
-  width: 220px;
-  background: #ffffff;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-  flex-shrink: 0;
-  transition: transform 0.15s;
-}
-
-.feed-card:active { transform: scale(0.98); }
-
-.grid-card { width: calc(50% - 8px); }
-
-.card-cover {
-  width: 100%;
-  height: 110px;
-  position: relative;
-  overflow: hidden;
-  background: #e2e8f0;
-}
-
-/* Tinted gradients used when the feed item has no thumbnail (e.g. backend
-   career-path cards). Picked from the same blue/violet palette as the
-   home grid icons so the card still reads as part of the page family. */
-.cover-tone-0 { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
-.cover-tone-1 { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
-.cover-tone-2 { background: linear-gradient(135deg, #fae8ff 0%, #f0abfc 100%); }
-.cover-tone-3 { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); }
-
-.card-cover-img { width: 100%; height: 100%; display: block; }
-
-.cover-overlay {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-}
-
-.cover-tag {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 8px;
-}
-
-.play-icon-wrap {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 36px; height: 36px; border-radius: 18px; background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
-}
-
-.play-icon { font-size: 14px; color: #fff; margin-left: 2px; }
-
-.card-body {
-  padding: 12px 14px;
-  white-space: normal;
-}
-
-.card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.4;
-  margin-bottom: 8px;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  height: 38px;
-}
-
-.card-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.card-meta {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-/* ---- Hot topics ---- */
-.topics-section {
-  padding: 28px 0 20px;
-}
-
-.topic-list {
-  padding: 0 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.topic-item {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
-  transition: transform 0.15s ease;
-}
-
-.topic-item:active {
-  transform: scale(0.98);
-}
-
-.topic-rank {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  background: #f1f5f9;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-right: 14px;
-  flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.rank-hot {
-  background: #fee2e2;
-  color: #ef4444;
-}
-
-.topic-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.topic-text {
-  font-size: 15px;
-  font-weight: 500;
-  color: #1e293b;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  margin-bottom: 4px;
-  overflow: hidden;
-  line-height: 1.4;
-}
-
-.topic-heat {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-.bottom-safe {
-  height: calc(var(--tab-bar-height, 50px) + 20px);
-}
+.bottom-safe { height: calc(var(--tab-bar-height, 50px) + 20px); }
 
 /* ---- Dark Mode ---- */
 .is-dark { background-color: #0f172a; }
-
 .is-dark .search-bar { background: #1e293b; box-shadow: none; }
 .is-dark .search-input { color: #f8fafc; }
 .is-dark .feature-label { color: #e2e8f0; }
-
-.is-dark .feed-title { color: #f8fafc; }
-.is-dark .feed-card { background: #1e293b; box-shadow: none; border-color: #334155; }
-.is-dark .card-title { color: #f8fafc; }
-
-.is-dark .topic-item { background: #1e293b; box-shadow: none; border-color: #334155; }
-.is-dark .topic-text { color: #f8fafc; }
-.is-dark .topic-rank { background: #334155; color: #94a3b8; }
-.is-dark .rank-hot { background: #7f1d1d; color: #fca5a5; }
+.is-dark .feature-item { background: #1e293b; box-shadow: none; border-color: #334155; }
+.is-dark .section-title { color: #f8fafc; }
+.is-dark .video-card,
+.is-dark .article-card,
+.is-dark .consult-card,
+.is-dark .path-card { background: #1e293b; box-shadow: none; border-color: #334155; }
+.is-dark .checkin-card { background: linear-gradient(135deg, #082f49, #0c4a6e); border-color: #0e7490; }
+.is-dark .checkin-kicker { color: #67e8f9; }
+.is-dark .checkin-title { color: #f0f9ff; }
+.is-dark .checkin-sub { color: #bae6fd; }
+.is-dark .checkin-cta { color: #67e8f9; }
+.is-dark .video-title,
+.is-dark .article-title,
+.is-dark .consult-title,
+.is-dark .path-name { color: #f8fafc; }
+.is-dark .article-summary,
+.is-dark .consult-body,
+.is-dark .path-desc { color: #94a3b8; }
 </style>

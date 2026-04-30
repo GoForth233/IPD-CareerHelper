@@ -1,0 +1,382 @@
+<template>
+  <view class="market-page" :class="{ 'is-dark': darkPref }">
+    <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
+
+    <view class="nav-row">
+      <view class="back-btn" @click="goBack">
+        <text class="back-icon">‹</text>
+        <text class="back-text">Back</text>
+      </view>
+      <text class="nav-title">Question Market</text>
+      <view style="width:64px;"></view>
+    </view>
+
+    <view class="filters">
+      <input
+        class="filter-input"
+        v-model="positionFilter"
+        placeholder="Filter by position (e.g. Java Developer)"
+        @confirm="applyFilters"
+      />
+      <view class="diff-row">
+        <view
+          v-for="d in difficulties"
+          :key="d || 'any'"
+          :class="['diff-chip', difficultyFilter === d ? 'diff-chip-on' : '']"
+          @click="setDifficulty(d)"
+        >
+          <text class="diff-chip-text">{{ d || 'Any' }}</text>
+        </view>
+        <view class="diff-action" @click="applyFilters">
+          <text class="diff-action-text">Apply</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="contribute-card">
+      <text class="contribute-title">Share a question</text>
+      <text class="contribute-sub">It stays anonymous. Help the next candidate prepare smarter.</text>
+      <view class="contribute-meta">
+        <input
+          class="meta-input"
+          v-model="contributePosition"
+          placeholder="Position (e.g. Frontend Engineer)"
+        />
+        <picker mode="selector" :range="['Easy', 'Normal', 'Hard']" @change="onPickDifficulty">
+          <view class="meta-picker">
+            <text class="meta-picker-text">{{ contributeDifficulty }}</text>
+            <text class="meta-picker-arrow">▾</text>
+          </view>
+        </picker>
+      </view>
+      <textarea
+        class="contribute-input"
+        v-model="contributeContent"
+        :maxlength="800"
+        placeholder="Type a real question you were asked..."
+      />
+      <view class="contribute-actions">
+        <button
+          class="btn-primary"
+          :disabled="contributing || !contributeContent.trim()"
+          @click="submitContribution"
+        >{{ contributing ? 'Sharing…' : 'Share question' }}</button>
+      </view>
+    </view>
+
+    <view class="list-state" v-if="loading">
+      <view class="spinner"></view>
+      <text class="loading-text">Loading question market…</text>
+    </view>
+
+    <view class="empty-state" v-else-if="!loading && items.length === 0">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">No questions match these filters yet.</text>
+      <text class="empty-sub">Be the first to contribute one above!</text>
+    </view>
+
+    <view class="list" v-else>
+      <view
+        class="q-card"
+        v-for="q in items"
+        :key="q.id"
+      >
+        <view class="q-head">
+          <text class="q-pos">{{ q.position }}</text>
+          <text :class="['q-diff', diffClass(q.difficulty)]">{{ q.difficulty }}</text>
+        </view>
+        <text class="q-content">{{ q.content }}</text>
+        <view class="q-foot">
+          <view class="like-btn" @click="like(q)">
+            <text class="like-icon">{{ likedSet.has(q.id) ? '♥' : '♡' }}</text>
+            <text class="like-count">{{ q.likes }}</text>
+          </view>
+          <text class="q-meta">drawn {{ q.drawCount }}×</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="pagination" v-if="items.length > 0 || page > 0">
+      <button class="btn-page" :disabled="page === 0 || loading" @click="prevPage">‹ Prev</button>
+      <text class="page-meta">{{ page + 1 }} / {{ Math.max(1, Math.ceil(total / size)) }}</text>
+      <button class="btn-page" :disabled="(page + 1) * size >= total || loading" @click="nextPage">Next ›</button>
+    </view>
+
+    <view class="bottom-safe"></view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { onMounted, ref } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import { getTopSafeHeight } from '@/utils/safeArea';
+import { listMarketApi, likeQuestionApi, contributeQuestionApi, type MarketQuestion } from '@/api/market';
+
+const darkPref = ref(false);
+const topSafeHeight = ref(52);
+
+const positionFilter = ref('');
+const difficultyFilter = ref<string>(''); // '' = any
+const difficulties = ['', 'Easy', 'Normal', 'Hard'];
+
+const items = ref<MarketQuestion[]>([]);
+const total = ref(0);
+const page = ref(0);
+const size = 20;
+const loading = ref(false);
+
+const contributePosition = ref('');
+const contributeDifficulty = ref('Normal');
+const contributeContent = ref('');
+const contributing = ref(false);
+
+const likedSet = ref<Set<number>>(new Set());
+
+const goBack = () => uni.navigateBack({ delta: 1 });
+
+const setDifficulty = (d: string) => {
+  difficultyFilter.value = d;
+};
+
+const onPickDifficulty = (e: any) => {
+  const v = e?.detail?.value;
+  const list = ['Easy', 'Normal', 'Hard'];
+  if (typeof v === 'number' && list[v]) contributeDifficulty.value = list[v];
+};
+
+const diffClass = (d: string) => {
+  const k = (d || '').toLowerCase();
+  if (k === 'easy') return 'diff-easy';
+  if (k === 'hard') return 'diff-hard';
+  return 'diff-normal';
+};
+
+const load = async () => {
+  loading.value = true;
+  try {
+    const res = await listMarketApi({
+      position: positionFilter.value.trim() || undefined,
+      difficulty: difficultyFilter.value || undefined,
+      page: page.value,
+      size,
+    });
+    items.value = res?.items || [];
+    total.value = res?.total || 0;
+  } catch (e: any) {
+    items.value = [];
+    total.value = 0;
+    uni.showToast({ title: e?.message || 'Failed to load', icon: 'none' });
+  } finally {
+    loading.value = false;
+  }
+};
+
+const applyFilters = async () => {
+  page.value = 0;
+  await load();
+};
+
+const prevPage = async () => {
+  if (page.value === 0) return;
+  page.value -= 1;
+  await load();
+};
+
+const nextPage = async () => {
+  if ((page.value + 1) * size >= total.value) return;
+  page.value += 1;
+  await load();
+};
+
+const like = async (q: MarketQuestion) => {
+  // Optimistic update — the backend doesn't track per-user votes, but we
+  // still keep a per-session set so the heart fills only once until reload.
+  if (likedSet.value.has(q.id)) return;
+  likedSet.value.add(q.id);
+  q.likes += 1;
+  try {
+    await likeQuestionApi(q.id);
+  } catch (e: any) {
+    likedSet.value.delete(q.id);
+    q.likes = Math.max(0, q.likes - 1);
+    uni.showToast({ title: e?.message || 'Like failed', icon: 'none' });
+  }
+};
+
+const submitContribution = async () => {
+  const trimmed = contributeContent.value.trim();
+  if (trimmed.length < 8) {
+    uni.showToast({ title: 'Add a few more words', icon: 'none' });
+    return;
+  }
+  contributing.value = true;
+  try {
+    await contributeQuestionApi({
+      position: contributePosition.value.trim() || 'General',
+      difficulty: contributeDifficulty.value,
+      content: trimmed,
+    });
+    contributeContent.value = '';
+    uni.showToast({ title: 'Shared. Thank you!', icon: 'success' });
+    page.value = 0;
+    await load();
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed to share', icon: 'none' });
+  } finally {
+    contributing.value = false;
+  }
+};
+
+onMounted(() => {
+  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  topSafeHeight.value = getTopSafeHeight();
+  // Pre-fill filters / contribute form when launched from /pages/interview/report.
+  const pages = getCurrentPages();
+  const opts = (pages[pages.length - 1] as any)?.options || {};
+  if (opts.position) {
+    const p = decodeURIComponent(opts.position);
+    positionFilter.value = p;
+    contributePosition.value = p;
+  }
+  if (opts.difficulty) contributeDifficulty.value = decodeURIComponent(opts.difficulty);
+});
+
+onShow(() => {
+  load();
+});
+</script>
+
+<style scoped>
+.market-page {
+  min-height: 100vh;
+  background-color: #f5f5f7;
+  padding: 0 20px 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  box-sizing: border-box;
+}
+.status-spacer { width: 100%; }
+.nav-row { display: flex; align-items: center; height: 44px; padding: 0 2px; margin-bottom: 4px; }
+.back-btn { display: inline-flex; align-items: center; gap: 2px; color: #2563eb; width: 64px; }
+.back-icon { font-size: 24px; font-weight: 300; line-height: 1; }
+.back-text { font-size: 16px; font-weight: 500; }
+.nav-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; color: #0f172a; letter-spacing: -0.3px; }
+
+.filters {
+  background: #fff; border: 1px solid var(--border-color);
+  border-radius: 16px; padding: 14px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 10px;
+  margin-top: 8px;
+}
+.filter-input {
+  height: 40px; padding: 0 12px;
+  border-radius: 10px; background: #f1f5f9;
+  font-size: 14px; color: #0f172a;
+}
+.diff-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.diff-chip { padding: 6px 14px; background: #f1f5f9; border-radius: 999px; }
+.diff-chip-text { font-size: 12px; color: #475569; font-weight: 600; }
+.diff-chip-on { background: #2563eb; }
+.diff-chip-on .diff-chip-text { color: #fff; }
+.diff-action { margin-left: auto; padding: 6px 14px; background: #0f172a; border-radius: 999px; }
+.diff-action-text { font-size: 12px; color: #fff; font-weight: 700; }
+
+.contribute-card {
+  background: #fff; border: 1px solid var(--border-color);
+  border-radius: 18px; padding: 16px; margin-top: 14px;
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.contribute-title { font-size: 15px; font-weight: 700; color: #0f172a; }
+.contribute-sub { font-size: 12px; color: #64748b; line-height: 1.45; }
+.contribute-meta { display: flex; gap: 8px; }
+.meta-input {
+  flex: 1; height: 40px; padding: 0 12px;
+  border-radius: 10px; background: #f1f5f9; font-size: 13px; color: #0f172a;
+}
+.meta-picker {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 40px; padding: 0 14px; border-radius: 10px;
+  background: #f1f5f9; min-width: 96px; justify-content: center;
+}
+.meta-picker-text { font-size: 13px; color: #0f172a; font-weight: 600; }
+.meta-picker-arrow { font-size: 12px; color: #64748b; }
+.contribute-input {
+  width: 100%; min-height: 80px; padding: 10px 12px;
+  border-radius: 10px; background: #f1f5f9;
+  font-size: 14px; line-height: 1.5; color: #0f172a;
+  box-sizing: border-box;
+}
+.contribute-actions { display: flex; }
+.btn-primary {
+  flex: 1; height: 42px; line-height: 42px;
+  border-radius: 12px; background: #2563eb; color: #fff;
+  font-size: 14px; font-weight: 700; border: none;
+}
+.btn-primary[disabled] { opacity: 0.55; }
+
+.list-state, .empty-state {
+  text-align: center; padding: 36px 16px;
+}
+.spinner {
+  width: 36px; height: 36px; border-radius: 18px; margin: 0 auto 14px;
+  border: 3px solid #e2e8f0; border-top-color: #2563eb;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: #64748b; }
+.empty-icon { font-size: 40px; display: block; margin-bottom: 10px; }
+.empty-text { font-size: 14px; color: #475569; font-weight: 600; display: block; }
+.empty-sub { font-size: 12px; color: #94a3b8; margin-top: 6px; display: block; }
+
+.list { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+.q-card {
+  background: #fff; border: 1px solid var(--border-color);
+  border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.q-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.q-pos { font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.06em; }
+.q-diff {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+.diff-easy { background: #dcfce7; color: #047857; }
+.diff-normal { background: #dbeafe; color: #1d4ed8; }
+.diff-hard { background: #fee2e2; color: #b91c1c; }
+.q-content { font-size: 14px; color: #0f172a; line-height: 1.5; }
+.q-foot { display: flex; align-items: center; gap: 12px; }
+.like-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #fef2f2; border-radius: 999px; }
+.like-icon { font-size: 14px; color: #ef4444; line-height: 1; }
+.like-count { font-size: 12px; color: #64748b; font-weight: 700; }
+.q-meta { font-size: 11px; color: #94a3b8; }
+
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
+.btn-page {
+  height: 36px; line-height: 36px; padding: 0 14px;
+  border-radius: 999px; background: #f1f5f9;
+  font-size: 13px; font-weight: 600; color: #0f172a; border: none;
+}
+.btn-page[disabled] { opacity: 0.5; }
+.page-meta { font-size: 13px; color: #64748b; font-weight: 600; }
+
+.bottom-safe { height: calc(env(safe-area-inset-bottom, 0px) + 24px); }
+
+.is-dark { background-color: #0f172a; }
+.is-dark .nav-title,
+.is-dark .contribute-title,
+.is-dark .q-content { color: #f8fafc; }
+.is-dark .filters,
+.is-dark .contribute-card,
+.is-dark .q-card { background: #1e293b; box-shadow: none; border-color: #334155; }
+.is-dark .filter-input,
+.is-dark .meta-input,
+.is-dark .meta-picker,
+.is-dark .contribute-input { background: #0f172a; color: #f8fafc; }
+.is-dark .meta-picker-text { color: #f8fafc; }
+.is-dark .diff-chip { background: #0f172a; }
+.is-dark .diff-chip-text { color: #cbd5f5; }
+.is-dark .like-btn { background: rgba(239, 68, 68, 0.18); }
+.is-dark .like-count { color: #cbd5f5; }
+.is-dark .q-meta { color: #94a3b8; }
+.is-dark .btn-page { background: #0f172a; color: #cbd5f5; }
+</style>

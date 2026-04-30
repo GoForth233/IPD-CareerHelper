@@ -82,6 +82,31 @@
           </view>
         </view>
       </view>
+
+      <!-- Contribute to the question market -->
+      <view class="advice-section">
+        <text class="section-title">Help others practice</text>
+        <view class="contribute-card">
+          <text class="contribute-tip">Did one of the AI's questions stand out? Share it with the market — your name stays anonymous.</text>
+          <textarea
+            class="contribute-input"
+            v-model="contributeText"
+            :maxlength="800"
+            placeholder="Paste or paraphrase a question you want to share..."
+          />
+          <view class="contribute-actions">
+            <button
+              class="btn-secondary"
+              @click="navTo('/pages/market/index?position=' + encodeURIComponent(report.positionName || ''))"
+            >Browse market</button>
+            <button
+              class="btn-primary"
+              :disabled="contributing || !contributeText.trim()"
+              @click="submitContribution"
+            >{{ contributing ? 'Sharing…' : 'Share question' }}</button>
+          </view>
+        </view>
+      </view>
     </template>
 
     <!-- Bottom action -->
@@ -95,6 +120,7 @@
 import { computed, ref, onMounted } from 'vue';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getInterviewReportApi, type InterviewReport } from '@/api/interview';
+import { contributeQuestionApi } from '@/api/market';
 
 const darkPref = ref(false);
 const topSafeHeight = ref(52);
@@ -108,13 +134,20 @@ const goBack = () => uni.navigateBack({ delta: 1 });
 const dimensions = computed(() => {
   const r = report.value?.radarChart;
   if (!r) return [] as Array<{ name: string; score: number }>;
-  return [
+  const base: Array<{ name: string; score: number }> = [
     { name: 'Technical', score: r.technical },
     { name: 'Communication', score: r.communication },
     { name: 'Logic', score: r.logic },
     { name: 'Expression', score: r.expression },
     { name: 'Resilience', score: r.pressureResistance },
   ];
+  // Sprint C-1: surface the 6th dimension only when the sidecar actually
+  // collected frames. Null bodyLanguage means "text interview", we don't
+  // want to plot a fake zero score against it.
+  if (r.bodyLanguage != null) {
+    base.push({ name: 'Body Language', score: r.bodyLanguage });
+  }
+  return base;
 });
 
 const scoreLabel = computed(() => {
@@ -160,6 +193,34 @@ const loadReport = async () => {
 
 const backToLobby = () => {
   uni.reLaunch({ url: '/pages/interview/index' });
+};
+
+const contributeText = ref('');
+const contributing = ref(false);
+
+const navTo = (url: string) => uni.navigateTo({ url });
+
+const submitContribution = async () => {
+  const trimmed = contributeText.value.trim();
+  if (trimmed.length < 8) {
+    uni.showToast({ title: 'Add a few more words', icon: 'none' });
+    return;
+  }
+  if (!report.value) return;
+  contributing.value = true;
+  try {
+    await contributeQuestionApi({
+      position: report.value.positionName || 'General',
+      difficulty: report.value.difficulty || 'Normal',
+      content: trimmed,
+    });
+    contributeText.value = '';
+    uni.showToast({ title: 'Shared. Thank you!', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed to share', icon: 'none' });
+  } finally {
+    contributing.value = false;
+  }
 };
 
 onMounted(() => {
@@ -368,6 +429,42 @@ onMounted(() => {
 
 .btn-back:active { background: #1d4ed8; }
 
+/* Phase 4 — contribute card */
+.contribute-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.contribute-tip { font-size: 13px; line-height: 1.5; color: #64748b; }
+.contribute-input {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 14px; line-height: 1.5;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+.contribute-actions { display: flex; gap: 10px; }
+.btn-secondary {
+  flex: 1; height: 40px; line-height: 40px; padding: 0 14px;
+  border-radius: 12px; font-size: 13px; font-weight: 600;
+  background: #f1f5f9; color: #2563eb; border: 1px solid #e2e8f0;
+}
+.btn-primary {
+  flex: 1; height: 40px; line-height: 40px; padding: 0 14px;
+  border-radius: 12px; font-size: 13px; font-weight: 700;
+  background: #2563eb; color: #fff; border: none;
+}
+.btn-primary[disabled] { opacity: 0.55; }
+
 /* Dark mode */
 .is-dark { background: #0f172a; }
 
@@ -381,7 +478,11 @@ onMounted(() => {
 
 .is-dark .score-card,
 .is-dark .dims-card,
-.is-dark .advice-card { background: #1e293b; box-shadow: none; }
+.is-dark .advice-card,
+.is-dark .contribute-card { background: #1e293b; box-shadow: none; border-color: #334155; }
+.is-dark .contribute-input { background: #0f172a; color: #f8fafc; border-color: #334155; }
+.is-dark .contribute-tip { color: #94a3b8; }
+.is-dark .btn-secondary { background: #1e293b; color: #93c5fd; border-color: #334155; }
 
 .is-dark .score-desc,
 .is-dark .r-desc,

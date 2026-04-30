@@ -231,9 +231,12 @@ const startInterview = async () => {
   loading.value = true;
   try {
     // userId is resolved server-side from the JWT; don't send it in the body.
+    // Persist the modality on the interview row so History can resume in the
+    // *same* mode the candidate originally chose.
     const interview = await startInterviewApi({
       positionName: selectedPosition.value,
-      difficulty: selectedDifficulty.value
+      difficulty: selectedDifficulty.value,
+      mode: selectedMode.value === 'voice' ? 'VOICE' : 'TEXT',
     });
 
     uni.setStorageSync('interview_mode', selectedMode.value);

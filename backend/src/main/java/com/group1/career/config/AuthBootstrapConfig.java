@@ -21,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class AuthBootstrapConfig {
 
     private static final String DEFAULT_ROLE_CODE = "STUDENT";
+    private static final String ADMIN_ROLE_CODE = "ADMIN";
     private static final String LEGACY_PASSWORD = "PASSWORD";
     private static final String EMAIL_PASSWORD = "EMAIL_PASSWORD";
 
@@ -38,6 +39,18 @@ public class AuthBootstrapConfig {
                             .roleCode(DEFAULT_ROLE_CODE)
                             .roleName("Student")
                             .description("Default role for student-side users")
+                            .isSystem(true)
+                            .build()));
+
+            // ADMIN role for the B-side console and weekly-report manual trigger.
+            // We seed the row only — granting the role to a specific user is
+            // an explicit ops step, never automatic, to avoid accidentally
+            // promoting a regular signup.
+            roleRepository.findByRoleCode(ADMIN_ROLE_CODE)
+                    .orElseGet(() -> roleRepository.save(Role.builder()
+                            .roleCode(ADMIN_ROLE_CODE)
+                            .roleName("Administrator")
+                            .description("Back-office staff with access to org dashboards and ops triggers")
                             .isSystem(true)
                             .build()));
 
