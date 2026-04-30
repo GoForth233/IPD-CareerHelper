@@ -8,6 +8,7 @@ import com.group1.career.model.entity.*;
 import com.group1.career.repository.*;
 import com.group1.career.service.AiService;
 import com.group1.career.service.AssessmentService;
+import com.group1.career.service.CheckInService;
 import com.group1.career.service.NotificationService;
 import com.group1.career.service.UserProfileSnapshotService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final AiService aiService;
     private final NotificationService notificationService;
     private final UserProfileSnapshotService snapshotService;
+    private final CheckInService checkInService;
 
     @Override
     public List<AssessmentScale> getAllScales() {
@@ -138,6 +140,14 @@ public class AssessmentServiceImpl implements AssessmentService {
                         ". Tap to read the full breakdown.",
                 "/pages/assessment/result?recordId=" + record.getRecordId()
         );
+
+        // Stamp the daily check-in. Best-effort — never fail the submission
+        // because the streak engine hiccuped.
+        try {
+            checkInService.recordAction(userId, "ASSESSMENT");
+        } catch (Exception e) {
+            log.warn("[assessment] check-in record failed for user {}: {}", userId, e.toString());
+        }
 
         return record;
     }

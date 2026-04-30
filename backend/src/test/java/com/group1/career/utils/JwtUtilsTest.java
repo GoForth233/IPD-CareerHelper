@@ -1,11 +1,26 @@
 package com.group1.career.utils;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class JwtUtilsTest {
+
+    /**
+     * Phase 1 hardened JwtUtils to fail-fast unless {@code configure()} is
+     * called with a 32-byte+ secret. The unit test exercises JwtUtils
+     * directly (no Spring context, so JwtConfig never runs), so we have
+     * to bootstrap it ourselves.
+     */
+    @BeforeAll
+    static void configureJwt() {
+        JwtUtils.configure(
+                "test-jwt-secret-test-jwt-secret-test-jwt-secret-test-jwt-secret-12",
+                3600_000L
+        );
+    }
 
     @Test
     @DisplayName("Generate token - returns non-null JWT string")

@@ -14,12 +14,44 @@ services:
       - .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      # The Spring app talks to the sidecar over the docker-compose network
+      # using the service name. Override in .env.prod when running outside
+      # compose (e.g. point to a managed Kubernetes service).
+      BODY_LANG_SIDECAR_URL: ${BODY_LANG_SIDECAR_URL:-http://body-lang:8001}
+    depends_on:
+      body-lang:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Body-language scoring sidecar (Sprint C-1).
+  # FastAPI + MediaPipe; one POST /analyze endpoint that returns
+  # { eye_contact, expression, posture } in [0..100].
+  body-lang:
+    build:
+      context: ../body-lang-sidecar
+    image: careerloop-body-lang:latest
+    container_name: careerloop-body-lang
+    restart: unless-stopped
+    # Internal-only — the Spring backend reaches it through the compose
+    # network. Don't expose to the host except for local debugging.
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     logging:
       driver: json-file
       options:

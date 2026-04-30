@@ -4,7 +4,7 @@
 
     <!-- Header -->
     <view class="page-header">
-      <view class="back-btn" @click="uni.navigateBack()">
+      <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
       </view>
       <view class="header-text">
@@ -161,6 +161,10 @@ const nextStep = () => {
     return;
   }
   currentStep.value++;
+};
+
+const goBack = () => {
+  uni.navigateBack();
 };
 
 const onDegreeChange = (e: any) => { form.value.degree = degreeOptions[e.detail.value]; };

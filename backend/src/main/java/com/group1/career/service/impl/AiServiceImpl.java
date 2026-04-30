@@ -36,26 +36,41 @@ public class AiServiceImpl implements AiService {
             .connectTimeout(Duration.ofSeconds(60)) // Longer timeout for streaming
             .build();
 
+    /**
+     * Default persona used only when the caller did NOT supply their own
+     * {@code system} message. Callers like InterviewController and ChatController
+     * inject task-specific personas; double-stacking systems used to confuse
+     * Qwen and produce off-topic replies.
+     */
+    private static final String DEFAULT_SYSTEM_PROMPT =
+            "You are a professional career assistant. Reply concisely and stay on topic.";
+
     @Override
     public String chat(List<Map<String, String>> messages) {
         try {
-            // 1. Build Request Body
             ObjectNode root = objectMapper.createObjectNode();
             root.put("model", modelName);
-            
-            ArrayNode msgArray = root.putArray("messages");
-            
-            // Add System Prompt if not present (optional, can be done by frontend)
-            // But here we ensure consistent persona
-            ObjectNode systemMsg = msgArray.addObject();
-            systemMsg.put("role", "system");
-            systemMsg.put("content", "You are a professional resume analysis assistant. Help users improve their resumes.");
 
-            // Append History
-            for (Map<String, String> msg : messages) {
-                ObjectNode node = msgArray.addObject();
-                node.put("role", msg.get("role"));
-                node.put("content", msg.get("content"));
+            ArrayNode msgArray = root.putArray("messages");
+
+            // Inject the default persona only when the caller hasn't already
+            // supplied their own system prompt. Stacking two system messages
+            // can knock Qwen off the role the caller actually wanted.
+            boolean callerHasSystem = messages != null
+                    && !messages.isEmpty()
+                    && "system".equalsIgnoreCase(messages.get(0).get("role"));
+            if (!callerHasSystem) {
+                ObjectNode systemMsg = msgArray.addObject();
+                systemMsg.put("role", "system");
+                systemMsg.put("content", DEFAULT_SYSTEM_PROMPT);
+            }
+
+            if (messages != null) {
+                for (Map<String, String> msg : messages) {
+                    ObjectNode node = msgArray.addObject();
+                    node.put("role", msg.get("role"));
+                    node.put("content", msg.get("content"));
+                }
             }
 
             String requestBody = objectMapper.writeValueAsString(root);

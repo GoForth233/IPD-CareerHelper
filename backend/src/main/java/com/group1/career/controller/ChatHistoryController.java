@@ -1,10 +1,13 @@
 package com.group1.career.controller;
 
+import com.group1.career.common.ErrorCode;
 import com.group1.career.common.Result;
+import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.AssistantMessage;
 import com.group1.career.model.entity.AssistantSession;
 import com.group1.career.repository.AssistantMessageRepository;
 import com.group1.career.repository.AssistantSessionRepository;
+import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
@@ -23,37 +26,48 @@ public class ChatHistoryController {
     private final AssistantSessionRepository sessionRepository;
     private final AssistantMessageRepository messageRepository;
 
-    @Operation(summary = "Get all chat sessions for a user (sorted by latest)")
+    @Operation(summary = "Get all chat sessions for the current user (sorted by latest)")
     @GetMapping("/{userId}")
     public Result<List<AssistantSession>> getUserSessions(@PathVariable Long userId) {
-        return Result.success(sessionRepository.findByUserIdOrderByUpdatedAtDesc(userId));
+        // Path userId is kept for backwards compat with the frontend, but
+        // we always honour the JWT-derived id and reject mismatches so a
+        // caller cannot enumerate other users' sessions.
+        Long uid = SecurityUtil.requireCurrentUserId();
+        if (!uid.equals(userId)) {
+            throw new BizException(ErrorCode.FORBIDDEN);
+        }
+        return Result.success(sessionRepository.findByUserIdOrderByUpdatedAtDesc(uid));
     }
 
-    @Operation(summary = "Get all messages in a session")
+    @Operation(summary = "Get all messages in a session (owner-only)")
     @GetMapping("/session/{sessionId}")
     public Result<List<AssistantMessage>> getSessionMessages(@PathVariable Long sessionId) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        assertOwnership(sessionId, uid);
         return Result.success(messageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId));
     }
 
-    @Operation(summary = "Create a new chat session")
+    @Operation(summary = "Create a new chat session for the current user")
     @PostMapping("/create")
     public Result<AssistantSession> createSession(@RequestBody CreateSessionDto request) {
+        // Always trust the JWT subject; never allow the body to set userId.
+        Long uid = SecurityUtil.requireCurrentUserId();
         AssistantSession session = AssistantSession.builder()
-                .userId(request.getUserId())
+                .userId(uid)
                 .title(request.getTitle() != null ? request.getTitle() : "New Conversation")
                 .build();
         return Result.success(sessionRepository.save(session));
     }
 
-    @Operation(summary = "Append a message pair to an existing session")
+    @Operation(summary = "Append a message pair to an existing session (owner-only)")
     @PostMapping("/session/{sessionId}/append")
     @Transactional
     public Result<AssistantSession> appendMessage(
             @PathVariable Long sessionId,
             @RequestBody AppendMessageDto request) {
 
-        AssistantSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+        Long uid = SecurityUtil.requireCurrentUserId();
+        AssistantSession session = assertOwnership(sessionId, uid);
 
         messageRepository.save(AssistantMessage.builder()
                 .sessionId(sessionId)
@@ -69,27 +83,37 @@ public class ChatHistoryController {
 
         if ("New Conversation".equals(session.getTitle())) {
             String firstMsg = request.getUserMessage();
-            session.setTitle(firstMsg.length() > 20 ? firstMsg.substring(0, 20) + "..." : firstMsg);
-            sessionRepository.save(session);
+            if (firstMsg != null && !firstMsg.isBlank()) {
+                session.setTitle(firstMsg.length() > 20 ? firstMsg.substring(0, 20) + "..." : firstMsg);
+                sessionRepository.save(session);
+            }
         }
 
         return Result.success(session);
     }
 
-    @Operation(summary = "Delete a chat session and all its messages")
+    @Operation(summary = "Delete a chat session and all its messages (owner-only)")
     @DeleteMapping("/session/{sessionId}")
     @Transactional
     public Result<String> deleteSession(@PathVariable Long sessionId) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        assertOwnership(sessionId, uid);
         messageRepository.deleteBySessionId(sessionId);
         sessionRepository.deleteById(sessionId);
         return Result.success("Session deleted");
     }
 
-    // ================= DTO Classes =================
+    private AssistantSession assertOwnership(Long sessionId, Long userId) {
+        AssistantSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new BizException("Session not found"));
+        if (!userId.equals(session.getUserId())) {
+            throw new BizException(ErrorCode.FORBIDDEN);
+        }
+        return session;
+    }
 
     @Data
     public static class CreateSessionDto {
-        private Long userId;
         private String title;
     }
 

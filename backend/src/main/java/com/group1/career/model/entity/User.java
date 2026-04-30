@@ -64,6 +64,14 @@ public class User {
     private Integer status = 1;
 
     /**
+     * Soft FK to {@code organizations.org_id} (Sprint D-4). Null for the
+     * default C-side users; set when an admin invites a student into a
+     * cohort. Never enforced at the DB layer to keep the migration painless.
+     */
+    @Column(name = "org_id")
+    private Long orgId;
+
+    /**
      * Cross-tool user portrait, JSON-serialized {@code UserProfileSnapshot}.
      * Written when a user finishes an assessment / uploads a resume /
      * completes an interview, then read back by the AI assistant + interview

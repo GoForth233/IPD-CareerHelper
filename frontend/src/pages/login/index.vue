@@ -230,6 +230,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { sendCodeApi, resetPasswordApi, registerApi, loginApi, wechatLoginApi, checkEmailApi } from '@/api/user';
+import { enterGuestMode } from '@/utils/auth';
 
 const statusTopPx = ref(52);
 onMounted(() => { statusTopPx.value = getTopSafeHeight(); });
@@ -497,10 +498,11 @@ const wxLogin = () => {
 
 const guestLogin = () => {
   if (!agreed.value) { showSnack('Please agree to the Terms of Service first', 'error'); return; }
-  uni.removeStorageSync('userId');
-  uni.removeStorageSync('token');
-  uni.setStorageSync('userInfo', { nickname: 'Guest', avatarUrl: '' });
-  showSnack('Guest mode enabled', 'info');
+  // Guest mode now stores a sentinel userId (-1) plus an `isGuest` flag so
+  // the App.vue cold-start gate doesn't treat the guest as "no session" and
+  // kick them back here every relaunch.
+  enterGuestMode();
+  showSnack('Guest mode enabled — limited features available', 'info');
   setTimeout(() => { uni.switchTab({ url: '/pages/home/index' }); }, 800);
 };
 </script>

@@ -35,7 +35,9 @@ build/
 ### Mac OS ###
 .DS_Store
 
-### Production secrets — never commit ###
+### Production / dev secrets — never commit ###
 .env
+.env.dev
 .env.prod
 .env.local
+.env.*.local

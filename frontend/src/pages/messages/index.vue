@@ -147,15 +147,22 @@ const markAllReadHandler = async () => {
 };
 
 const handleSystemClick = async (item: SystemMessageView) => {
-  // Optimistically mark read in the UI; the backend confirms it next.
   if (item.unread) {
     item.unread = false;
     try { await markReadApi(item.notificationId); } catch { /* best-effort */ }
   }
 
-  // Follow the deep link the backend attached, if any.
   if (item.link) {
     if (item.link.startsWith('/pages/')) {
+      // The interview report deep link needs an interviewId — without it the
+      // page boots into a 404 state. Send those orphans to the history list
+      // instead so the user can still recover the right report.
+      if (item.link.startsWith('/pages/interview/report')
+          && !/[?&]interviewId=\d+/.test(item.link)) {
+        uni.showToast({ title: 'This notification is no longer linked to a report', icon: 'none' });
+        uni.navigateTo({ url: '/pages/interview/history' });
+        return;
+      }
       uni.navigateTo({ url: item.link });
     } else {
       uni.showToast({ title: item.link, icon: 'none' });
@@ -163,9 +170,9 @@ const handleSystemClick = async (item: SystemMessageView) => {
     return;
   }
 
-  // Legacy fallback path.
+  // Legacy fallback for older notifications without a link payload.
   if (item.preview.includes('report')) {
-    uni.navigateTo({ url: '/pages/interview/report' });
+    uni.navigateTo({ url: '/pages/interview/history' });
   } else if (item.preview.includes('diagnosis')) {
     uni.navigateTo({ url: '/pages/resume-ai/index' });
   }

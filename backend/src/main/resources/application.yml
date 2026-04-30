@@ -11,7 +11,7 @@ spring:
   datasource:
     # 注意: 如果你是Mac本地安装，密码可能为空，或者你需要改成你设置的密码
     # serverTimezone 改为 Asia/Shanghai 避免时间差 8 小时
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/career_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/career_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PWD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -99,3 +99,21 @@ wechat:
   miniapp:
     appid: ${WECHAT_APPID:wx8bdae792853cc263}
     secret: ${WECHAT_SECRET}
+
+# ==============================
+# 8. JWT signing
+#    JWT_SECRET MUST be set (>=32 bytes). The app will fail-fast at boot
+#    if it's missing or too short — see JwtConfig.
+# ==============================
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS:604800000}
+
+# ==============================
+# 9. Body Language sidecar (Sprint C-1)
+#    Python FastAPI + MediaPipe service that scores interview frames.
+#    Set BODY_LANG_SIDECAR_URL to disable graceful degradation.
+# ==============================
+bodylang:
+  sidecar-url: ${BODY_LANG_SIDECAR_URL:}
+  enabled: ${BODY_LANG_ENABLED:true}

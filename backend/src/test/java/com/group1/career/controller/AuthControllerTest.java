@@ -2,6 +2,7 @@ package com.group1.career.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.common.ErrorCode;
+import com.group1.career.config.JwtConfig;
 import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.User;
 import com.group1.career.service.EmailService;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,6 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *     are mocked so the WebMvc context loads.
  */
 @WebMvcTest(AuthController.class)
+@ActiveProfiles("test")
+@Import(JwtConfig.class)
 public class AuthControllerTest {
 
     @Autowired

@@ -27,6 +27,7 @@
       device-position="front"
       flash="off"
       :resolution="'medium'"
+      id="bodyLangCamera"
       @error="onCameraError"
     />
     <view v-else class="camera-pip camera-pip-fallback">
@@ -148,6 +149,7 @@ import {
   type Interview,
   type VoiceTurnResponse,
 } from '@/api/interview';
+import { submitBodyLanguageFrameApi } from '@/api/bodyLanguage';
 
 // ───────────────────────── State ─────────────────────────
 const statusTopPx = ref(52);
@@ -168,6 +170,8 @@ const RECORD_MAX_SECONDS = 60;
 
 const cameraReady = ref(false);
 const cameraError = ref('');
+let bodyLangTimer: ReturnType<typeof setInterval> | null = null;
+const BODY_LANG_INTERVAL_MS = 3000;
 
 const toast = reactive({ visible: false, message: '', type: 'info' as 'success' | 'error' | 'info' });
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -245,6 +249,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   cleanupRecording();
+  // #ifdef MP-WEIXIN
+  stopBodyLanguageCapture();
+  // #endif
   if (innerAudio) {
     try { innerAudio.stop(); } catch {}
     try { innerAudio.destroy(); } catch {}
@@ -311,6 +318,7 @@ const requestCamera = () => {
     success: () => {
       cameraReady.value = true;
       cameraError.value = '';
+      startBodyLanguageCapture();
     },
     fail: () => {
       cameraReady.value = false;
@@ -322,6 +330,55 @@ const requestCamera = () => {
 const onCameraError = (e: any) => {
   cameraReady.value = false;
   cameraError.value = e?.detail?.errMsg || 'Camera failed';
+  stopBodyLanguageCapture();
+};
+
+/**
+ * Start sampling frames at 1/3 Hz while the candidate is speaking. We push
+ * each base64 jpeg to /api/body-language/frame and let the Spring backend
+ * fan out to the FastAPI sidecar. Errors are intentionally swallowed —
+ * a flaky sidecar must never block the actual interview turn.
+ */
+const startBodyLanguageCapture = () => {
+  if (bodyLangTimer || !interviewId.value) return;
+  bodyLangTimer = setInterval(() => {
+    if (!cameraReady.value) return;
+    // Only capture while the candidate is actively answering. While the AI is
+    // talking the camera shows the candidate listening, which is less useful
+    // for body-language scoring and wastes bandwidth.
+    if (!isRecording.value) return;
+    try {
+      const ctx = uni.createCameraContext();
+      ctx.takePhoto({
+        quality: 'low',
+        success: (res: any) => {
+          const fp = res?.tempImagePath;
+          if (!fp) return;
+          // @ts-ignore mini-program global
+          wx.getFileSystemManager().readFile({
+            filePath: fp,
+            encoding: 'base64',
+            success: (r: any) => {
+              if (!r?.data) return;
+              submitBodyLanguageFrameApi(interviewId.value, r.data).catch(() => {});
+            },
+            fail: () => {},
+          });
+        },
+        fail: () => {},
+      });
+    } catch {
+      // Some emulators throw on createCameraContext when the camera component
+      // isn't mounted yet — try again on the next tick.
+    }
+  }, BODY_LANG_INTERVAL_MS);
+};
+
+const stopBodyLanguageCapture = () => {
+  if (bodyLangTimer) {
+    clearInterval(bodyLangTimer);
+    bodyLangTimer = null;
+  }
 };
 // #endif
 

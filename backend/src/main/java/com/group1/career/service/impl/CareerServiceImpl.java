@@ -9,6 +9,7 @@ import com.group1.career.repository.CareerNodeRepository;
 import com.group1.career.repository.CareerPathRepository;
 import com.group1.career.repository.UserCareerProgressRepository;
 import com.group1.career.service.CareerService;
+import com.group1.career.service.CheckInService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class CareerServiceImpl implements CareerService {
     private final CareerPathRepository pathRepository;
     private final CareerNodeRepository nodeRepository;
     private final UserCareerProgressRepository progressRepository;
+    private final CheckInService checkInService;
 
     @Override
     public List<CareerPath> getAllPaths() {
@@ -71,6 +73,13 @@ public class CareerServiceImpl implements CareerService {
 
         progress.setStatus("COMPLETED");
         progressRepository.save(progress);
+
+        // Daily check-in. Best-effort.
+        try {
+            checkInService.recordAction(userId, "SKILL_NODE");
+        } catch (Exception e) {
+            log.warn("[career] check-in record failed for user {}: {}", userId, e.toString());
+        }
     }
 
     @Override

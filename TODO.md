@@ -1,87 +1,73 @@
 # CareerLoop — 待办事项
 
-> 更新于 2026-04-30。Sprint A/B 已完成，Sprint C 最后一项待做，Sprint D 全部待做。
+> 更新于 2026-04-30。Sprint A/B/C/D 全部完成（详见 `feature/product-completion-2026-04`）。
+> 后续技术债 / V2 需求迁移到 `BACKLOG.md`。
 > 部署事宜暂不在此列。
 
 ---
 
-## Sprint C 尾项
+## 完成情况
 
-### C-1 摄像头帧分析 / Body Language 维度 ❌
-**目标**：面试过程中每 2 秒截一帧，分析用户的眼神接触、表情、姿态稳定性，写入面试 report 第 6 维度 "Body Language"。
+### Sprint C 尾项
 
-**方案选项（需决策）**：
-- **方案 A — Python sidecar**：独立 FastAPI 微服务，接收 base64 帧，用 MediaPipe / OpenCV 返回分数；Spring Boot 通过 HTTP 调用。
-- **方案 B — Java + OpenCV**：在 Spring Boot 内直接用 `org.openpgp:openpgputils` 或 `nu.pattern:opencv`，省去独立服务，但 JNI 库部署麻烦。
+- C-1 摄像头帧分析 / Body Language 维度 ✅
+  - Python sidecar 方案（FastAPI + MediaPipe）落在 `body-lang-sidecar/`
+  - Spring Boot 通过 `BodyLanguageService` HTTP 调用 sidecar，缓存帧分数
+  - 前端 `pages/interview/room.vue` 每 3 秒截帧上传，`pages/interview/report.vue`
+    雷达图扩成 6 维（Body Language 维度可空缺时自动降级）
 
-**涉及文件**：
-- 后端：新增 `BodyLanguageService` + `BodyLanguageController`（接收帧）
-- 后端：`InterviewController` 面试结束时汇总帧分析得分写入 report
-- 前端：`room.vue` 加定时截帧逻辑（每 2s 用 `<camera>` 的 `takePhoto` 接口抓图，上传帧）
-- 前端：`interview/report` 页展示新增的 Body Language 维度雷达图
+### Sprint D — 行为流量层 + B 端骨架
 
----
+- D-1 7 日打卡 ✅
+  - `check_ins` 表 + `CheckInService` + `CheckInController`
+  - 测评 / 面试 / 技能节点完成时自动触发打卡
+  - `home/index.vue` 打卡卡片 + `pages/checkin/index.vue` 日历视图
 
-## Sprint D — 行为流量层 + B 端骨架
+- D-2 周报推送 ✅
+  - `WeeklyReportService` + `WeeklyReportJob`（每周一 09:00 Asia/Shanghai）
+  - Qwen 生成 50 字进步文案 → `notifications.type=WEEKLY_REPORT`
+  - 管理员接口 `POST /api/admin/weekly-report/run`、`/run-user` 可手动触发
 
-### D-1 7 日打卡 ❌
-**目标**：用户完成"测评 1 次 + 面试 3 次 + 技能节点 2 个"可解锁"求职闭环"徽章，推动每日回访。
+- D-3 面经市场 ✅
+  - `interview_questions` 表 + `QuestionBankController`（`/api/questions/*`）
+  - 面试开场提示词概率从题库抽题
+  - `pages/interview/report.vue` 贡献入口 + `pages/market/index.vue` 题库浏览/点赞
 
-**涉及文件**：
-- 后端：新建 `check_in` 表 + `CheckInService` + `CheckInController`（`POST /api/checkin`，`GET /api/checkin/status`）
-- 后端：测评 / 面试 / 技能节点完成时自动触发打卡写入
-- 前端：`home/index.vue` 加打卡进度条卡片（今日进度 / 连续天数 / 徽章展示）
-- 前端：新增 `pages/checkin/index.vue`（历史日历视图）
-- 数据库：`CREATE TABLE check_ins (id, user_id, date, actions JSON, streak INT)`
+- D-4 B 端管理控制台骨架 ✅
+  - `admin-frontend/`（独立 Vite + Vue3 + Element Plus 项目）
+  - 登录 → Dashboard（机构雷达均值/薄弱维度 TOP3）→ 学生列表
+  - 后端 `AdminController` + `AdminAuthService`，沿用 C 端 JWT 但 `requireAdmin()` 把控
 
-### D-2 周报推送 ❌
-**目标**：每周一推送"本周 vs 上周"面试进步对比到消息中心，基于真实 report 数据。
-
-**涉及文件**：
-- 后端：`WeeklyReportJob.java`（Spring `@Scheduled`，每周一 09:00）
-- 后端：查询用户近两周 interview report，计算各维度均值差值，生成自然语言文案（调 Qwen）
-- 后端：写入 `notifications` 表，`type = WEEKLY_REPORT`
-- 前端：`messages/index.vue` 已有通知列表，周报会自动出现在里面（无需改前端）
-
-### D-3 面经市场 ❌
-**目标**：面试结束后弹窗"贡献本次题目？"，将 AI 生成的问题匿名入库；新用户面试时有概率抽到真实面经题。
-
-**涉及文件**：
-- 后端：新建 `interview_questions` 表（`id, position, difficulty, question_text, source, used_count`）
-- 后端：`QuestionBankController`（`POST /api/questions/contribute`，`GET /api/questions/random?position=&difficulty=`）
-- 后端：`InterviewController.startInterview` 在生成开场问题前，先从题库随机抽一道加入 prompt（概率 50%）
-- 前端：`room.vue` / `chat.vue` 面试结束后弹"贡献题目"弹窗
-- 前端：新增 `pages/market/index.vue`（题库浏览页，可按岗位/难度筛选）
-
-### D-4 B 端管理控制台骨架 ❌
-**目标**：独立部署的 Vue3 + Element Plus Web 应用（非小程序），给机构/学校管理员用。
-
-**涉及文件**（全部新建，独立于 `frontend/` 目录）：
-- `admin-frontend/`：`vite` + `vue3` + `element-plus` 项目
-  - `pages/login.vue`（管理员账号密码登录）
-  - `pages/dashboard.vue`（机构内学生面试雷达均值大盘）
-  - `pages/students.vue`（学生列表 + 面试记录查看）
-- 后端：新建 `AdminController`（`/api/admin/*`，需 `ADMIN` 角色 JWT）
-- 后端：`AdminService`（按机构 org_id 聚合学生数据）
-- 数据库：`organizations` 表 + `users.org_id` 外键
-
-### D-5 A 端 Career Paths 节点 + 题库 CRUD ❌
-**目标**：在 B 端控制台里让管理员可以编辑技能地图节点和测评题库，不用直接改数据库。
-
-**涉及文件**：
-- 后端：`CareerPathAdminController`（`POST/PUT/DELETE /api/admin/career-paths`）
-- 后端：`AssessmentAdminController`（`POST/PUT/DELETE /api/admin/assessments/questions`）
-- 前端（admin）：`pages/career-paths.vue`（节点树形编辑器）
-- 前端（admin）：`pages/question-bank.vue`（题目 CRUD 表格）
+- D-5 A 端 Career Paths 节点 + 题库 CRUD ✅
+  - `AdminController` 内置 `/career-paths`、`/career-paths/nodes`、`/questions` CRUD
+  - 前端 admin 页 `views/SkillMap.vue`、`views/QuestionBank.vue`
 
 ---
 
-## 已知技术债（不影响主流程，记录备用）
+## 主页 Bilibili 改造（产品需求）
 
-| 项 | 说明 |
-|----|------|
-| OSS 文件孤儿 | 删除简历时只删 DB 记录，不删 OSS 文件。需在 `ResumeServiceImpl.deleteResume` 里加 `fileService.deleteObject(resume.getFileUrl())` |
-| 数字人面试官皮肤 | 当前只有一套蓝色 CSS 头像。V2 需提供 3-5 套预设皮肤供用户在 `start.vue` 选择 |
-| 面试报告维度 | 当前 5 维，Body Language (Sprint C-1 完成后) 变 6 维，`report.vue` 雷达图需同步扩展 |
-| 技能地图"需补强"标记 | 面试报告弱维度应该自动在 `map/index.vue` 对应节点加"需补强"标签，目前未接通 |
-| WeChat mini-program silent mode 提示 | `room.vue` 虽已加 `obeyMuteSwitch=false`，但建议在面试开始前加一个"请确认音量已开"提示 |
+- 后端 `BilibiliClient` 实现 wbi 签名 + `HomeContentRefreshJob`（每日 03:00）
+- 新表：`home_videos`、`home_articles`、`home_consultations`
+- `HomepageController` 返回 `videos / articles / consultations / careerCards`
+  四个 section，视频按 `userId + dayOfYear` 抽样，「每日切批次但同一天稳定」
+- 前端 `pages/home/index.vue` 重写：横滑视频区 + 文章 + 资讯 + 下拉刷新
+- 微信白名单清单见 `WECHAT_MP_CONFIG.md`
+
+---
+
+## 已知关键 Bug 修复（10 项）
+
+1. ✅ IDOR — `AssessmentController.getRecord` 校验所有权
+2. ✅ 越权 — `ChatHistoryController` 所有 endpoint 加 `assertOwnership`
+3. ✅ JWT 弱默认 — `JwtUtils` 缺 secret 直接抛 `IllegalStateException`
+4. ✅ AI 系统提示重叠 — 仅当首条非 system 时注入
+5. ✅ 流式 chat 丢历史 — `ChatController.streamMessage` 解析 `historyJson`
+6. ✅ 面试报告维度对不上 — `extractDimensions` 改读 `radarChart{}`
+7. ✅ 通知中心点旧通知崩溃 — 缺 `interviewId` 跳 history + toast
+8. ✅ 面试历史 ONGOING 路由错 — `Interview.mode` 字段 + 前端按 mode 跳
+9. ✅ 游客模式冷启动被踢回登录 — `enterGuestMode` + `isGuest`
+10. ✅ OSS 孤儿文件 — `ResumeServiceImpl.deleteResume` 调用 `fileService.deleteObject`
+
+---
+
+> 后续技术债（数字人皮肤、需补强自动联动等）见 [BACKLOG.md](./BACKLOG.md)。

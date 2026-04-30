@@ -116,14 +116,20 @@ const startNew = () => {
 };
 
 /**
- * Tapping a card now always leads somewhere useful:
- *   ONGOING   → resume the chat
+ * Tapping a card always leads somewhere useful:
+ *   ONGOING   → resume the same modality the candidate originally chose
+ *               (VOICE → room.vue, TEXT/unknown → chat.vue) so we never
+ *               silently downgrade a digital-human session into a text chat.
  *   COMPLETED → open the AI evaluation report
- *   anything else (CANCELLED) → fall back to a toast
+ *   CANCELLED → toast
  */
 const viewDetail = (item: Interview) => {
   if (item.status === 'ONGOING') {
-    uni.navigateTo({ url: `/pages/interview/chat?interviewId=${item.interviewId}` });
+    const isVoice = (item.mode || '').toUpperCase() === 'VOICE';
+    const target = isVoice
+      ? `/pages/interview/room?interviewId=${item.interviewId}`
+      : `/pages/interview/chat?interviewId=${item.interviewId}`;
+    uni.navigateTo({ url: target });
   } else if (item.status === 'COMPLETED') {
     uni.navigateTo({ url: `/pages/interview/report?interviewId=${item.interviewId}` });
   } else {

@@ -113,6 +113,23 @@ public class FileServiceImpl implements FileService {
         }
     }
 
+    @Override
+    public void deleteObject(String fileUrlOrKey) {
+        if (fileUrlOrKey == null || fileUrlOrKey.isBlank()) return;
+        String key = toObjectKey(fileUrlOrKey);
+        OSS ossClient = createOssClient();
+        try {
+            ossClient.deleteObject(ossConfig.getBucketName(), key);
+            log.info("OSS object deleted: bucket={} key={}", ossConfig.getBucketName(), key);
+        } catch (com.aliyun.oss.OSSException | com.aliyun.oss.ClientException e) {
+            // Non-fatal: a stale OSS row is preferable to failing the
+            // user-facing delete on a transient OSS hiccup.
+            log.warn("OSS deleteObject failed for key={}: {}", key, e.getMessage());
+        } finally {
+            if (ossClient != null) ossClient.shutdown();
+        }
+    }
+
     /**
      * Strip the scheme + host from a stored OSS URL to recover the bare object key.
      * Accepts already-bare keys unchanged. Tolerates leading slashes.

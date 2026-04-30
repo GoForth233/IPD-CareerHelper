@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
-import { LOGIN_PAGE } from "@/utils/auth";
+import { onLaunch } from "@dcloudio/uni-app";
+import { isLoggedIn, LOGIN_PAGE } from "@/utils/auth";
 
 onLaunch(() => {
-  console.log("App Launch");
-  const userId = uni.getStorageSync('userId');
-  if (!userId) {
+  // Cold-start gate: real users *and* guests both keep their session.
+  // Previously a guest's lack of `userId` would bounce them back to the
+  // login page on every relaunch; the auth helper now treats the guest
+  // sentinel id as "logged in for navigation purposes."
+  if (!isLoggedIn()) {
     uni.reLaunch({ url: LOGIN_PAGE });
   }
-});
-onShow(() => {
-  console.log("App Show");
-});
-onHide(() => {
-  console.log("App Hide");
 });
 </script>
 

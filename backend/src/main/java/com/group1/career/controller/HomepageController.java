@@ -2,6 +2,12 @@ package com.group1.career.controller;
 
 import com.group1.career.common.Result;
 import com.group1.career.model.entity.CareerPath;
+import com.group1.career.model.entity.HomeArticle;
+import com.group1.career.model.entity.HomeConsultation;
+import com.group1.career.model.entity.HomeVideo;
+import com.group1.career.repository.HomeArticleRepository;
+import com.group1.career.repository.HomeConsultationRepository;
+import com.group1.career.repository.HomeVideoRepository;
 import com.group1.career.repository.InterviewRepository;
 import com.group1.career.repository.UserRepository;
 import com.group1.career.service.CareerService;
@@ -11,33 +17,85 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Arrays;
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Aggregated home feed: B站 videos (rotated daily), career articles,
+ * career consultations, and a small set of career-path "spotlight" cards.
+ *
+ * <p>Rotation strategy: videos are sampled with {@code MySQL RAND(seed)}
+ * where seed = {@code dayOfYear * 10000 + (userId mod 10000)}. This gives
+ * each user a stable batch within a day and a fresh slice every morning,
+ * even before the daily cron runs.</p>
+ */
+@Slf4j
 @Tag(name = "Homepage API", description = "Aggregated data feed for the homepage")
 @RestController
 @RequestMapping("/api/homepage")
 @RequiredArgsConstructor
 public class HomepageController {
 
+    private static final int VIDEO_LIMIT = 8;
+    private static final int ARTICLE_LIMIT = 6;
+    private static final int CONSULTATION_LIMIT = 3;
+    private static final int CAREER_CARD_LIMIT = 4;
+
     private final CareerService careerService;
     private final UserRepository userRepository;
     private final InterviewRepository interviewRepository;
+    private final HomeVideoRepository homeVideoRepository;
+    private final HomeArticleRepository homeArticleRepository;
+    private final HomeConsultationRepository homeConsultationRepository;
 
-    @Operation(summary = "Get homepage aggregated feed")
+    @Operation(summary = "Get homepage aggregated feed (videos, articles, consultations, paths, stats)")
     @GetMapping("/feed")
     public Result<HomepageFeedDto> getHomepageFeed(@RequestParam(required = false) Long userId) {
 
-        // 1. Career path recommendations
+        // 1. Bilibili videos — rotated by day so the same user sees a stable
+        //    batch within a day but fresh content the next morning.
+        long seed = todaysSeed(userId);
+        List<HomeVideo> videos;
+        try {
+            videos = homeVideoRepository.sampleByRand(seed, VIDEO_LIMIT);
+        } catch (Exception e) {
+            // RAND(seed) isn't supported on H2 (used in tests); fall back to
+            // a deterministic top-by-score listing so the test path still works.
+            log.debug("[homepage] RAND() sampling unavailable, falling back to sort: {}", e.getMessage());
+            videos = homeVideoRepository.findAllByOrderBySortScoreDesc(PageRequest.of(0, VIDEO_LIMIT));
+        }
+        List<VideoCardDto> videoCards = videos.stream()
+                .map(this::toVideoCard)
+                .collect(Collectors.toList());
+
+        // 2. Articles — newest first, capped.
+        List<ArticleDto> articles = homeArticleRepository
+                .findAllByOrderByPublishedAtDescIdDesc(PageRequest.of(0, ARTICLE_LIMIT))
+                .stream()
+                .map(this::toArticleDto)
+                .collect(Collectors.toList());
+
+        // 3. Consultations — short tip cards, newest first.
+        List<ConsultationDto> consultations = homeConsultationRepository
+                .findAllByOrderByPublishedAtDescIdDesc(PageRequest.of(0, CONSULTATION_LIMIT))
+                .stream()
+                .map(this::toConsultationDto)
+                .collect(Collectors.toList());
+
+        // 4. Career path spotlight cards (kept for the Skill Map cross-link).
         List<CareerPath> paths = careerService.getAllPaths();
         List<CareerCardDto> careerCards = paths.stream()
-                .limit(4)
+                .sorted(Comparator.comparing(CareerPath::getPathId))
+                .limit(CAREER_CARD_LIMIT)
                 .map(p -> CareerCardDto.builder()
                         .pathId(p.getPathId())
                         .name(p.getName())
@@ -45,26 +103,7 @@ public class HomepageController {
                         .build())
                 .collect(Collectors.toList());
 
-        // 2. Featured articles / news (mock data for now)
-        List<ArticleDto> articles = Arrays.asList(
-                ArticleDto.builder()
-                        .title("2026 Top Tech Skills")
-                        .summary("AI, Cloud, and Cyber Security remain the most sought-after skills...")
-                        .imageUrl("/static/articles/tech-skills.jpg")
-                        .build(),
-                ArticleDto.builder()
-                        .title("How to Ace Your First Interview")
-                        .summary("Preparation is key. Here are 10 tips from senior HRs...")
-                        .imageUrl("/static/articles/interview-tips.jpg")
-                        .build(),
-                ArticleDto.builder()
-                        .title("Career Planning for Freshmen")
-                        .summary("Starting early gives you a competitive advantage in the job market...")
-                        .imageUrl("/static/articles/career-planning.jpg")
-                        .build()
-        );
-
-        // 3. Quick stats -- live counts straight from MySQL.
+        // 5. Quick stats — live counts.
         QuickStatsDto stats = QuickStatsDto.builder()
                 .totalCareerPaths(paths.size())
                 .totalUsers((int) userRepository.count())
@@ -72,21 +111,106 @@ public class HomepageController {
                 .build();
 
         HomepageFeedDto feed = HomepageFeedDto.builder()
-                .careerCards(careerCards)
+                .videos(videoCards)
                 .articles(articles)
+                .consultations(consultations)
+                .careerCards(careerCards)
                 .stats(stats)
                 .build();
 
         return Result.success(feed);
     }
 
+    /**
+     * Stable per-day, per-user random seed. {@code dayOfYear} guarantees the
+     * batch rotates daily; mixing in {@code userId} keeps two users on the
+     * same day from seeing the identical sample, which makes the home page
+     * feel personalised even though we aren't running real recommendations.
+     */
+    private long todaysSeed(Long userId) {
+        int day = LocalDate.now().getDayOfYear();
+        long uid = userId == null ? 0L : Math.abs(userId % 10_000);
+        return ((long) day) * 10_000L + uid;
+    }
+
+    private VideoCardDto toVideoCard(HomeVideo v) {
+        return VideoCardDto.builder()
+                .id(v.getId())
+                .bvid(v.getBvid())
+                .title(v.getTitle())
+                .coverUrl(v.getCoverUrl())
+                .upName(v.getUpName())
+                .durationSec(v.getDurationSec())
+                .viewCount(v.getViewCount())
+                .keyword(v.getKeyword())
+                // Frontend opens this URL in <web-view> (requires *.bilibili.com
+                // on the WeChat MP business-domain whitelist).
+                .url("https://www.bilibili.com/video/" + v.getBvid())
+                .build();
+    }
+
+    private ArticleDto toArticleDto(HomeArticle a) {
+        return ArticleDto.builder()
+                .id(a.getId())
+                .title(a.getTitle())
+                .summary(a.getSummary())
+                .imageUrl(a.getImageUrl())
+                .url(a.getSourceUrl())
+                .category(a.getCategory())
+                .build();
+    }
+
+    private ConsultationDto toConsultationDto(HomeConsultation c) {
+        return ConsultationDto.builder()
+                .id(c.getId())
+                .title(c.getTitle())
+                .body(c.getBodyMd())
+                .author(c.getAuthor())
+                .imageUrl(c.getImageUrl())
+                .build();
+    }
+
     // ================= DTO Classes =================
 
     @Data @Builder @AllArgsConstructor
     public static class HomepageFeedDto {
-        private List<CareerCardDto> careerCards;
+        private List<VideoCardDto> videos;
         private List<ArticleDto> articles;
+        private List<ConsultationDto> consultations;
+        private List<CareerCardDto> careerCards;
         private QuickStatsDto stats;
+    }
+
+    @Data @Builder @AllArgsConstructor
+    public static class VideoCardDto {
+        private Long id;
+        private String bvid;
+        private String title;
+        private String coverUrl;
+        private String upName;
+        private Integer durationSec;
+        private Long viewCount;
+        private String keyword;
+        private String url;
+    }
+
+    @Data @Builder @AllArgsConstructor
+    public static class ArticleDto {
+        private Long id;
+        private String title;
+        private String summary;
+        private String imageUrl;
+        private String url;
+        private String category;
+    }
+
+    @Data @Builder @AllArgsConstructor
+    public static class ConsultationDto {
+        private Long id;
+        private String title;
+        private String body;
+        private String author;
+        private String imageUrl;
     }
 
     @Data @Builder @AllArgsConstructor
@@ -94,13 +218,6 @@ public class HomepageController {
         private Integer pathId;
         private String name;
         private String description;
-    }
-
-    @Data @Builder @AllArgsConstructor
-    public static class ArticleDto {
-        private String title;
-        private String summary;
-        private String imageUrl;
     }
 
     @Data @Builder @AllArgsConstructor

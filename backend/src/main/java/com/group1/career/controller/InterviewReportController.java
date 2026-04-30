@@ -8,6 +8,7 @@ import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.service.AiService;
+import com.group1.career.service.BodyLanguageService;
 import com.group1.career.service.InterviewService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,7 @@ public class InterviewReportController {
 
     private final InterviewService interviewService;
     private final AiService aiService;
+    private final BodyLanguageService bodyLanguageService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Operation(summary = "Get (or generate) the AI evaluation report for an interview")
@@ -83,6 +85,21 @@ public class InterviewReportController {
         log.info("[report] AI evaluation took {} ms for interview {}", System.currentTimeMillis() - t0, interviewId);
 
         InterviewReportDto report = parseReport(raw, interviewId, interview, (int) userTurns);
+
+        // 3.5) Fold in body-language scores collected during the session.
+        // We consume the buffer regardless so memory is freed even when no
+        // dimensions were captured (e.g. text-only interview).
+        BodyLanguageService.Aggregate body = bodyLanguageService.consume(interviewId);
+        if (body != null && body.getFrames() > 0) {
+            report.getRadarChart().setBodyLanguage(body.getBodyLanguage());
+            // Recompute overallScore so the 6th dimension actually shifts
+            // the headline number — otherwise body-language work feels
+            // unrewarded.
+            RadarChartData r = report.getRadarChart();
+            int sum = r.getExpression() + r.getLogic() + r.getTechnical()
+                    + r.getPressureResistance() + r.getCommunication() + r.getBodyLanguage();
+            report.setOverallScore(Math.max(0, Math.min(100, sum / 6)));
+        }
 
         // 4) Cache + persist final_score
         try {
@@ -208,6 +225,9 @@ public class InterviewReportController {
         private int technical;
         private int pressureResistance;
         private int communication;
+        /** Sprint C-1 — averaged body-language composite (eye contact + expression + posture).
+         *  Null when no frames were collected for the interview (text mode). */
+        private Integer bodyLanguage;
     }
 
     @Data @AllArgsConstructor @NoArgsConstructor
