@@ -1,0 +1,117 @@
+# =====================================================================
+# Production profile (`--spring.profiles.active=prod`)
+# Activated automatically by the Dockerfile via SPRING_PROFILES_ACTIVE.
+#
+# Every secret is required. There are NO default values for credentials —
+# the app refuses to start without them so we never silently boot with
+# stale dev keys.
+# =====================================================================
+
+server:
+  port: ${SERVER_PORT:8080}
+  # Behind nginx → keep client IPs accurate for logging / abuse triage
+  forward-headers-strategy: NATIVE
+  shutdown: graceful
+  tomcat:
+    max-threads: 200
+    accept-count: 100
+    connection-timeout: 20000
+    # Keep tail latencies sane: drop slow uploaders after 30s
+    max-connections: 8192
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT:3306}/${MYSQL_DB:career_db}?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectionTimeZone=Asia/Shanghai
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PWD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # On a 1c1g RDS the bottleneck is connections, not threads. Default
+      # 10 fits an RDS micro instance comfortably and leaves headroom for
+      # nightly cron jobs that may briefly demand a couple more.
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      pool-name: CareerLoopHikari
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # NEVER let JPA touch schema in production — schema changes go
+      # through reviewed SQL files in backend/sql/.
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: Asia/Shanghai
+
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+knife4j:
+  # Hide Swagger UI in prod — surface only via /actuator/health.
+  enable: ${KNIFE4J_ENABLED:false}
+
+aliyun:
+  oss:
+    endpoint: ${OSS_ENDPOINT:oss-cn-chengdu.aliyuncs.com}
+    access-key-id: ${OSS_ACCESS_KEY_ID}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET}
+    bucket-name: ${OSS_BUCKET:careerloop-prod}
+  ai:
+    api-key: ${ALIYUN_AI_API_KEY}
+    model: ${ALIYUN_AI_MODEL:qwen-max}
+  # Voice (Paraformer + CosyVoice) reuses the DashScope key above.
+  voice:
+    asr-model: ${ALIYUN_VOICE_ASR_MODEL:paraformer-realtime-v2}
+    tts-model: ${ALIYUN_VOICE_TTS_MODEL:cosyvoice-v2}
+    tts-voice: ${ALIYUN_VOICE_TTS_VOICE:longxiaochun_v2}
+
+wechat:
+  miniapp:
+    appid: ${WECHAT_APPID}
+    secret: ${WECHAT_SECRET}
+
+logging:
+  level:
+    root: INFO
+    com.group1.career: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+
+# Health probe used by Docker / nginx / external uptime monitors.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
