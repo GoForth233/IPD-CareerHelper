@@ -24,4 +24,15 @@ public interface ResumeService {
      * cross-user resume access control on read/write/delete endpoints.
      */
     Resume assertOwnership(Long resumeId, Long userId);
+
+    /**
+     * Populate the transient {@code fileViewUrl} with a short-lived presigned
+     * URL so the frontend can preview / download the PDF without our backend
+     * proxying every byte. Returns the same instance for chaining; mutates in
+     * place.
+     */
+    Resume hydrateUrl(Resume resume);
+
+    /** Same as {@link #hydrateUrl(Resume)} but for a list. Safe with null/empty. */
+    List<Resume> hydrateUrls(List<Resume> resumes);
 }

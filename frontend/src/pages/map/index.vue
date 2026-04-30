@@ -299,7 +299,7 @@ const switchRole = async () => {
   });
 };
 
-const loadAll = async () => {
+const loadAll = async (preferredPathId?: number) => {
   loading.value = true;
   try {
     paths.value = await getCareerPathsApi();
@@ -307,11 +307,20 @@ const loadAll = async () => {
       loading.value = false;
       return;
     }
-    // Default to the first path; assessment can override via storage hint.
-    const hint = uni.getStorageSync('assessment_recommended_role');
-    const preferred = paths.value.find((p) =>
-      hint && (p.name?.toLowerCase().includes(String(hint).toLowerCase()) || p.code === hint),
-    );
+    // Selection priority:
+    //   1. explicit pathId from query (e.g. tapped a card on Home)
+    //   2. assessment hint stored after a quiz
+    //   3. first path in list
+    let preferred: CareerPath | undefined;
+    if (preferredPathId) {
+      preferred = paths.value.find((p) => p.pathId === preferredPathId);
+    }
+    if (!preferred) {
+      const hint = uni.getStorageSync('assessment_recommended_role');
+      preferred = paths.value.find((p) =>
+        hint && (p.name?.toLowerCase().includes(String(hint).toLowerCase()) || p.code === hint),
+      );
+    }
     await loadPath(preferred || paths.value[0]);
   } catch (e: any) {
     uni.showToast({ title: e?.message || 'Failed to load paths', icon: 'none' });
@@ -323,7 +332,10 @@ onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   const systemInfo = uni.getSystemInfoSync();
   topSafeHeight.value = (systemInfo.statusBarHeight || 20) + 8;
-  loadAll();
+  const pages = getCurrentPages();
+  const opts = (pages[pages.length - 1] as any).options || {};
+  const queryPathId = opts.pathId ? parseInt(opts.pathId) : undefined;
+  loadAll(queryPathId && !isNaN(queryPathId) ? queryPathId : undefined);
 });
 
 // Re-pull progress when the page becomes visible -- if a user marks a

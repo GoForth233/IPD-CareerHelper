@@ -5,7 +5,10 @@ import com.group1.career.interceptor.AuthInterceptor;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.service.AiService;
+import com.group1.career.service.FileService;
 import com.group1.career.service.InterviewService;
+import com.group1.career.service.VoiceService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -37,29 +41,51 @@ public class InterviewControllerTest {
     @MockitoBean
     private AiService aiService;
 
+    /** Sprint B added voice / file dependencies on the controller; the
+     *  existing tests don't exercise the voice path so they're left as
+     *  no-op mocks. The dedicated voice-turn tests live alongside the
+     *  service unit tests, not here. */
+    @MockitoBean
+    private VoiceService voiceService;
+
+    @MockitoBean
+    private FileService fileService;
+
     @MockitoBean
     private AuthInterceptor authInterceptor;
 
     @Autowired
     private ObjectMapper objectMapper;
 
+    /** UID we pretend the AuthInterceptor put into the request after JWT
+     *  validation. Every controller method calls SecurityUtil under the
+     *  hood, so without this stub the controller short-circuits with
+     *  "Not authenticated" and every assertion below 401's. */
+    private static final Long TEST_UID = 1L;
+
     @BeforeEach
     public void bypassAuth() throws Exception {
-        when(authInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+        when(authInterceptor.preHandle(any(), any(), any())).thenAnswer(inv -> {
+            HttpServletRequest req = inv.getArgument(0);
+            req.setAttribute("userId", TEST_UID);
+            return true;
+        });
     }
 
     @Test
-    @DisplayName("API Test: Start Interview")
+    @DisplayName("API Test: Start Interview — no active session, creates new")
     public void testStartInterview_Success() throws Exception {
-        // userId is no longer in the body; resolved server-side from JWT.
         InterviewController.StartInterviewRequest request = new InterviewController.StartInterviewRequest();
         request.setResumeId(100L);
         request.setPositionName("Java Developer");
         request.setDifficulty("Normal");
 
         Interview mockInterview = Interview.builder()
-                .interviewId(1L).userId(1L).positionName("Java Developer").status("ONGOING").build();
-        when(interviewService.startInterview(anyLong(), anyLong(), anyString(), anyString())).thenReturn(mockInterview);
+                .interviewId(1L).userId(TEST_UID).positionName("Java Developer").status("ONGOING").build();
+        // Controller checks for an existing ONGOING interview before creating
+        // a new one — return empty so it falls through to startInterview().
+        when(interviewService.getUserInterviews(TEST_UID)).thenReturn(Collections.emptyList());
+        when(interviewService.startInterview(eq(TEST_UID), anyLong(), anyString(), anyString())).thenReturn(mockInterview);
 
         mockMvc.perform(post("/api/interviews/start")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -70,14 +96,16 @@ public class InterviewControllerTest {
     }
 
     @Test
-    @DisplayName("API Test: Send Interview Message")
+    @DisplayName("API Test: Send Interview Message — owner check + AI reply")
     public void testSendMessage_Success() throws Exception {
         Long interviewId = 1L;
         InterviewController.SendMessageRequest request = new InterviewController.SendMessageRequest();
         request.setContent("Tell me about yourself");
 
-        Interview mockInterview = Interview.builder().interviewId(interviewId).positionName("Java Developer").build();
-        when(interviewService.getInterviewById(interviewId)).thenReturn(mockInterview);
+        Interview mockInterview = Interview.builder()
+                .interviewId(interviewId).userId(TEST_UID)
+                .positionName("Java Developer").difficulty("Normal").build();
+        when(interviewService.assertOwnership(interviewId, TEST_UID)).thenReturn(mockInterview);
         when(interviewService.getInterviewMessages(interviewId)).thenReturn(Arrays.asList());
         when(aiService.chat(anyList())).thenReturn("Thank you for sharing. Can you tell me about your Java experience?");
 
@@ -100,6 +128,8 @@ public class InterviewControllerTest {
                 InterviewMessage.builder().msgId(2L).interviewId(interviewId).role("USER")
                         .content("Sure, I'm ready").build()
         );
+        when(interviewService.assertOwnership(interviewId, TEST_UID))
+                .thenReturn(Interview.builder().interviewId(interviewId).build());
         when(interviewService.getInterviewMessages(interviewId)).thenReturn(messages);
 
         mockMvc.perform(get("/api/interviews/{interviewId}/messages", interviewId))
@@ -110,11 +140,11 @@ public class InterviewControllerTest {
     }
 
     @Test
-    @DisplayName("API Test: End Interview")
+    @DisplayName("API Test: End Interview — score now produced by report endpoint")
     public void testEndInterview_Success() throws Exception {
         Long interviewId = 1L;
-        // The end endpoint no longer accepts a client-supplied score.
-        // Final score is now produced by the report endpoint via AI evaluation.
+        when(interviewService.assertOwnership(interviewId, TEST_UID))
+                .thenReturn(Interview.builder().interviewId(interviewId).build());
         Interview completedInterview = Interview.builder()
                 .interviewId(interviewId).status("COMPLETED").build();
         when(interviewService.endInterview(interviewId, null)).thenReturn(completedInterview);
@@ -125,16 +155,16 @@ public class InterviewControllerTest {
     }
 
     @Test
-    @DisplayName("API Test: Get User Interview History")
+    @DisplayName("API Test: Get User Interview History — caller must equal target uid")
     public void testGetUserInterviews_Success() throws Exception {
-        Long userId = 1L;
+        // Path uid must match the JWT-authenticated user (TEST_UID).
         List<Interview> interviews = Arrays.asList(
-                Interview.builder().interviewId(1L).userId(userId)
+                Interview.builder().interviewId(1L).userId(TEST_UID)
                         .positionName("Backend Dev").status("COMPLETED").finalScore(90).build()
         );
-        when(interviewService.getUserInterviews(userId)).thenReturn(interviews);
+        when(interviewService.getUserInterviews(TEST_UID)).thenReturn(interviews);
 
-        mockMvc.perform(get("/api/interviews/user/{userId}", userId))
+        mockMvc.perform(get("/api/interviews/user/{userId}", TEST_UID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].positionName").value("Backend Dev"))
                 .andExpect(jsonPath("$.data[0].finalScore").value(90));

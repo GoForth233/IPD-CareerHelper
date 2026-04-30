@@ -23,6 +23,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Actuator: /actuator/health used by Docker / nginx liveness probes -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -161,6 +167,16 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>0.11.5</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- DashScope Java SDK — used by VoiceService for Paraformer ASR
+             (paraformer-realtime-v2) and CosyVoice TTS (cosyvoice-v2). The
+             same ALIYUN_AI_API_KEY (DashScope key) authenticates all three
+             models (Qwen, Paraformer, CosyVoice). -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>dashscope-sdk-java</artifactId>
+            <version>2.20.6</version>
         </dependency>
     </dependencies>
 

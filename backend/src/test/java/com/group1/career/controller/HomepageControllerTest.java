@@ -2,6 +2,8 @@ package com.group1.career.controller;
 
 import com.group1.career.interceptor.AuthInterceptor;
 import com.group1.career.model.entity.CareerPath;
+import com.group1.career.repository.InterviewRepository;
+import com.group1.career.repository.UserRepository;
 import com.group1.career.service.CareerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,12 +32,25 @@ public class HomepageControllerTest {
     @MockitoBean
     private CareerService careerService;
 
+    /** HomepageController grew two extra repository deps when the feed
+     *  started reporting real user-count and interview-count stats. They
+     *  aren't exercised by these tests, hence pure no-op mocks. */
+    @MockitoBean
+    private UserRepository userRepository;
+
+    @MockitoBean
+    private InterviewRepository interviewRepository;
+
     @MockitoBean
     private AuthInterceptor authInterceptor;
 
     @BeforeEach
     public void bypassAuth() throws Exception {
         when(authInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+        // Stable defaults so tests focused on path/article logic don't have
+        // to repeat themselves; individual cases override as needed.
+        when(userRepository.count()).thenReturn(1280L);
+        when(interviewRepository.count()).thenReturn(356L);
     }
 
     @Test

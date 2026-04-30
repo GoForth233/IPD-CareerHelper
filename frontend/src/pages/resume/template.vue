@@ -1,144 +1,175 @@
 <template>
-  <view class="template-container" :class="{ 'is-dark': darkPref }">
+  <view class="page" :class="{ 'is-dark': darkPref }">
+    <view class="status-bar" :style="{ height: topSafe + 'px' }"></view>
+
     <!-- Header -->
-    <view class="header-section">
-      <text class="header-title">Complete Your Resume</text>
-      <text class="header-desc">Fill in your real information. AI will generate a tailored resume and polish it professionally.</text>
-    </view>
-
-    <!-- Section 1: Basic Info -->
-    <view class="form-group">
-      <text class="group-title">Basic Information</text>
-      <view class="form-card">
-        <view class="form-item">
-          <text class="label">Full Name</text>
-          <input class="input" v-model="formData.name" placeholder="Enter your full name" placeholder-class="placeholder-text" />
-        </view>
-        <view class="form-item">
-          <text class="label">Phone</text>
-          <input class="input" v-model="formData.phone" type="number" placeholder="Enter your phone number" placeholder-class="placeholder-text" />
-        </view>
-        <view class="form-item">
-          <text class="label">Email</text>
-          <input class="input" v-model="formData.email" placeholder="your@email.com" placeholder-class="placeholder-text" />
-        </view>
-        <view class="form-item">
-          <text class="label">Target Role</text>
-          <input class="input" v-model="formData.targetRole" placeholder="e.g. Frontend Developer" placeholder-class="placeholder-text" />
-        </view>
-        <view class="form-item">
-          <text class="label">Preferred City</text>
-          <input class="input" v-model="formData.city" placeholder="e.g. Beijing, Shanghai" placeholder-class="placeholder-text" />
-        </view>
+    <view class="page-header">
+      <view class="back-btn" @click="uni.navigateBack()">
+        <text class="back-icon">‹</text>
+      </view>
+      <view class="header-text">
+        <text class="page-title">Build Your Resume</text>
+        <text class="page-subtitle">Fill in the form · AI polishes & exports a PDF</text>
       </view>
     </view>
 
-    <!-- Section 2: Education -->
-    <view class="form-group">
-      <text class="group-title">Education</text>
-      <view class="form-card">
-        <view class="form-item">
-          <text class="label">University</text>
-          <input class="input" v-model="formData.university" placeholder="Enter university name" placeholder-class="placeholder-text" />
-        </view>
-        <view class="form-item">
-          <text class="label">Major</text>
-          <input class="input" v-model="formData.major" placeholder="Enter your major" placeholder-class="placeholder-text" />
-        </view>
-        <view class="form-item">
-          <text class="label">Degree</text>
-          <picker class="input-picker" mode="selector" :range="degreeOptions" @change="onDegreeChange">
-            <view class="picker-value" :class="{ 'has-value': selectedDegree }">
-              {{ selectedDegree || 'Select degree' }}
-            </view>
-          </picker>
-        </view>
-        <view class="form-item">
-          <text class="label">Grad Year</text>
-          <picker class="input-picker" mode="date" fields="year" @change="onYearChange">
-            <view class="picker-value" :class="{ 'has-value': selectedYear }">
-              {{ selectedYear || 'Select year' }}
-            </view>
-          </picker>
-        </view>
+    <!-- Progress bar -->
+    <view class="progress-track">
+      <view class="progress-fill" :style="{ width: progressPct + '%' }"></view>
+    </view>
+    <text class="progress-label">Step {{ currentStep }} of 3 — {{ stepLabels[currentStep - 1] }}</text>
+
+    <!-- ===== Step 1: Basic Info ===== -->
+    <view v-show="currentStep === 1" class="step-body">
+      <view class="field-group">
+        <text class="field-label">Full Name <text class="req">*</text></text>
+        <input class="field-input" v-model="form.name" placeholder="e.g. Zhang Wei" />
+      </view>
+      <view class="field-group">
+        <text class="field-label">Phone</text>
+        <input class="field-input" v-model="form.phone" type="number" placeholder="e.g. 138 0000 0000" />
+      </view>
+      <view class="field-group">
+        <text class="field-label">Email</text>
+        <input class="field-input" v-model="form.email" placeholder="your@email.com" />
+      </view>
+      <view class="field-group">
+        <text class="field-label">Target Role <text class="req">*</text></text>
+        <input class="field-input" v-model="form.targetRole" placeholder="e.g. Frontend Developer" />
+      </view>
+      <view class="field-group">
+        <text class="field-label">Preferred City</text>
+        <input class="field-input" v-model="form.city" placeholder="e.g. Beijing / Shanghai / Remote" />
       </view>
     </view>
 
-    <!-- Section 3: Skills -->
-    <view class="form-group">
-      <text class="group-title">Core Skills</text>
-      <view class="form-card">
-        <view class="form-item">
-          <text class="label">Skills</text>
-          <input class="input" v-model="formData.skills" placeholder="e.g. Vue3, Node.js, Python" placeholder-class="placeholder-text" />
-        </view>
+    <!-- ===== Step 2: Education + Skills ===== -->
+    <view v-show="currentStep === 2" class="step-body">
+      <view class="field-group">
+        <text class="field-label">University</text>
+        <input class="field-input" v-model="form.university" placeholder="e.g. Tsinghua University" />
+      </view>
+      <view class="field-group">
+        <text class="field-label">Major</text>
+        <input class="field-input" v-model="form.major" placeholder="e.g. Computer Science" />
+      </view>
+      <view class="field-group">
+        <text class="field-label">Degree</text>
+        <picker mode="selector" :range="degreeOptions" @change="onDegreeChange">
+          <view class="field-picker" :class="{ 'picker-filled': form.degree }">
+            <text class="picker-text" :class="{ 'picker-text-filled': form.degree }">
+              {{ form.degree || 'Tap to select' }}
+            </text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+      <view class="field-group">
+        <text class="field-label">Graduation Year</text>
+        <picker mode="date" fields="year" @change="onYearChange">
+          <view class="field-picker" :class="{ 'picker-filled': form.graduationYear }">
+            <text class="picker-text" :class="{ 'picker-text-filled': form.graduationYear }">
+              {{ form.graduationYear || 'Tap to select' }}
+            </text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+      <view class="field-group">
+        <text class="field-label">Core Skills</text>
+        <input class="field-input" v-model="form.skills" placeholder="e.g. Vue3, Spring Boot, Python, SQL" />
       </view>
     </view>
 
-    <!-- Section 4: Experience -->
-    <view class="form-group">
-      <text class="group-title">Internship & Project Experience</text>
-      <view class="form-card textarea-card">
+    <!-- ===== Step 3: Experience ===== -->
+    <view v-show="currentStep === 3" class="step-body">
+      <view class="tip-card">
+        <text class="tip-icon">💡</text>
+        <text class="tip-text">Just describe what you did in plain language. AI will restructure it using the STAR method and professional wording.</text>
+      </view>
+      <view class="field-group">
+        <view class="field-label-row">
+          <text class="field-label">Project & Internship Experience</text>
+          <text class="char-count">{{ form.experience.length }} / 800</text>
+        </view>
         <textarea
-          class="textarea"
-          v-model="formData.experience"
-          placeholder="Briefly describe your key project experience or internship. Don't worry about writing style — AI will polish it using the STAR method..."
-          placeholder-class="placeholder-text"
+          class="field-textarea"
+          v-model="form.experience"
+          placeholder="Example: Developed a Vue3 + Spring Boot e-commerce platform. Responsible for the product listing and checkout modules. Reduced checkout time by 40% by optimising API calls..."
           maxlength="800"
-          @input="onTextareaInput"
+          @input="(e: any) => form.experience = e.detail.value"
         />
-        <view class="textarea-footer">
-          <text class="word-count">{{ experienceLength }} / 800</text>
-        </view>
       </view>
     </view>
 
-    <!-- Bottom action -->
-    <view class="bottom-action">
-      <button class="btn-submit" @click="handleGenerate">Generate Resume with AI</button>
+    <!-- Bottom navigation -->
+    <view class="bottom-bar">
+      <view
+        v-if="currentStep > 1"
+        class="btn-back"
+        @click="currentStep--"
+      >
+        <text class="btn-back-text">← Back</text>
+      </view>
+      <view
+        v-if="currentStep < 3"
+        class="btn-next"
+        :class="{ 'btn-disabled': !stepValid }"
+        @click="nextStep"
+      >
+        <text class="btn-next-text">Next →</text>
+      </view>
+      <view
+        v-if="currentStep === 3"
+        class="btn-generate"
+        :class="{ 'btn-disabled': submitting }"
+        @click="handleGenerate"
+      >
+        <text class="btn-generate-text">{{ submitting ? 'AI Generating...' : '✨ Generate Resume' }}</text>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { getTopSafeHeight } from '@/utils/safeArea';
 import { generateResumeFromTemplateApi } from '@/api/resume';
 
-const degreeOptions = ['Associate', 'Bachelor', 'Master', 'Doctorate'];
-const selectedDegree = ref('');
-const selectedYear = ref('');
 const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
+const topSafe = ref(getTopSafeHeight());
 const submitting = ref(false);
+const currentStep = ref(1);
+const stepLabels = ['Basic Info', 'Education & Skills', 'Experience'];
+const degreeOptions = ['Associate', 'Bachelor', 'Master', 'Doctorate'];
 
-const formData = ref({
-  name: '',
-  phone: '',
-  email: '',
-  targetRole: '',
-  city: '',
-  university: '',
-  major: '',
-  skills: '',
-  experience: '',
+const form = ref({
+  name: '', phone: '', email: '', targetRole: '', city: '',
+  university: '', major: '', degree: '', graduationYear: '', skills: '', experience: '',
 });
 
-const experienceLength = computed(() => formData.value.experience.length);
+const progressPct = computed(() => (currentStep.value / 3) * 100);
 
-const onDegreeChange = (e: any) => {
-  selectedDegree.value = degreeOptions[e.detail.value];
+const stepValid = computed(() => {
+  if (currentStep.value === 1) return !!form.value.name.trim() && !!form.value.targetRole.trim();
+  return true;
+});
+
+const nextStep = () => {
+  if (!stepValid.value) {
+    uni.showToast({ title: 'Name and Target Role are required', icon: 'none' });
+    return;
+  }
+  currentStep.value++;
 };
 
-const onYearChange = (e: any) => {
-  selectedYear.value = e.detail.value;
-};
-
-const onTextareaInput = (e: any) => {
-  formData.value.experience = e.detail.value;
-};
+const onDegreeChange = (e: any) => { form.value.degree = degreeOptions[e.detail.value]; };
+const onYearChange = (e: any) => { form.value.graduationYear = e.detail.value; };
 
 const handleGenerate = async () => {
-  if (!formData.value.name || !formData.value.targetRole) {
-    uni.showToast({ title: 'Please fill in name and target role', icon: 'none' });
+  if (!form.value.name.trim() || !form.value.targetRole.trim()) {
+    uni.showToast({ title: 'Name and Target Role are required', icon: 'none' });
+    currentStep.value = 1;
     return;
   }
   const userId = Number(uni.getStorageSync('userId'));
@@ -147,24 +178,11 @@ const handleGenerate = async () => {
     return;
   }
   submitting.value = true;
-  uni.showLoading({ title: 'AI generating...', mask: true });
+  uni.showLoading({ title: 'AI writing your resume…', mask: true });
   try {
-    await generateResumeFromTemplateApi({
-      userId,
-      name: formData.value.name,
-      phone: formData.value.phone,
-      email: formData.value.email,
-      targetRole: formData.value.targetRole,
-      city: formData.value.city,
-      university: formData.value.university,
-      major: formData.value.major,
-      degree: selectedDegree.value,
-      graduationYear: selectedYear.value,
-      skills: formData.value.skills,
-      experience: formData.value.experience,
-    });
+    await generateResumeFromTemplateApi({ userId, ...form.value });
     uni.hideLoading();
-    uni.showToast({ title: 'Resume generated!', icon: 'success' });
+    uni.showToast({ title: 'Resume created!', icon: 'success' });
     setTimeout(() => uni.navigateBack(), 1200);
   } catch (e: any) {
     uni.hideLoading();
@@ -176,129 +194,212 @@ const handleGenerate = async () => {
 </script>
 
 <style scoped>
-.template-container {
+.page {
   min-height: 100vh;
-  background-color: #f5f5f7;
-  padding: 20px 16px 100px 16px;
+  background: #f2f2f7;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
-.header-section { margin-bottom: 24px; padding: 0 8px; }
+/* ── Header ── */
+.status-bar { width: 100%; }
 
-.header-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #000000;
-  letter-spacing: -0.5px;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.header-desc { font-size: 15px; color: #636366; line-height: 1.5; display: block; }
-
-.form-group { margin-bottom: 28px; }
-
-.group-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #636366;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-  padding-left: 16px;
-  display: block;
-  letter-spacing: 0.5px;
-}
-
-.form-card { background-color: #ffffff; border-radius: 12px; overflow: hidden; }
-
-.form-item {
+.page-header {
   display: flex;
   align-items: center;
-  min-height: 52px;
-  padding: 0 16px;
-  background-color: #ffffff;
-  position: relative;
+  gap: 12px;
+  padding: 12px 20px 16px;
 }
 
-.form-item:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 16px;
-  right: 0;
-  height: 0.5px;
-  background-color: #e5e5ea;
+.back-btn {
+  width: 36px; height: 36px; border-radius: 18px;
+  background: rgba(0, 0, 0, 0.06);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
+.back-btn:active { background: rgba(0, 0, 0, 0.12); }
+.back-icon { font-size: 24px; color: #1e293b; font-weight: 600; line-height: 1; }
 
-.label { width: 95px; font-size: 16px; color: #000000; flex-shrink: 0; }
+.header-text { flex: 1; }
+.page-title { display: block; font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; }
+.page-subtitle { display: block; font-size: 12px; color: #64748b; margin-top: 2px; }
 
-.input { flex: 1; height: 52px; font-size: 16px; color: #000000; text-align: right; }
-
-.input-picker {
-  flex: 1;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+/* ── Progress ── */
+.progress-track {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  margin: 0 20px;
 }
-
-.picker-value { font-size: 16px; color: #c7c7cc; text-align: right; width: 100%; }
-
-.picker-value.has-value { color: #000000; }
-
-.placeholder-text { color: #c7c7cc; font-size: 16px; }
-
-.textarea-card { padding: 16px; }
-
-.textarea { width: 100%; height: 150px; font-size: 16px; color: #000000; line-height: 1.5; }
-
-.textarea-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
-
-.word-count { font-size: 12px; color: #8e8e93; }
-
-.bottom-action {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 16px 20px 32px 20px;
-  background: rgba(245, 245, 247, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 0.5px solid rgba(60, 60, 67, 0.1);
-  z-index: 100;
+.progress-fill {
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+  border-radius: 2px;
+  transition: width 0.35s ease;
 }
-
-.btn-submit {
-  background-color: #007aff;
-  color: #ffffff;
-  font-size: 17px;
+.progress-label {
+  display: block;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: 14px;
-  height: 50px;
-  line-height: 50px;
-  border: none;
+  color: #2563eb;
+  margin: 6px 20px 16px;
+  letter-spacing: 0.03em;
+}
+
+/* ── Step body ── */
+.step-body {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Fields ── */
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  padding-left: 2px;
+}
+.req { color: #ef4444; }
+
+.field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.char-count { font-size: 11px; color: #94a3b8; }
+
+.field-input {
+  height: 48px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 15px;
+  color: #0f172a;
+  box-sizing: border-box;
   width: 100%;
 }
+.field-input:focus { border-color: #2563eb; }
 
-.btn-submit:active { background-color: #0062cc; }
+.field-picker {
+  height: 48px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+.picker-filled { border-color: #c7d2fe; }
+.picker-text { font-size: 15px; color: #94a3b8; flex: 1; }
+.picker-text-filled { color: #0f172a; }
+.picker-arrow { font-size: 18px; color: #c7c7cc; }
 
-/* Dark mode */
-.is-dark { background-color: #0f172a; }
+.field-textarea {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: #0f172a;
+  line-height: 1.55;
+  min-height: 160px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-.is-dark .header-title { color: #f8fafc; }
+/* ── Tip card ── */
+.tip-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.tip-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.tip-text { font-size: 12.5px; color: #1e40af; line-height: 1.5; flex: 1; }
 
-.is-dark .header-desc,
-.is-dark .group-title { color: #94a3b8; }
+/* ── Bottom navigation ── */
+.bottom-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(242, 242, 247, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid rgba(60, 60, 67, 0.12);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
 
-.is-dark .form-card,
-.is-dark .form-item { background-color: #1e293b; }
+.btn-back {
+  height: 52px;
+  border-radius: 14px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 20px;
+}
+.btn-back:active { background: #f1f5f9; }
+.btn-back-text { font-size: 15px; color: #475569; font-weight: 600; }
 
-.is-dark .label,
-.is-dark .input,
-.is-dark .textarea,
-.is-dark .picker-value.has-value { color: #f8fafc; }
+.btn-next {
+  flex: 1;
+  height: 52px;
+  border-radius: 14px;
+  background: #2563eb;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+.btn-next:active { background: #1d4ed8; }
+.btn-next-text { font-size: 16px; color: #ffffff; font-weight: 700; }
 
-.is-dark .bottom-action { background: rgba(15, 23, 42, 0.88); border-color: #334155; }
+.btn-generate {
+  flex: 1;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+}
+.btn-generate:active { opacity: 0.88; }
+.btn-generate-text { font-size: 16px; color: #ffffff; font-weight: 700; }
+
+.btn-disabled {
+  background: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+.btn-disabled .btn-next-text,
+.btn-disabled .btn-generate-text { color: #94a3b8 !important; }
+
+/* ── Dark mode ── */
+.is-dark { background: #0f172a; }
+.is-dark .back-btn { background: rgba(255, 255, 255, 0.1); }
+.is-dark .back-icon,
+.is-dark .page-title { color: #f8fafc; }
+.is-dark .progress-track { background: #1e293b; }
+.is-dark .field-label { color: #cbd5e1; }
+.is-dark .field-input,
+.is-dark .field-picker,
+.is-dark .field-textarea {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+.is-dark .picker-text-filled { color: #f8fafc; }
+.is-dark .tip-card { background: rgba(37, 99, 235, 0.12); border-color: #1e40af; }
+.is-dark .tip-text { color: #93c5fd; }
+.is-dark .bottom-bar { background: rgba(15, 23, 42, 0.95); border-color: #334155; }
+.is-dark .btn-back { background: #1e293b; border-color: #334155; }
+.is-dark .btn-back-text { color: #94a3b8; }
 </style>

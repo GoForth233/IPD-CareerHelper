@@ -41,14 +41,14 @@ public class ResumeController {
                 request.getFileUrl(),
                 request.getParsedContent()
         );
-        return Result.success(resume);
+        return Result.success(resumeService.hydrateUrl(resume));
     }
 
     @Operation(summary = "Get Resume by ID (owner only)")
     @GetMapping("/{resumeId}")
     public Result<Resume> getResume(@PathVariable Long resumeId) {
         Long uid = SecurityUtil.requireCurrentUserId();
-        return Result.success(resumeService.assertOwnership(resumeId, uid));
+        return Result.success(resumeService.hydrateUrl(resumeService.assertOwnership(resumeId, uid)));
     }
 
     @Operation(summary = "Get all resumes for a user (must be self)")
@@ -58,7 +58,7 @@ public class ResumeController {
         if (!uid.equals(userId)) {
             throw new BizException(com.group1.career.common.ErrorCode.FORBIDDEN);
         }
-        return Result.success(resumeService.getUserResumes(userId));
+        return Result.success(resumeService.hydrateUrls(resumeService.getUserResumes(userId)));
     }
 
     @Operation(summary = "Delete Resume (owner only)")
@@ -79,7 +79,7 @@ public class ResumeController {
         if (request.getTargetJob() != null) resume.setTargetJob(request.getTargetJob());
         if (request.getFileUrl() != null) resume.setFileUrl(request.getFileUrl());
         if (request.getParsedContent() != null) resume.setParsedContent(request.getParsedContent());
-        return Result.success(resumeService.updateResume(resume));
+        return Result.success(resumeService.hydrateUrl(resumeService.updateResume(resume)));
     }
 
     /**

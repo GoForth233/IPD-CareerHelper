@@ -1,18 +1,22 @@
 package com.group1.career.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.group1.career.model.dto.UserProfileSnapshot;
 import com.group1.career.model.entity.*;
 import com.group1.career.repository.*;
 import com.group1.career.service.AiService;
 import com.group1.career.service.AssessmentService;
 import com.group1.career.service.NotificationService;
+import com.group1.career.service.UserProfileSnapshotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,6 +33,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final ObjectMapper objectMapper;
     private final AiService aiService;
     private final NotificationService notificationService;
+    private final UserProfileSnapshotService snapshotService;
 
     @Override
     public List<AssessmentScale> getAllScales() {
@@ -106,6 +111,24 @@ public class AssessmentServiceImpl implements AssessmentService {
             record = recordRepository.save(record);
         }
 
+        // Write into the cross-tool user portrait so resume diagnosis /
+        // interview start / assistant can all see this result without a
+        // separate query. Best-effort -- never fail the user's submission
+        // because the portrait write blew up.
+        try {
+            List<String> suggestedRoles = extractSuggestedRoles(aiInsight);
+            snapshotService.mergeAssessment(userId, UserProfileSnapshot.AssessmentBlock.builder()
+                    .lastRecordId(record.getRecordId())
+                    .scaleId(scaleId)
+                    .scaleTitle(scale.getTitle())
+                    .summary(portrait)
+                    .suggestedRoles(suggestedRoles)
+                    .completedAt(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("[assessment] snapshot merge failed for user {}: {}", userId, e.toString());
+        }
+
         // Push a notification so this result is reachable from Messages too.
         notificationService.push(
                 userId,
@@ -117,6 +140,27 @@ public class AssessmentServiceImpl implements AssessmentService {
         );
 
         return record;
+    }
+
+    /**
+     * Pull the {@code suggestedRoles} array out of the AI insight JSON we
+     * just persisted. Returns an empty list on any failure -- this only
+     * feeds the snapshot, never the primary assessment write.
+     */
+    private List<String> extractSuggestedRoles(String aiInsightJson) {
+        if (aiInsightJson == null || aiInsightJson.isBlank()) return List.of();
+        try {
+            JsonNode root = objectMapper.readTree(aiInsightJson);
+            JsonNode roles = root.get("suggestedRoles");
+            if (roles == null || !roles.isArray()) return List.of();
+            List<String> out = new ArrayList<>();
+            roles.forEach(n -> {
+                if (n != null && n.isTextual()) out.add(n.asText());
+            });
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     /**

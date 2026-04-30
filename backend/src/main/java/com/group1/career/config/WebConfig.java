@@ -30,6 +30,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/auth/send-code", "/auth/reset-password", "/auth/check-email",
                         "/api/homepage/**",
                         "/api/careers/**",
+                        // Liveness/readiness probes used by Docker, nginx, uptime
+                        // monitors -- and us, when proving the ngrok tunnel reaches
+                        // the backend before pointing the mini-program at it.
+                        "/api/health",
+                        "/actuator/**",
                         "/doc.html", "/webjars/**", "/swagger-resources/**", "/v3/api-docs/**"
                 );
     }

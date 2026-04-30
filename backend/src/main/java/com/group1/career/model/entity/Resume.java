@@ -32,8 +32,21 @@ public class Resume {
     @Column(name = "target_job", length = 50)
     private String targetJob;
 
+    /**
+     * OSS object key, e.g. {@code resumes/uuid.pdf}.
+     * Historically this column held a full URL; we now store only the key
+     * so the bucket / endpoint can change without touching every row.
+     * Frontend should never load this value directly — use {@link #fileViewUrl}.
+     */
     @Column(name = "file_url", length = 500)
     private String fileUrl;
+
+    /**
+     * Short-lived signed URL the frontend can fetch directly. Populated by
+     * {@code ResumeService.hydrateUrl} just before serialization; never persisted.
+     */
+    @Transient
+    private String fileViewUrl;
 
     @Column(name = "version", length = 20)
     @Builder.Default

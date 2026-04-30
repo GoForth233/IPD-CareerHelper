@@ -1,0 +1,27 @@
+services:
+  # CareerLoop Spring Boot backend.
+  # Image is built from ./Dockerfile and runs the `prod` Spring profile.
+  app:
+    build: .
+    image: careerloop-backend:latest
+    container_name: careerloop-backend
+    restart: unless-stopped
+    # Map only to localhost so nginx (or another reverse proxy on the host)
+    # owns TLS / public ingress. Don't expose 8080 to the world directly.
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

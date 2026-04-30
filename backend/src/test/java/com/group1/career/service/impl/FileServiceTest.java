@@ -60,38 +60,34 @@ public class FileServiceTest {
     }
 
     @Test
-    @DisplayName("Test Upload File - Success")
+    @DisplayName("Test Upload File - Success returns object key, not URL")
     public void testUploadFile_Success() throws Exception {
-        // Mock config
         when(ossConfig.getBucketName()).thenReturn("test-bucket");
-        when(ossConfig.getEndpoint()).thenReturn("oss-cn-test.aliyuncs.com");
-        
-        // Mock file
         when(mockFile.isEmpty()).thenReturn(false);
+        when(mockFile.getSize()).thenReturn(12L);
         when(mockFile.getOriginalFilename()).thenReturn("test-resume.pdf");
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
         when(mockFile.getInputStream()).thenReturn(inputStream);
 
         String result = fileService.uploadFile(mockFile, "resumes");
 
+        // New contract: returns only the OSS object key. Frontends/clients call
+        // FileService#presignedUrl to get a browser-loadable URL on demand.
         assertNotNull(result);
-        assertTrue(result.startsWith("https://"));
-        assertTrue(result.contains("test-bucket"));
-        assertTrue(result.contains("resumes/"));
-        
+        assertFalse(result.startsWith("https://"), "uploadFile must return key, not URL");
+        assertTrue(result.startsWith("resumes/"), "key should be prefixed with the folder");
+        assertTrue(result.endsWith(".pdf"));
+
         verify(ossClient).putObject(anyString(), anyString(), any(InputStream.class));
         verify(ossClient).shutdown();
     }
 
     @Test
-    @DisplayName("Test Upload File - Null Folder Uses Default")
+    @DisplayName("Test Upload File - Null Folder Falls Back to 'others'")
     public void testUploadFile_NullFolder() throws Exception {
-        // Mock config
         when(ossConfig.getBucketName()).thenReturn("test-bucket");
-        when(ossConfig.getEndpoint()).thenReturn("oss-cn-test.aliyuncs.com");
-        
-        // Mock file
         when(mockFile.isEmpty()).thenReturn(false);
+        when(mockFile.getSize()).thenReturn(7L);
         when(mockFile.getOriginalFilename()).thenReturn("file.txt");
         InputStream inputStream = new ByteArrayInputStream("content".getBytes());
         when(mockFile.getInputStream()).thenReturn(inputStream);
@@ -99,21 +95,19 @@ public class FileServiceTest {
         String result = fileService.uploadFile(mockFile, null);
 
         assertNotNull(result);
-        assertTrue(result.contains("others/"));
-        
+        assertTrue(result.startsWith("others/"));
+        assertTrue(result.endsWith(".txt"));
+
         verify(ossClient).putObject(anyString(), anyString(), any(InputStream.class));
         verify(ossClient).shutdown();
     }
 
     @Test
-    @DisplayName("Test Upload File - Extension Handling")
+    @DisplayName("Test Upload File - Extension Handling preserves source extension")
     public void testUploadFile_ExtensionHandling() throws Exception {
-        // Mock config
         when(ossConfig.getBucketName()).thenReturn("test-bucket");
-        when(ossConfig.getEndpoint()).thenReturn("oss-cn-test.aliyuncs.com");
-        
-        // Mock file
         when(mockFile.isEmpty()).thenReturn(false);
+        when(mockFile.getSize()).thenReturn(11L);
         when(mockFile.getOriginalFilename()).thenReturn("document.docx");
         InputStream inputStream = new ByteArrayInputStream("doc content".getBytes());
         when(mockFile.getInputStream()).thenReturn(inputStream);
@@ -121,8 +115,9 @@ public class FileServiceTest {
         String result = fileService.uploadFile(mockFile, "documents");
 
         assertNotNull(result);
+        assertTrue(result.startsWith("documents/"));
         assertTrue(result.endsWith(".docx"));
-        
+
         verify(ossClient).putObject(anyString(), anyString(), any(InputStream.class));
         verify(ossClient).shutdown();
     }

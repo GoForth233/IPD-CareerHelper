@@ -3,7 +3,13 @@ import request from '@/utils/request';
 export interface User {
   userId?: number;
   nickname: string;
+  /**
+   * OSS object key (e.g. `avatars/uuid.jpg`). Not loadable directly — use
+   * `avatarViewUrl` for display.
+   */
   avatarUrl?: string;
+  /** Short-lived signed avatar URL hydrated on every read. */
+  avatarViewUrl?: string;
   school?: string;
   major?: string;
   graduationYear?: number;
@@ -108,17 +114,82 @@ export const getUserInfoApi = (userId: number) => {
 };
 
 export interface UpdateUserDTO {
+  nickname?: string;
+  /** OSS object key from `uploadFileApi(filePath, 'avatars')`. */
+  avatarUrl?: string;
   school?: string;
   major?: string;
   graduationYear?: number;
 }
 
 /**
- * Update User Profile (school / major / graduationYear)
+ * Patch the current user's profile. Any field omitted is left unchanged.
+ * Server enforces that `userId` matches the JWT subject (FORBIDDEN otherwise).
  */
 export const updateUserApi = (userId: number, data: UpdateUserDTO) => {
   return request<User>({
     url: `/users/${userId}`,
+    method: 'PUT',
+    data,
+  });
+};
+
+/**
+ * Cross-tool user portrait. Each block can be null when the user hasn't
+ * touched that tool yet, so always nullable-guard before reading.
+ */
+export interface UserProfileSnapshot {
+  version?: number;
+  updatedAt?: string;
+  assessment?: {
+    lastRecordId?: number;
+    scaleId?: number;
+    scaleTitle?: string;
+    summary?: string;
+    suggestedRoles?: string[];
+    completedAt?: string;
+  } | null;
+  resume?: {
+    lastResumeId?: number;
+    lastResumeKey?: string;
+    title?: string;
+    targetJob?: string;
+    diagnosisScore?: number;
+    updatedAt?: string;
+  } | null;
+  interview?: {
+    lastInterviewId?: number;
+    positionName?: string;
+    difficulty?: string;
+    lastScore?: number;
+    weakDimensions?: string[];
+    strongDimensions?: string[];
+    completedAt?: string;
+  } | null;
+  preferences?: {
+    targetRole?: string;
+    interviewMode?: 'voice' | 'text';
+  } | null;
+}
+
+/**
+ * Get the caller's cross-tool profile snapshot. Always resolves with
+ * a snapshot object (possibly empty) — never null.
+ */
+export const getProfileSnapshotApi = () => {
+  return request<UserProfileSnapshot>({
+    url: '/users/me/profile-snapshot',
+    method: 'GET',
+  });
+};
+
+/**
+ * Patch preferences (target role / chosen interview mode). Returns the
+ * full snapshot after the merge.
+ */
+export const updatePreferencesApi = (data: { targetRole?: string; interviewMode?: 'voice' | 'text' }) => {
+  return request<UserProfileSnapshot>({
+    url: '/users/me/profile-snapshot/preferences',
     method: 'PUT',
     data,
   });

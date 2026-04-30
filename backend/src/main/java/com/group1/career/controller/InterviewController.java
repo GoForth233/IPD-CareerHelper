@@ -5,19 +5,25 @@ import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.service.AiService;
+import com.group1.career.service.FileService;
 import com.group1.career.service.InterviewService;
+import com.group1.career.service.VoiceService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Interview chat lifecycle. Every endpoint resolves the caller via JWT
@@ -33,20 +39,47 @@ public class InterviewController {
 
     private final InterviewService interviewService;
     private final AiService aiService;
+    private final VoiceService voiceService;
+    private final FileService fileService;
 
-    @Operation(summary = "Start a new interview (or reuse an existing ONGOING session)")
+    /** Presigned-URL TTL for AI voice replies; long enough that a candidate
+     *  who pauses to think can still replay the question without it 403'ing. */
+    private static final long TTS_URL_TTL_SECONDS = 30 * 60;
+
+    /** Question angles rotated randomly so every session opens with a different focus. */
+    private static final String[] OPENING_ANGLES = {
+        "a specific technical challenge you solved recently",
+        "a system design decision you made and why",
+        "a time you debugged a difficult production issue",
+        "your approach to writing clean, maintainable code",
+        "a project you're most proud of and your contribution",
+        "how you handle disagreements with teammates on technical decisions",
+        "a performance bottleneck you identified and fixed",
+        "your experience with testing strategies and why you chose them",
+        "a mistake you made and what you learned from it",
+        "how you stay current with new technologies in your field",
+    };
+    private static final Random RNG = new Random();
+
+    @Operation(summary = "Start a fresh interview session. Any existing ONGOING sessions are auto-ended " +
+            "so the candidate always gets a new opening question.")
     @PostMapping("/start")
     public Result<Interview> startInterview(@RequestBody StartInterviewRequest request) {
         Long uid = SecurityUtil.requireCurrentUserId();
 
-        // Reuse any existing ONGOING session instead of spawning a duplicate
-        List<Interview> activeOnes = interviewService.getUserInterviews(uid)
+        // End every lingering ONGOING session before opening a new one.
+        // Leaving stale sessions open caused every /voice-greeting call to replay
+        // the same saved greeting — the candidate thought the questions were "fixed".
+        interviewService.getUserInterviews(uid)
                 .stream()
                 .filter(i -> "ONGOING".equals(i.getStatus()))
-                .toList();
-        if (!activeOnes.isEmpty()) {
-            return Result.success(activeOnes.get(0));
-        }
+                .forEach(i -> {
+                    try {
+                        interviewService.endInterview(i.getInterviewId(), null);
+                    } catch (Exception ignored) {
+                        // best-effort: don't block the new session if cleanup fails
+                    }
+                });
 
         Interview interview = interviewService.startInterview(
                 uid,
@@ -69,13 +102,16 @@ public class InterviewController {
             return Result.success(existing.get(0));
         }
 
+        String angle = OPENING_ANGLES[RNG.nextInt(OPENING_ANGLES.length)];
         String prompt = String.format(
                 "You are a senior technical interviewer for the role of \"%s\" (difficulty: %s). " +
-                "Greet the candidate in ONE short paragraph (2-3 sentences) and ask the very first " +
-                "interview question. Do NOT include explanations, evaluation criteria, or follow-ups. " +
-                "Reply in plain text, no markdown.",
+                "Greet the candidate briefly (one sentence) and ask your FIRST interview question, " +
+                "which must be specifically about: %s. " +
+                "Do NOT include explanations, evaluation criteria, or follow-ups. " +
+                "Always reply in English. Reply in plain text, no markdown.",
                 interview.getPositionName(),
-                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty()
+                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty(),
+                angle
         );
         String greeting = aiService.chat(prompt);
         if (greeting == null || greeting.isBlank()) {
@@ -108,7 +144,7 @@ public class InterviewController {
         systemMsg.put("content", String.format(
                 "You are a professional %s interviewer (difficulty: %s). Continue the interview by " +
                 "briefly evaluating the candidate's last answer and then asking the next focused " +
-                "question. Keep replies short (2-4 sentences). Plain text only, no markdown.",
+                "question. Keep replies short (2-4 sentences). Always reply in English. Plain text only, no markdown.",
                 interview.getPositionName(),
                 interview.getDifficulty() == null ? "Normal" : interview.getDifficulty()
         ));
@@ -128,6 +164,140 @@ public class InterviewController {
         response.setUserMessage(request.getContent());
         response.setAiMessage(aiResponse);
         return Result.success(response);
+    }
+
+    @Operation(summary = "Voice greeting — synthesize the AI interviewer's opening question " +
+            "as audio. Idempotent: reuses the existing greeting text if one was already saved.")
+    @PostMapping("/{interviewId}/voice-greeting")
+    public Result<VoiceTurnResponse> voiceGreeting(@PathVariable Long interviewId) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        Interview interview = interviewService.assertOwnership(interviewId, uid);
+
+        // Reuse text if it's already there — TTS itself will re-synthesize so
+        // the candidate gets a freshly-signed URL each time, but we never want
+        // the AI to re-greet mid-session.
+        List<InterviewMessage> existing = interviewService.getInterviewMessages(interviewId);
+        String greeting;
+        if (!existing.isEmpty() && "AI".equalsIgnoreCase(existing.get(0).getRole())) {
+            greeting = existing.get(0).getContent();
+        } else {
+            String angle = OPENING_ANGLES[RNG.nextInt(OPENING_ANGLES.length)];
+            String prompt = String.format(
+                    "You are a senior %s interviewer (difficulty: %s) speaking to a candidate by voice. " +
+                    "Greet the candidate in ONE short sentence, then ask ONE interview question specifically about: %s. " +
+                    "Always speak in English. No filler, no markdown, plain spoken text. Total output under 60 words.",
+                    interview.getPositionName(),
+                    interview.getDifficulty() == null ? "Normal" : interview.getDifficulty(),
+                    angle
+            );
+            greeting = aiService.chat(prompt);
+            if (greeting == null || greeting.isBlank()) {
+                throw new BizException("AI failed to generate the greeting");
+            }
+            greeting = greeting.trim();
+            interviewService.sendMessage(interviewId, "AI", greeting);
+        }
+
+        VoiceService.TtsResult tts = voiceService.synthesize(greeting);
+        String audioUrl = fileService.presignedUrl(tts.objectKey(), TTS_URL_TTL_SECONDS);
+
+        VoiceTurnResponse r = new VoiceTurnResponse();
+        r.setAiText(greeting);
+        r.setAudioKey(tts.objectKey());
+        r.setAudioUrl(audioUrl);
+        r.setDurationMs(tts.durationMs());
+        return Result.success(r);
+    }
+
+    /**
+     * One full voice turn: the candidate sends a recorded clip, we transcribe
+     * it, run it through Qwen with the running interview transcript, then
+     * synthesize the AI's reply and hand back a playable URL.
+     *
+     * <p>Why a single endpoint instead of three (asr/chat/tts)? Each turn is
+     * tightly coupled — the user expects sub-5s end-to-end before the digital
+     * human starts speaking. Round-tripping over the WeChat HTTPS layer twice
+     * more would routinely tip past that budget on a 4G connection.</p>
+     */
+    @Operation(summary = "Voice turn — upload a recorded answer, get back the transcript, " +
+            "the AI interviewer's reply text, and a presigned URL for the AI's spoken reply.")
+    @PostMapping(value = "/{interviewId}/voice-turn", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<VoiceTurnResponse> voiceTurn(
+            @PathVariable Long interviewId,
+            @RequestPart("audio") MultipartFile audio,
+            @RequestParam(value = "format", defaultValue = "mp3") String format
+    ) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        Interview interview = interviewService.assertOwnership(interviewId, uid);
+
+        if (audio == null || audio.isEmpty()) {
+            throw new BizException("Audio file is required");
+        }
+        // Mirror the spring multipart cap; let the user know up front rather
+        // than throw the (less friendly) MaxUploadSizeExceededException.
+        if (audio.getSize() > 10L * 1024 * 1024) {
+            throw new BizException("Audio too large (max 10 MB; please record under 60 seconds)");
+        }
+
+        long t0 = System.currentTimeMillis();
+        byte[] bytes;
+        try {
+            bytes = audio.getBytes();
+        } catch (IOException e) {
+            throw new BizException("Failed to read uploaded audio: " + e.getMessage());
+        }
+
+        String userText = voiceService.transcribe(bytes, format);
+        long t1 = System.currentTimeMillis();
+        if (userText == null || userText.isBlank()) {
+            throw new BizException("Could not recognize any speech. Please speak clearly and try again.");
+        }
+
+        // Persist the user turn before generating the AI reply so the chat
+        // history fed to Qwen always reflects what we just heard.
+        interviewService.sendMessage(interviewId, "USER", userText);
+
+        List<Map<String, String>> messages = new ArrayList<>();
+        Map<String, String> systemMsg = new HashMap<>();
+        systemMsg.put("role", "system");
+        systemMsg.put("content", String.format(
+                "You are a professional %s interviewer (difficulty: %s) speaking to a candidate via voice. " +
+                "Briefly evaluate the candidate's last answer and ask the next focused interview question. " +
+                "Keep replies short — 1 to 2 sentences total — suitable for spoken delivery. " +
+                "Always reply in English. Plain text only, no markdown, no lists, no emoji.",
+                interview.getPositionName(),
+                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty()
+        ));
+        messages.add(systemMsg);
+
+        for (InterviewMessage m : interviewService.getInterviewMessages(interviewId)) {
+            Map<String, String> n = new HashMap<>();
+            n.put("role", "USER".equalsIgnoreCase(m.getRole()) ? "user" : "assistant");
+            n.put("content", m.getContent());
+            messages.add(n);
+        }
+        String aiText = aiService.chat(messages);
+        if (aiText == null || aiText.isBlank()) {
+            throw new BizException("AI returned empty response");
+        }
+        aiText = aiText.trim();
+        interviewService.sendMessage(interviewId, "AI", aiText);
+        long t2 = System.currentTimeMillis();
+
+        VoiceService.TtsResult tts = voiceService.synthesize(aiText);
+        String audioUrl = fileService.presignedUrl(tts.objectKey(), TTS_URL_TTL_SECONDS);
+        long t3 = System.currentTimeMillis();
+
+        log.info("[voice-turn] interviewId={} asr={}ms ai={}ms tts={}ms total={}ms",
+                interviewId, t1 - t0, t2 - t1, t3 - t2, t3 - t0);
+
+        VoiceTurnResponse r = new VoiceTurnResponse();
+        r.setUserText(userText);
+        r.setAiText(aiText);
+        r.setAudioKey(tts.objectKey());
+        r.setAudioUrl(audioUrl);
+        r.setDurationMs(tts.durationMs());
+        return Result.success(r);
     }
 
     @Operation(summary = "Get interview message history")
@@ -190,5 +360,23 @@ public class InterviewController {
     public static class MessageResponse {
         private String userMessage;
         private String aiMessage;
+    }
+
+    /**
+     * Used by both {@code voice-greeting} and {@code voice-turn}.
+     * {@code userText} is null on the greeting path (no candidate input yet).
+     */
+    @Data
+    public static class VoiceTurnResponse {
+        private String userText;
+        private String aiText;
+        /** OSS object key for the TTS mp3 — kept so the client can replay
+         *  via a fresh presign if the original {@code audioUrl} expires. */
+        private String audioKey;
+        /** Short-lived presigned URL safe to drop straight into {@code <audio src=...>}. */
+        private String audioUrl;
+        /** Coarse duration estimate; UI should prefer the player's
+         *  loadedmetadata reading once available. */
+        private Long durationMs;
     }
 }
