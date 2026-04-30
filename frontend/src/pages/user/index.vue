@@ -10,9 +10,9 @@
     <!-- Header card: logged in -->
     <view class="header-card" v-if="isLoggedIn">
       <view class="header-avatar" @click="handleAvatarClick">
-        <image 
+        <image
           class="avatar-img"
-          :src="userInfo.avatarUrl || '/static/default-avatar.png'" 
+          :src="avatarSrc"
           mode="aspectFill"
         />
       </view>
@@ -140,10 +140,33 @@ import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getUserInterviewsApi } from '@/api/interview';
 import { getUserResumesApi } from '@/api/resume';
-import { updateUserApi } from '@/api/user';
+import { updateUserApi, getUserInfoApi } from '@/api/user';
+import { uploadFileApi } from '@/api/file';
 
-const userInfo = ref({ nickname: '', avatarUrl: '', school: '', major: '', gradYear: '' });
+const userInfo = ref({
+  nickname: '',
+  /** OSS object key — what we persist. Never feed to <image> directly. */
+  avatarUrl: '',
+  /** Short-lived signed URL hydrated by backend on every read. */
+  avatarViewUrl: '',
+  school: '',
+  major: '',
+  gradYear: '',
+});
 const userId = ref('');
+
+/**
+ * What the <image> actually loads. Priority:
+ *   1. presigned avatarViewUrl returned by the backend
+ *   2. raw avatarUrl if it's still a legacy https URL (transitional)
+ *   3. local default
+ */
+const avatarSrc = computed(() => {
+  if (userInfo.value.avatarViewUrl) return userInfo.value.avatarViewUrl;
+  const raw = userInfo.value.avatarUrl;
+  if (raw && /^https?:\/\//i.test(raw)) return raw;
+  return '/static/default-avatar.png';
+});
 const darkPref = ref(false);
 const fontPref = ref('standard');
 const topSafeHeight = ref(44);
@@ -206,14 +229,44 @@ const saveProfile = async () => {
   uni.showToast({ title: 'Profile saved', icon: 'success' });
 };
 
+/**
+ * Upload a new avatar:
+ *   1. uni.chooseImage → local temp path
+ *   2. POST /api/files/upload?folder=avatars → OSS object key
+ *   3. PUT /users/{id} { avatarUrl: key } → server stores key, hydrates viewUrl
+ *   4. Local cache + global event so home top-bar refreshes too.
+ *
+ * The previous version stored `tempFilePath` in localStorage which vanished
+ * the moment the WeChat app cache was cleared.
+ */
 const handleAvatarClick = () => {
+  if (!isLoggedIn.value) {
+    uni.showToast({ title: 'Please sign in first', icon: 'none' });
+    return;
+  }
   uni.chooseImage({
     count: 1,
-    success: (res) => {
-      userInfo.value.avatarUrl = res.tempFilePaths[0];
-      uni.setStorageSync('userInfo', userInfo.value);
-      uni.showToast({ title: 'Avatar updated', icon: 'success' });
-    }
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      const filePath = res.tempFilePaths[0];
+      if (!filePath) return;
+      uni.showLoading({ title: 'Uploading...', mask: true });
+      try {
+        const objectKey = await uploadFileApi(filePath, 'avatars');
+        const numericId = Number(userId.value);
+        const updated = await updateUserApi(numericId, { avatarUrl: objectKey });
+
+        userInfo.value.avatarUrl = updated.avatarUrl || objectKey;
+        userInfo.value.avatarViewUrl = updated.avatarViewUrl || '';
+        uni.setStorageSync('userInfo', userInfo.value);
+        uni.hideLoading();
+        uni.showToast({ title: 'Avatar updated', icon: 'success' });
+      } catch (e: any) {
+        uni.hideLoading();
+        uni.showToast({ title: e?.message || 'Update failed', icon: 'none' });
+      }
+    },
   });
 };
 
@@ -238,7 +291,7 @@ const handleLogout = () => {
       if (res.confirm) {
         clearAuthState();
         userId.value = '';
-        userInfo.value = { nickname: '', avatarUrl: '', school: '', major: '', gradYear: '' };
+        userInfo.value = { nickname: '', avatarUrl: '', avatarViewUrl: '', school: '', major: '', gradYear: '' };
         uni.showToast({ title: 'Signed out', icon: 'success' });
         setTimeout(() => {
           uni.reLaunch({ url: LOGIN_PAGE });
@@ -261,6 +314,19 @@ const loadStats = async (uid: number) => {
   }
 };
 
+/**
+ * Avatar URLs we store in localStorage are short-lived signed URLs that
+ * expire ~30 min after issue. Re-fetch the user from the backend on every
+ * mount so the <image> never tries to load a stale signature.
+ */
+const refreshUserFromBackend = async (numericId: number) => {
+  try {
+    const fresh = await getUserInfoApi(numericId);
+    userInfo.value = { ...userInfo.value, ...fresh };
+    uni.setStorageSync('userInfo', userInfo.value);
+  } catch { /* offline or token invalid — keep cached values, page still renders */ }
+};
+
 onMounted(() => {
   userId.value = uni.getStorageSync('userId') || '';
   const info = uni.getStorageSync('userInfo');
@@ -279,6 +345,7 @@ onMounted(() => {
   const numericId = Number(userId.value);
   if (userId.value && !isNaN(numericId) && numericId > 0) {
     loadStats(numericId);
+    refreshUserFromBackend(numericId);
   }
 });
 </script>

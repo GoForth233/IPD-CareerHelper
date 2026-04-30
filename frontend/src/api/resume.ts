@@ -12,16 +12,22 @@ export interface ResumeDetail {
 
 /**
  * Resume Interface (Main Entity in MySQL)
+ *
+ * `fileUrl` is now an OSS object key (e.g. `resumes/uuid.pdf`); never feed it
+ * directly to <image>/<a>. Use `fileViewUrl` (a short-lived presigned URL the
+ * backend hydrates on every read) for previews and downloads.
  */
 export interface Resume {
   resumeId?: number;
   userId: number;
   title: string;
   targetJob: string;
+  /** OSS object key (e.g. `resumes/uuid.pdf`). Not directly loadable. */
   fileUrl: string;
+  /** Short-lived signed URL — present on responses, never sent on requests. */
+  fileViewUrl?: string;
   status?: string;
-  mongoDocId?: string;
-  detail?: ResumeDetail; // Nested document for MongoDB
+  detail?: ResumeDetail;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -130,7 +136,8 @@ export const tailorResumeApi = (data: { userId: number; resumeId: number; jobDes
 
 /**
  * Upload a PDF resume file directly to backend (which forwards to Aliyun OSS).
- * Returns the public OSS URL on success.
+ * Resolves with the OSS object key (e.g. `resumes/uuid.pdf`) — store this in
+ * `Resume.fileUrl`. Use the entity's `fileViewUrl` for browser display.
  */
 export const uploadResumeFile = (filePath: string, folder: string = 'resumes'): Promise<string> => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -141,7 +148,10 @@ export const uploadResumeFile = (filePath: string, folder: string = 'resumes'): 
       filePath,
       name: 'file',
       formData: { folder },
-      header: token ? { Authorization: `Bearer ${token}` } : {},
+      header: {
+        'ngrok-skip-browser-warning': '1',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       success: (res) => {
         try {
           const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;

@@ -22,7 +22,7 @@
       </view>
       <image
         class="user-avatar"
-        :src="userInfo.avatarUrl || '/static/default-avatar.png'"
+        :src="avatarSrc"
         mode="aspectFill"
         @click="handleAvatarClick"
       />
@@ -82,19 +82,19 @@
 
       <view v-if="showAllFeed || searchQuery" class="feed-grid">
         <view class="feed-card grid-card" v-for="(item, idx) in filteredFeedList" :key="idx" @click="openLink(item.url, item.title)">
-          <view class="card-cover">
-            <image class="card-cover-img" :src="item.thumbnail" mode="aspectFill" />
-            <view class="cover-overlay">
+          <view class="card-cover" :class="'cover-tone-' + (idx % 4)">
+            <image class="card-cover-img" v-if="item.thumbnail" :src="item.thumbnail" mode="aspectFill" />
+            <view class="cover-overlay" v-if="item.tag">
               <text class="cover-tag">{{ item.tag }}</text>
             </view>
-            <view class="play-icon-wrap">
+            <view class="play-icon-wrap" v-if="item.type === 'video'">
               <text class="play-icon">▶</text>
             </view>
           </view>
           <view class="card-body">
             <text class="card-title">{{ item.title }}</text>
             <view class="card-meta-row">
-              <text class="card-meta">{{ item.views }} views</text>
+              <text class="card-meta">{{ item.views ? item.views + ' views' : item.heat || '' }}</text>
             </view>
           </view>
         </view>
@@ -103,19 +103,19 @@
       <scroll-view v-else class="feed-scroll" scroll-x :show-scrollbar="false">
         <view class="feed-track">
           <SlCard class="feed-card" v-for="(item, idx) in filteredFeedList" :key="idx" @click="openLink(item.url, item.title)">
-            <view class="card-cover">
-              <image class="card-cover-img" :src="item.thumbnail" mode="aspectFill" />
-              <view class="cover-overlay">
+            <view class="card-cover" :class="'cover-tone-' + (idx % 4)">
+              <image class="card-cover-img" v-if="item.thumbnail" :src="item.thumbnail" mode="aspectFill" />
+              <view class="cover-overlay" v-if="item.tag">
                 <text class="cover-tag">{{ item.tag }}</text>
               </view>
-              <view class="play-icon-wrap">
+              <view class="play-icon-wrap" v-if="item.type === 'video'">
                 <text class="play-icon">▶</text>
               </view>
             </view>
             <view class="card-body">
               <text class="card-title">{{ item.title }}</text>
               <view class="card-meta-row">
-                <text class="card-meta">{{ item.views }} views</text>
+                <text class="card-meta">{{ item.views ? item.views + ' views' : item.heat || '' }}</text>
               </view>
             </view>
           </SlCard>
@@ -154,9 +154,27 @@ import { getTopSafeHeight } from '@/utils/safeArea';
 import { getHomeContentApi, type HomeContentItem, type CareerCard } from '@/api/home';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 
-const userInfo = ref({
+const userInfo = ref<{
+  nickname: string;
+  /** OSS object key — never display directly. */
+  avatarUrl: string;
+  /** Short-lived presigned URL hydrated by the backend. */
+  avatarViewUrl?: string;
+}>({
   nickname: '',
-  avatarUrl: ''
+  avatarUrl: '',
+  avatarViewUrl: '',
+});
+
+/**
+ * Mirror the same priority used by the Profile tab so the same user sees
+ * the same avatar everywhere: signed URL → legacy https → static fallback.
+ */
+const avatarSrc = computed(() => {
+  if (userInfo.value.avatarViewUrl) return userInfo.value.avatarViewUrl;
+  const raw = userInfo.value.avatarUrl;
+  if (raw && /^https?:\/\//i.test(raw)) return raw;
+  return '/static/default-avatar.png';
 });
 
 const topSafeHeight = ref(88);
@@ -164,23 +182,12 @@ const darkPref = ref(false);
 const searchQuery = ref('');
 const showAllFeed = ref(false);
 
-const defaultFeedList: HomeContentItem[] = [
-  { type: 'video', tag: 'Resume', title: 'How to Write a Resume (step-by-step guide)', views: '2M', thumbnail: 'https://i.ytimg.com/vi/Tt08KmFfIYQ/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=Tt08KmFfIYQ' },
-  { type: 'video', tag: 'Tips', title: 'Top 5 Tips to Get a Software Engineering Job', views: '800K', thumbnail: 'https://i.ytimg.com/vi/jZIXKlSJcrc/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=jZIXKlSJcrc' },
-  { type: 'video', tag: 'Interview', title: 'Google Software Engineer Mock Interview', views: '3.5M', thumbnail: 'https://i.ytimg.com/vi/XKu_SEDAykw/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=XKu_SEDAykw' },
-  { type: 'video', tag: 'Frontend', title: 'Frontend Interview Questions 2024', views: '1.2M', thumbnail: 'https://i.ytimg.com/vi/Sm_pnT5Hd2c/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=Sm_pnT5Hd2c' },
-];
-
-const defaultTopicList: HomeContentItem[] = [
-  { type: 'article', title: 'Is A Computer Science Degree Still Worth It in 2025?', heat: '126K discussions', url: 'https://www.coursera.org/articles/is-computer-science-hard' },
-  { type: 'article', title: 'Non-CS background? Here\'s how to become a developer', heat: '83K discussions', url: 'https://roadmap.sh/frontend' },
-  { type: 'article', title: '2025 Developer Salary Breakdown by Role', heat: '67K discussions', url: 'https://www.levels.fyi/' },
-  { type: 'article', title: 'Grad School vs Industry: Which Path is Right for You?', heat: '42K discussions', url: 'https://www.prospects.ac.uk/postgraduate-study/what-is-a-masters-degree/is-a-masters-worth-it' },
-  { type: 'article', title: 'Will AI Replace Programmers? The Real Answer', heat: '38K discussions', url: 'https://www.weforum.org/stories/2024/01/jobs-ai-artificial-intelligence-workplace/' },
-];
-
-const feedList = ref<HomeContentItem[]>([...defaultFeedList]);
-const topicList = ref<HomeContentItem[]>([...defaultTopicList]);
+// No hardcoded fallback content. When the backend has nothing to show,
+// the section is hidden and the empty-state copy invites users to start
+// with an assessment instead of presenting filler videos that don't
+// open inside WeChat MP.
+const feedList = ref<HomeContentItem[]>([]);
+const topicList = ref<HomeContentItem[]>([]);
 
 const filteredFeedList = computed(() => {
   if (!searchQuery.value) return feedList.value;
@@ -209,36 +216,35 @@ const loadHomeContent = async () => {
     const numericUserId = Number(userId);
     const data = await getHomeContentApi(userId && !isNaN(numericUserId) && numericUserId > 0 ? numericUserId : undefined);
 
-    // Backend returns careerCards (career paths) and articles separately
-    // Map careerCards to feed items as article-type entries
-    const remoteCards: HomeContentItem[] = (data?.careerCards || []).map((c: CareerCard) => ({
+    // Career cards land in the "Career Insights" feed; tapping one jumps
+    // straight into the matching Skill Map roadmap (paths.vue/progress.vue
+    // were retired in favour of the richer map page).
+    feedList.value = (data?.careerCards || []).map((c: CareerCard) => ({
       type: 'article' as const,
+      tag: 'Path',
       title: c.name,
       heat: c.description,
-      url: `/pages/career/paths?pathId=${c.pathId}`,
+      url: `/pages/map/index?pathId=${c.pathId}`,
     }));
 
-    // Map backend articles to topic list items
-    const remoteTopics: HomeContentItem[] = (data?.articles || []).map(a => ({
+    topicList.value = (data?.articles || []).map((a) => ({
       type: 'article' as const,
       title: a.title,
       heat: a.summary,
       url: a.imageUrl || '',
     }));
-
-    feedList.value = [...defaultFeedList]; // Keep curated video feed as-is
-    topicList.value = remoteTopics.length > 0 ? remoteTopics : [...defaultTopicList];
-  } catch (error) {
-    feedList.value = [...defaultFeedList];
-    topicList.value = [...defaultTopicList];
+  } catch {
+    // Silently fall back to empty lists; sections will hide via v-if.
+    feedList.value = [];
+    topicList.value = [];
   }
 };
 
 const syncUserFromStorage = () => {
   const info = uni.getStorageSync('userInfo');
   userInfo.value = info
-    ? info
-    : { nickname: '', avatarUrl: '' };
+    ? { avatarUrl: '', avatarViewUrl: '', nickname: '', ...info }
+    : { nickname: '', avatarUrl: '', avatarViewUrl: '' };
 };
 
 onMounted(() => {
@@ -272,7 +278,7 @@ const handleAvatarClick = () => {
           success: (r) => {
             if (r.confirm) {
               clearAuthState();
-              userInfo.value = { nickname: '', avatarUrl: '' };
+              userInfo.value = { nickname: '', avatarUrl: '', avatarViewUrl: '' };
               uni.reLaunch({ url: LOGIN_PAGE });
             }
           },
@@ -549,6 +555,14 @@ const handleAvatarClick = () => {
   overflow: hidden;
   background: #e2e8f0;
 }
+
+/* Tinted gradients used when the feed item has no thumbnail (e.g. backend
+   career-path cards). Picked from the same blue/violet palette as the
+   home grid icons so the card still reads as part of the page family. */
+.cover-tone-0 { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+.cover-tone-1 { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
+.cover-tone-2 { background: linear-gradient(135deg, #fae8ff 0%, #f0abfc 100%); }
+.cover-tone-3 { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); }
 
 .card-cover-img { width: 100%; height: 100%; display: block; }
 

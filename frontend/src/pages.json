@@ -85,15 +85,6 @@
 			}
 		},
 		{
-			"path": "pages/interview/room",
-			"style": {
-				"navigationBarTitleText": "",
-				"navigationStyle": "custom",
-				"navigationBarBackgroundColor": "#1c1c1e",
-				"navigationBarTextStyle": "white"
-			}
-		},
-		{
 			"path": "pages/interview/report",
 			"style": {
 				"navigationBarTitleText": "",
@@ -115,31 +106,17 @@
 			}
 		},
 		{
+			"path": "pages/interview/room",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/interview/history",
 			"style": {
 				"navigationBarTitleText": "",
 				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/career/paths",
-			"style": {
-				"navigationBarTitleText": "",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/career/progress",
-			"style": {
-				"navigationBarTitleText": "",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/user/profile",
-			"style": {
-				"navigationBarTitleText": "Profile",
-				"navigationBarBackgroundColor": "#f5f5f7"
 			}
 		},
 		{

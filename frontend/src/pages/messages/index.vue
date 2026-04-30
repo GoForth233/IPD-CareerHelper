@@ -7,7 +7,7 @@
         <text class="page-title">Notifications</text>
         <view
           class="clear-btn"
-          v-if="systemMessages.length > 0 && tabs[1].count > 0"
+          v-if="systemMessages.length > 0 && unreadCount > 0"
           @click="markAllReadHandler"
         ><text class="clear-btn-text">Mark all read</text></view>
       </view>
@@ -44,69 +44,12 @@
 
       <!-- Empty state -->
       <view class="empty-state" v-if="!systemLoading && systemMessages.length === 0">
-        <text class="empty-icon">�</text>
+        <text class="empty-icon">🔕</text>
         <text class="empty-text">No notifications yet</text>
         <text class="empty-sub">Finish a mock interview or assessment, and it'll show up here.</text>
       </view>
     </scroll-view>
 
-    <!-- UI Modals -->
-    <!-- HR Chat Modal -->
-    <view class="modal-overlay" v-if="activeHrChat" @click="activeHrChat = null">
-      <view class="modal-content bottom-sheet" @click.stop>
-        <view class="sheet-handle"></view>
-        <view class="modal-header">
-          <view class="msg-avatar av-0 sheet-av"><text class="av-text">{{ activeHrChat.avatarChar }}</text></view>
-          <text class="modal-title">{{ activeHrChat.name }}</text>
-        </view>
-        <view class="modal-body">
-          <view class="chat-bubble received">
-            <text>{{ activeHrChat.preview }}</text>
-          </view>
-        </view>
-        <view class="modal-actions">
-          <input class="reply-input" placeholder="Type a reply..." @confirm="replyHr" />
-          <button class="btn-primary" @click="viewProfile">View Profile</button>
-        </view>
-      </view>
-    </view>
-
-    <!-- Status Timeline Modal -->
-    <view class="modal-overlay" v-if="activeStatus" @click="activeStatus = null">
-      <view class="modal-content bottom-sheet" @click.stop>
-        <view class="sheet-handle"></view>
-        <view class="modal-header">
-          <text class="modal-title">{{ activeStatus.name }}</text>
-        </view>
-        <view class="modal-body">
-          <view class="timeline">
-            <view class="tl-item completed">
-              <view class="tl-dot"></view>
-              <view class="tl-line"></view>
-              <view class="tl-content">
-                <text class="tl-title">Application Submitted</text>
-                <text class="tl-time">2 days ago</text>
-              </view>
-            </view>
-            <view class="tl-item" :class="{ 'completed': activeStatus.status === 'progress' || activeStatus.status === 'pass' }">
-              <view class="tl-dot"></view>
-              <view class="tl-line"></view>
-              <view class="tl-content">
-                <text class="tl-title">Resume Screening</text>
-                <text class="tl-time" v-if="activeStatus.status !== 'sent'">Yesterday</text>
-              </view>
-            </view>
-            <view class="tl-item" :class="{ 'completed': activeStatus.status === 'pass' }">
-              <view class="tl-dot"></view>
-              <view class="tl-content">
-                <text class="tl-title">Interview Round 1</text>
-                <text class="tl-time" v-if="activeStatus.status === 'pass'">Today</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
   </view>
 </template>
 
@@ -121,44 +64,10 @@ import {
   type Notification,
 } from '@/api/notification';
 
-const currentTab = ref('system'); // System tab is the only one with real data; default there
 const topSafeHeight = ref(88);
 const darkPref = ref(false);
 
-const activeHrChat = ref<any>(null);
-const activeStatus = ref<any>(null);
-
-const tabs = ref([
-  { key: 'hr', label: 'Chats', count: 0 },
-  { key: 'system', label: 'Alerts', count: 0 },
-  { key: 'status', label: 'Applications', count: 0 },
-]);
-
-const hrMessages = ref([
-  {
-    avatarChar: 'B',
-    name: 'ByteDance · Ms. Zhang',
-    time: '10:30',
-    preview: 'Your resume passed the initial screening. Are you free for an interview this Friday?',
-    unread: true,
-  },
-  {
-    avatarChar: 'T',
-    name: 'Tencent · Mr. Li',
-    time: 'Yesterday',
-    preview: 'Hi, I reviewed your resume. Are you interested in our frontend position?',
-    unread: true,
-  },
-  {
-    avatarChar: 'A',
-    name: 'Alibaba · Ms. Wang',
-    time: 'Mon',
-    preview: 'Congratulations on passing the written test! Please check your interview invitation.',
-    unread: false,
-  },
-]);
-
-// System notifications now come from the backend (/api/notifications).
+// System notifications come from the backend (/api/notifications).
 // Each row is a Notification + a derived UI shape used by the existing template.
 interface SystemMessageView {
   notificationId: number;
@@ -171,6 +80,7 @@ interface SystemMessageView {
 }
 const systemMessages = ref<SystemMessageView[]>([]);
 const systemLoading = ref(false);
+const unreadCount = computed(() => systemMessages.value.filter((m) => m.unread).length);
 
 const formatRelativeTime = (ts?: string): string => {
   if (!ts) return '';
@@ -218,71 +128,16 @@ const loadSystemNotifications = async () => {
       unread: !n.readFlag,
       link: n.link,
     }));
-    const unread = systemMessages.value.filter((m) => m.unread).length;
-    tabs.value[1].count = unread;
   } catch {
     systemMessages.value = [];
-    tabs.value[1].count = 0;
   } finally {
     systemLoading.value = false;
   }
 };
 
-const statusMessages = ref([
-  {
-    icon: '🚀',
-    name: 'Frontend Engineer · ByteDance',
-    time: '14:20',
-    preview: 'Status update: Moved to secondary screening. Stay tuned.',
-    status: 'progress',
-    statusLabel: 'Screening',
-  },
-  {
-    icon: '📝',
-    name: 'Full Stack Engineer · Meituan',
-    time: '2 days ago',
-    preview: 'Application submitted: Your resume has been delivered to the recruiter.',
-    status: 'sent',
-    statusLabel: 'Submitted',
-  },
-  {
-    icon: '✅',
-    name: 'Backend Intern · Xiaohongshu',
-    time: 'Last week',
-    preview: 'Congratulations! You passed the final interview. Offer coming within 3 business days.',
-    status: 'pass',
-    statusLabel: 'Passed',
-  },
-]);
-
-const currentListEmpty = computed(() => {
-  if (currentTab.value === 'hr') return hrMessages.value.length === 0;
-  if (currentTab.value === 'system') return systemMessages.value.length === 0;
-  if (currentTab.value === 'status') return statusMessages.value.length === 0;
-  return true;
-});
-
-const openHrModal = (item: any) => {
-  item.unread = false; // Mark as read
-  // Update badge count
-  const unreadCount = hrMessages.value.filter(m => m.unread).length;
-  tabs.value[0].count = unreadCount;
-  activeHrChat.value = item;
-};
-
-const replyHr = () => {
-  activeHrChat.value = null;
-  uni.showToast({ title: 'Reply sent', icon: 'success' });
-};
-
-const viewProfile = () => {
-  uni.showToast({ title: 'Coming in next release', icon: 'none' });
-};
-
 const markAllReadHandler = async () => {
   // Optimistic UI: flip every row, then call the backend.
   systemMessages.value.forEach((m) => { m.unread = false; });
-  tabs.value[1].count = 0;
   try {
     await markAllReadApi();
     uni.showToast({ title: 'All marked read', icon: 'success' });
@@ -295,7 +150,6 @@ const handleSystemClick = async (item: SystemMessageView) => {
   // Optimistically mark read in the UI; the backend confirms it next.
   if (item.unread) {
     item.unread = false;
-    tabs.value[1].count = systemMessages.value.filter((m) => m.unread).length;
     try { await markReadApi(item.notificationId); } catch { /* best-effort */ }
   }
 
@@ -317,10 +171,6 @@ const handleSystemClick = async (item: SystemMessageView) => {
   }
 };
 
-const openStatusModal = (item: any) => {
-  activeStatus.value = item;
-};
-
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   topSafeHeight.value = getTopSafeHeight();
@@ -328,7 +178,7 @@ onMounted(() => {
 
 // Pull notifications every time the tab becomes visible -- new alerts can
 // arrive while the user is on another page (e.g. they just finished an
-// interview / quiz). HR + Applications stay mock for now.
+// interview / quiz).
 onShow(() => {
   loadSystemNotifications();
 });
@@ -618,104 +468,22 @@ onShow(() => {
   color: #cbd5e1;
 }
 
-/* ---- Modals ---- */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.4); z-index: 1000;
-  display: flex; align-items: flex-end;
-}
-
-.modal-content.bottom-sheet {
-  width: 100%; background: #ffffff;
-  border-radius: 24px 24px 0 0; padding: 16px 20px 32px;
-  box-sizing: border-box; min-height: 250px;
-  border-top: 1px solid var(--border-color);
-}
-
-.sheet-handle {
-  width: 36px; height: 5px; border-radius: 3px; background: #e2e8f0;
-  margin: 0 auto 16px;
-}
-
-.modal-header {
-  display: flex; align-items: center; margin-bottom: 24px;
-}
-
-.sheet-av { width: 40px; height: 40px; margin-right: 12px; }
-
-.modal-title { font-size: 18px; font-weight: 700; color: #0f172a; }
-
-.chat-bubble {
-  background: #f1f5f9; padding: 14px 16px; border-radius: 4px 16px 16px 16px;
-  font-size: 15px; color: #1e293b; line-height: 1.5; margin-bottom: 24px;
-}
-
-.modal-actions {
-  display: flex; flex-direction: column; gap: 12px;
-}
-
-.reply-input {
-  width: 100%; height: 48px; background: #f8fafc; border: 1.5px solid #e2e8f0;
-  border-radius: 12px; padding: 0 16px; font-size: 15px; box-sizing: border-box;
-}
-
-.btn-primary {
-  width: 100%; height: 48px; background: #2563eb; color: #fff;
-  border-radius: 12px; font-weight: 600; line-height: 48px; border: none;
-}
-
-.timeline { display: flex; flex-direction: column; gap: 0; padding-left: 8px; }
-
-.tl-item { position: relative; padding-left: 28px; padding-bottom: 24px; }
-.tl-item:last-child { padding-bottom: 8px; }
-
-.tl-dot {
-  position: absolute; left: 0; top: 4px; width: 12px; height: 12px;
-  border-radius: 6px; background: #cbd5e1; z-index: 2;
-}
-
-.tl-line {
-  position: absolute; left: 5.5px; top: 16px; bottom: -4px; width: 1px;
-  background: #e2e8f0; z-index: 1;
-}
-
-.tl-item.completed .tl-dot { background: #2563eb; }
-.tl-item.completed .tl-line { background: #2563eb; }
-
-.tl-content { display: flex; flex-direction: column; gap: 4px; }
-.tl-title { font-size: 15px; font-weight: 600; color: #1e293b; }
-.tl-time { font-size: 12px; color: #94a3b8; }
-.tl-item:not(.completed) .tl-title { color: #94a3b8; font-weight: 500; }
-
 .is-dark {
   background: #0f172a;
 }
 
 .is-dark .page-title,
-.is-dark .seg-active,
 .is-dark .msg-name {
   color: #f8fafc;
 }
 
-.is-dark .segment-bar,
 .is-dark .msg-card {
   background: #1e293b;
   box-shadow: none;
 }
 
-.is-dark .seg-item,
 .is-dark .msg-preview,
 .is-dark .msg-time {
   color: #94a3b8;
 }
-
-.is-dark .modal-content { background: #1e293b; }
-.is-dark .sheet-handle { background: #334155; }
-.is-dark .modal-title { color: #f8fafc; }
-.is-dark .chat-bubble { background: #0f172a; color: #e2e8f0; }
-.is-dark .reply-input { background: #0f172a; border-color: #334155; color: #f8fafc; }
-.is-dark .tl-title { color: #f8fafc; }
-.is-dark .tl-item:not(.completed) .tl-title { color: #64748b; }
-.is-dark .tl-dot { background: #334155; }
-.is-dark .tl-line { background: #334155; }
 </style>

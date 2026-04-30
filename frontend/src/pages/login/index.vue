@@ -453,25 +453,42 @@ const handleSubmit = async () => {
   } finally { loading.value = false; }
 };
 
+/**
+ * WeChat MP one-tap sign-in:
+ *   uni.login({ provider:'weixin' })  →  short-lived `code` (WeChat side)
+ *   POST /auth/wechat-login { code }  →  backend exchanges via jscode2session,
+ *                                        returns { token, user }
+ *
+ * The very first time a WeChat openid is seen the backend creates a user with
+ * a placeholder nickname ("WeChat User"); the Profile page will hand the user
+ * a chance to personalize. We keep that two-step flow because requesting a
+ * nickname/avatar via wx.getUserProfile requires a button-tap and we don't
+ * want to gate first-run behind an extra modal.
+ */
 const wxLogin = () => {
   if (!agreed.value) { showSnack('Please agree to the Terms of Service first', 'error'); return; }
   uni.showLoading({ title: 'Signing in...' });
   uni.login({
     provider: 'weixin',
     success: async (loginRes) => {
-      if (loginRes.code) {
-        try {
-          const res = await wechatLoginApi({ code: loginRes.code });
-          uni.setStorageSync('token', res.token);
-          uni.setStorageSync('userId', res.user.userId);
-          uni.setStorageSync('userInfo', res.user);
-          uni.hideLoading();
-          showSnack('Signed in successfully', 'success');
-          setTimeout(() => { uni.switchTab({ url: '/pages/home/index' }); }, 1000);
-        } catch { uni.hideLoading(); }
-      } else {
+      if (!loginRes.code) {
         uni.hideLoading();
-        showSnack('WeChat sign in failed', 'error');
+        showSnack('WeChat did not return a login code', 'error');
+        return;
+      }
+      try {
+        const res = await wechatLoginApi({ code: loginRes.code });
+        uni.setStorageSync('token', res.token);
+        uni.setStorageSync('userId', res.user.userId);
+        uni.setStorageSync('userInfo', res.user);
+        uni.hideLoading();
+        showSnack('Signed in successfully', 'success');
+        setTimeout(() => { uni.switchTab({ url: '/pages/home/index' }); }, 1000);
+      } catch (e: any) {
+        uni.hideLoading();
+        // Surface the actual reason -- usually a misconfigured appId/secret on
+        // the server, or the user's tenant hasn't whitelisted our backend.
+        showSnack(e?.message || 'WeChat sign in failed on the server', 'error');
       }
     },
     fail: () => { uni.hideLoading(); showSnack('WeChat sign in was canceled', 'error'); }

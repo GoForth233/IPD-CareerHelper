@@ -19,9 +19,14 @@ const request = <T>(options: UniApp.RequestOptions & { silent?: boolean }): Prom
     const token = uni.getStorageSync('token');
     const header = {
       'Content-Type': 'application/json',
+      // ngrok-free.dev gates every request behind an HTML "abuse" interstitial
+      // unless this header is present (any value works). Without it the mini
+      // program just gets back a chunk of HTML and our JSON parser throws.
+      // Harmless when the backend is on a real domain — the header is just ignored.
+      'ngrok-skip-browser-warning': '1',
       ...options.header,
     };
-    
+
     if (token) {
       // @ts-ignore - Header index signature mismatch in Uni definitions sometimes
       header['Authorization'] = `Bearer ${token}`;
