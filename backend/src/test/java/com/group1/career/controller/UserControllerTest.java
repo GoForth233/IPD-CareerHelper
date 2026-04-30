@@ -2,6 +2,7 @@ package com.group1.career.controller;
 
 import com.group1.career.interceptor.AuthInterceptor;
 import com.group1.career.model.entity.User;
+import com.group1.career.service.UserProfileSnapshotService;
 import com.group1.career.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,14 @@ public class UserControllerTest {
     @MockitoBean
     private UserService userService;
 
+    /**
+     * Required so the controller can inject this dep when the
+     * UserController test slice constructs the bean. The snapshot endpoints
+     * aren't exercised in this file, so a default mock (returns null) is fine.
+     */
+    @MockitoBean
+    private UserProfileSnapshotService snapshotService;
+
     @MockitoBean
     private AuthInterceptor authInterceptor;
 
@@ -44,6 +53,10 @@ public class UserControllerTest {
         mockUser.setNickname("ExistingUser");
 
         when(userService.getUserById(userId)).thenReturn(mockUser);
+        // Controller hydrates the avatar presigned URL just before returning;
+        // the no-op identity stub keeps the test focused on the JSON shape
+        // without pulling in the OSS SDK.
+        when(userService.hydrateUrl(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         mockMvc.perform(get("/users/{id}", userId))
                 .andExpect(status().isOk())

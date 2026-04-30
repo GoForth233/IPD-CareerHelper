@@ -5,26 +5,25 @@ spring:
   application:
     name: career-backend-test
 
-  # Test Database Configuration (H2 In-Memory)
+  # H2 in-memory DB so the integration tests don't need a real MySQL.
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password:
     driver-class-name: org.h2.Driver
 
-  # JPA Configuration for Tests
   jpa:
     hibernate:
-      ddl-auto: create-drop # Recreate schema for each test
-    show-sql: false # Set to true for debugging
+      # Recreate schema for every test run so the in-memory DB is clean.
+      ddl-auto: create-drop
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
 
-
-# Disable Mail for tests (use MockitoBean in test classes instead)
-spring:
+  # Mail is disabled at the SMTP-config level so EmailService can still
+  # autowire; tests that exercise sending should @MockitoBean EmailService.
   mail:
     host: localhost
     port: 25
@@ -38,7 +37,7 @@ spring:
             enable: false
             required: false
 
-# Disable OSS for tests
+# OSS / DashScope creds are only needed for live calls; mocks suffice.
 aliyun:
   oss:
     endpoint: mock-endpoint
@@ -48,10 +47,20 @@ aliyun:
   ai:
     api-key: mock-api-key
     model: qwen-max
+  voice:
+    asr-model: paraformer-realtime-v2
+    tts-model: cosyvoice-v2
+    tts-voice: longxiaochun_v2
 
-# Logging
+# WeChat creds — fail-safe defaults so the auth controller wires up,
+# integration tests that exercise the WeChat flow should @MockitoBean
+# UserService.wechatLogin.
+wechat:
+  miniapp:
+    appid: test-appid
+    secret: test-secret
+
 logging:
   level:
     com.group1.career: DEBUG
     org.springframework.test: INFO
-

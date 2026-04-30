@@ -1,5 +1,6 @@
 package com.group1.career.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.repository.InterviewMessageRepository;
@@ -29,6 +30,24 @@ public class InterviewServiceTest {
 
     @Mock
     private InterviewMessageRepository messageRepository;
+
+    /** Used by {@code endInterview} to push the "interview complete" system
+     *  notification onto the Messages tab. We don't assert on it here — the
+     *  notification flow has its own test — so a no-op mock is enough. */
+    @Mock
+    private NotificationService notificationService;
+
+    /** Used by endInterview/saveReport to merge the interview into the user's
+     *  cross-tool portrait. The merge is best-effort and wrapped in try/catch,
+     *  so a no-op mock is enough — none of these tests assert on the snapshot. */
+    @Mock
+    private UserProfileSnapshotService snapshotService;
+
+    /** Used to parse the report JSON for strong/weak dimensions when one is
+     *  supplied to saveReport. None of these tests pass a real report, so
+     *  the mock is never actually invoked. */
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private InterviewServiceImpl interviewService;

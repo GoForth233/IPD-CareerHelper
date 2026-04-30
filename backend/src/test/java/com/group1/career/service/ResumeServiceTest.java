@@ -3,6 +3,8 @@ package com.group1.career.service;
 import com.group1.career.model.entity.Resume;
 import com.group1.career.repository.ResumeRepository;
 import com.group1.career.service.impl.ResumeServiceImpl;
+import com.group1.career.service.FileService;
+import com.group1.career.service.UserProfileSnapshotService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +24,15 @@ public class ResumeServiceTest {
 
     @Mock
     private ResumeRepository resumeRepository;
+
+    /** Only used by hydrateUrl / downloadBytes paths, none exercised here. */
+    @Mock
+    private FileService fileService;
+
+    /** Best-effort cross-tool portrait merge wrapped in try/catch in the impl;
+     *  a no-op mock keeps the test focused on the resume CRUD shape. */
+    @Mock
+    private UserProfileSnapshotService snapshotService;
 
     @InjectMocks
     private ResumeServiceImpl resumeService;

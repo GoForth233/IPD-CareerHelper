@@ -1,11 +1,15 @@
 package com.group1.career.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.group1.career.service.EmailService;
+import com.group1.career.service.VerificationCodeService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -14,13 +18,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Integration Test: Tests the complete HTTP -> Controller -> Service -> DB flow.
- * register/login are now under AuthController (/auth/*).
+ * End-to-end Spring Boot test of the registration / login flow against an
+ * in-memory H2 schema. After Sprint A:
+ *   - identityType uses {@code EMAIL_PASSWORD} (the older PASSWORD/MOBILE
+ *     buckets were removed).
+ *   - register requires a 6-digit code; we stub VerificationCodeService to
+ *     accept any code so the test doesn't need a real SMTP round-trip.
+ *   - EmailService is stubbed to a no-op so test runs don't try to dial
+ *     QQ SMTP and fail in CI.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,41 +46,53 @@ public class UserIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Test
-    @DisplayName("Integration Test: Complete User Registration Flow")
-    public void testCompleteUserRegistrationFlow() throws Exception {
-        Map<String, String> request = new HashMap<>();
-        request.put("nickname", "IntegrationTestUser");
-        request.put("identityType", "PASSWORD");
-        request.put("identifier", "integration-test@example.com");
-        request.put("credential", "test123");
+    @MockitoBean
+    private VerificationCodeService verificationCodeService;
 
+    @MockitoBean
+    private EmailService emailService;
+
+    @BeforeEach
+    public void stubEmailVerification() {
+        // Treat every code we provide in the test as valid; we're testing
+        // user / auth wiring, not the SMTP code-store flow itself.
+        when(verificationCodeService.verify(anyString(), anyString(), anyString())).thenReturn(true);
+        when(verificationCodeService.generateAndStore(anyString(), anyString())).thenReturn("123456");
+    }
+
+    private Map<String, String> registerPayload(String nickname, String email, String password) {
+        Map<String, String> r = new HashMap<>();
+        r.put("nickname", nickname);
+        r.put("identityType", "EMAIL_PASSWORD");
+        r.put("identifier", email);
+        r.put("credential", password);
+        r.put("code", "123456");
+        return r;
+    }
+
+    @Test
+    @DisplayName("Integration: register persists user and returns 200")
+    public void testCompleteUserRegistrationFlow() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                registerPayload("IntegrationTestUser", "integration-test@example.com", "test123"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.nickname").value("IntegrationTestUser"));
     }
 
     @Test
-    @DisplayName("Integration Test: Login with Existing User")
+    @DisplayName("Integration: register then login returns JWT + user payload")
     public void testLoginFlow() throws Exception {
-        // Step 1: Register user
-        Map<String, String> registerRequest = new HashMap<>();
-        registerRequest.put("nickname", "LoginTestUser");
-        registerRequest.put("identityType", "PASSWORD");
-        registerRequest.put("identifier", "login-test@example.com");
-        registerRequest.put("credential", "password123");
-
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
+                        .content(objectMapper.writeValueAsString(
+                                registerPayload("LoginTestUser", "login-test@example.com", "password123"))))
                 .andExpect(status().isOk());
 
-        // Step 2: Login
         Map<String, String> loginRequest = new HashMap<>();
-        loginRequest.put("identityType", "PASSWORD");
+        loginRequest.put("identityType", "EMAIL_PASSWORD");
         loginRequest.put("identifier", "login-test@example.com");
         loginRequest.put("credential", "password123");
 
@@ -80,21 +104,18 @@ public class UserIntegrationTest {
     }
 
     @Test
-    @DisplayName("Integration Test: Prevent Duplicate Registration")
+    @DisplayName("Integration: re-registering the same email surfaces a biz error")
     public void testDuplicateRegistrationPrevention() throws Exception {
-        Map<String, String> request = new HashMap<>();
-        request.put("nickname", "DuplicateTestUser");
-        request.put("identityType", "PASSWORD");
-        request.put("identifier", "duplicate@example.com");
-        request.put("credential", "pass123");
+        Map<String, String> request = registerPayload("DuplicateTestUser", "duplicate@example.com", "pass123");
 
-        // First registration succeeds
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        // Second registration with same identifier should return business error
+        // Re-registering with the same email returns 200 HTTP (we never
+        // 500 the client) but a non-200 biz code so the UI can render a
+        // friendly message.
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
