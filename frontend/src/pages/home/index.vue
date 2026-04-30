@@ -159,12 +159,15 @@
           class="consult-card"
           v-for="c in filteredConsultations"
           :key="c.id"
+          @click="c.sourceUrl ? openLink(c.sourceUrl, c.title) : undefined"
+          :style="c.sourceUrl ? 'cursor:pointer' : ''"
         >
           <view class="consult-head">
             <text class="consult-title">{{ c.title }}</text>
             <text v-if="c.author" class="consult-author">{{ c.author }}</text>
           </view>
           <text v-if="c.body" class="consult-body">{{ c.body }}</text>
+          <text v-if="c.sourceUrl" class="consult-link-hint">阅读全文 ›</text>
         </view>
       </view>
     </view>
@@ -609,6 +612,7 @@ const handleAvatarClick = () => {
 .consult-title { font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; }
 .consult-author { font-size: 11px; color: #94a3b8; font-weight: 500; }
 .consult-body { font-size: 13px; color: #475569; line-height: 1.55; white-space: pre-line; }
+.consult-link-hint { font-size: 12px; color: #2563eb; margin-top: 6px; font-weight: 500; }
 
 /* ---- Career path spotlight ---- */
 .path-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 20px; }

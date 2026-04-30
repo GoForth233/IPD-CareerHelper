@@ -43,6 +43,7 @@ export interface HomeConsultation {
   body?: string;
   author?: string;
   imageUrl?: string;
+  sourceUrl?: string;
 }
 
 export interface CareerCard {

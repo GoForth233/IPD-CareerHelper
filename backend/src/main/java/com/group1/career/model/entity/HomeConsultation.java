@@ -43,6 +43,9 @@ public class HomeConsultation {
     @Column(name = "image_url", length = 512)
     private String imageUrl;
 
+    @Column(name = "source_url", length = 512)
+    private String sourceUrl;
+
     @Column(name = "published_at")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime publishedAt;
