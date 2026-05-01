@@ -283,7 +283,12 @@ const handlePreview = (item: ResumeItem) => {
   uni.showLoading({ title: 'Opening...' });
   uni.downloadFile({
     url: `${BASE_URL}/api/resumes/${item.resumeId}/download`,
-    header: token ? { Authorization: `Bearer ${token}` } : {},
+    header: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // Bypass the ngrok browser-warning interstitial so we get the raw PDF
+      // bytes instead of an HTML page (which would render as a black screen).
+      'ngrok-skip-browser-warning': 'true',
+    },
     success: (dl) => {
       if (dl.statusCode === 200) {
         uni.openDocument({

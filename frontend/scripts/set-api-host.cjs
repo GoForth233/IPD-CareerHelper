@@ -76,6 +76,15 @@ const line = `VITE_API_BASE_URL=${baseUrl}\n`;
 
 let prev = '';
 try { prev = fs.readFileSync(ENV_FILE, 'utf8'); } catch {}
+
+// If an https:// tunnel URL (e.g. ngrok) is already set, keep it so that
+// WeChat real-device debugging works without HTTPS issues.
+if (prev.includes('VITE_API_BASE_URL=https://')) {
+  const existing = prev.match(/VITE_API_BASE_URL=(https:\/\/[^\s]+)/)?.[1] || '(https tunnel)';
+  console.log(`[set-api-host] Keeping existing tunnel URL: ${existing}`);
+  process.exit(0);
+}
+
 if (prev.trim() === line.trim()) {
   console.log(`[set-api-host] Unchanged: ${baseUrl}`);
   process.exit(0);
