@@ -307,7 +307,12 @@ const initAudio = () => {
   innerAudio.onStop(() => { aiTalking.value = false; });
   innerAudio.onError((err: any) => {
     aiTalking.value = false;
-    showToast(err?.errMsg || 'Audio playback failed', 'error');
+    // operateAudio:fail is a system-level audio session error (often permission-
+    // related); surfacing it as a toast is noisy and not actionable for the user.
+    const msg: string = err?.errMsg || '';
+    if (!msg.includes('operateAudio')) {
+      showToast(msg || 'Audio playback failed', 'error');
+    }
   });
 };
 

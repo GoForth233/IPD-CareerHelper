@@ -124,33 +124,62 @@ public class VoiceServiceImpl implements VoiceService {
     }
 
     /**
-     * Paraformer returns the full recognition JSON, e.g.:
-     * {"sentences":[{"text":"你好","begin_time":0,"end_time":800,"words":[...]},...]}.
-     * We only want the plain-text transcript for downstream use.
-     * Falls back to the raw string if parsing fails so we never swallow speech silently.
+     * Paraformer returns recognition JSON in one of several shapes depending on
+     * SDK version and call mode. We try each known path before falling back.
+     *
+     * Known shapes:
+     *   {"sentences":[{"text":"…"},…]}                      ← streaming SDK file-call
+     *   {"output":{"sentence":{"text":"…"}}}                ← single-sentence REST
+     *   {"output":{"sentences":[{"text":"…"},…]}}           ← multi-sentence REST
+     *   {"result":{"sentence":{"text":"…"}}}                ← older SDK
+     *   "plain text string"                                  ← already extracted
      */
     private String extractTranscriptText(String raw) {
         if (raw == null || raw.isBlank()) return "";
-        if (!raw.trim().startsWith("{")) return raw.trim();
+        String trimmed = raw.trim();
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return trimmed;
         try {
-            JsonNode root = objectMapper.readTree(raw);
-            JsonNode sentences = root.path("sentences");
-            if (sentences.isArray() && !sentences.isEmpty()) {
-                StringBuilder sb = new StringBuilder();
-                for (JsonNode s : sentences) {
-                    String t = s.path("text").asText("").trim();
-                    if (!t.isEmpty()) {
-                        if (sb.length() > 0) sb.append(" ");
-                        sb.append(t);
-                    }
-                }
-                String text = sb.toString().trim();
-                if (!text.isEmpty()) return text;
-            }
+            JsonNode root = objectMapper.readTree(trimmed);
+
+            // 1. top-level "sentences" array
+            String text = collectSentences(root.path("sentences"));
+            if (!text.isEmpty()) return text;
+
+            // 2. output.sentences array
+            text = collectSentences(root.path("output").path("sentences"));
+            if (!text.isEmpty()) return text;
+
+            // 3. output.sentence object (single)
+            String s = root.path("output").path("sentence").path("text").asText("").trim();
+            if (!s.isEmpty()) return s;
+
+            // 4. result.sentence object
+            s = root.path("result").path("sentence").path("text").asText("").trim();
+            if (!s.isEmpty()) return s;
+
+            // 5. top-level "text" field (simplest shape)
+            s = root.path("text").asText("").trim();
+            if (!s.isEmpty()) return s;
+
         } catch (Exception e) {
-            log.warn("[asr] JSON parse failed, returning raw result: {}", e.getMessage());
+            log.warn("[asr] JSON parse failed: {}", e.getMessage());
         }
-        return raw.trim();
+        // Last resort: return the raw string even if it looks like JSON, so we
+        // never silently swallow what was said.
+        return trimmed;
+    }
+
+    private String collectSentences(JsonNode sentences) {
+        if (!sentences.isArray() || sentences.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (JsonNode s : sentences) {
+            String t = s.path("text").asText("").trim();
+            if (!t.isEmpty()) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(t);
+            }
+        }
+        return sb.toString().trim();
     }
 
     @Override

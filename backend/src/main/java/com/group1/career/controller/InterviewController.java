@@ -294,7 +294,7 @@ public class InterviewController {
         if (aiText == null || aiText.isBlank()) {
             throw new BizException("AI returned empty response");
         }
-        aiText = aiText.trim();
+        aiText = stripMarkdown(aiText.trim());
         interviewService.sendMessage(interviewId, "AI", aiText);
         long t2 = System.currentTimeMillis();
 
@@ -353,6 +353,19 @@ public class InterviewController {
     public Result<Interview> getInterview(@PathVariable Long interviewId) {
         Long uid = SecurityUtil.requireCurrentUserId();
         return Result.success(interviewService.assertOwnership(interviewId, uid));
+    }
+
+    /** Remove common markdown artifacts that LLMs sometimes emit despite "plain text" instructions. */
+    private static String stripMarkdown(String text) {
+        if (text == null) return "";
+        return text
+                .replaceAll("```[\\w]*\\n?", "")   // fenced code blocks
+                .replaceAll("`([^`]+)`", "$1")       // inline code
+                .replaceAll("\\*\\*([^*]+)\\*\\*", "$1") // bold
+                .replaceAll("\\*([^*]+)\\*", "$1")   // italic
+                .replaceAll("^#+\\s+", "")            // headings
+                .replaceAll("^[-*]\\s+", "")          // list bullets
+                .trim();
     }
 
     // ================= DTO Classes =================
