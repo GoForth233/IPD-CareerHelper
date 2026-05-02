@@ -64,6 +64,11 @@
         <text class="menu-text">Interview Records</text>
         <text class="menu-arrow">›</text>
       </view>
+      <view class="menu-item" v-if="isLoggedIn" @click="navTo('/pages/user/memory')">
+        <text class="menu-icon">🧠</text>
+        <text class="menu-text">AI Memory</text>
+        <text class="menu-arrow">›</text>
+      </view>
     </view>
 
     <!-- Menu group 2: Appearance & Accessibility -->
@@ -94,6 +99,26 @@
             @click="setFont('large')"
           ><text>Lg</text></view>
         </view>
+      </view>
+    </view>
+
+    <!-- Menu group 3: Legal & Support -->
+    <text class="group-label">Legal & Support</text>
+    <view class="menu-card">
+      <view class="menu-item" @click="openConsent('privacy')">
+        <text class="menu-icon">🔒</text>
+        <text class="menu-text">Privacy Policy</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @click="openConsent('terms')">
+        <text class="menu-icon">📋</text>
+        <text class="menu-text">Terms of Service</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item menu-item-danger" v-if="isLoggedIn" @click="handleDeleteAccount">
+        <text class="menu-icon">🗑️</text>
+        <text class="menu-text menu-text-danger">Delete Account</text>
+        <text class="menu-arrow menu-arrow-danger">›</text>
       </view>
     </view>
 
@@ -140,7 +165,7 @@ import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getUserInterviewsApi } from '@/api/interview';
 import { getUserResumesApi } from '@/api/resume';
-import { updateUserApi, getUserInfoApi } from '@/api/user';
+import { updateUserApi, getUserInfoApi, requestDeletionApi } from '@/api/user';
 import { uploadFileApi } from '@/api/file';
 
 const userInfo = ref({
@@ -280,6 +305,38 @@ const setFont = (size: string) => {
   fontPref.value = size;
   uni.setStorageSync('app_pref_font', size);
   uni.showToast({ title: 'Saved', icon: 'none' });
+};
+
+const openConsent = (type: 'privacy' | 'terms') => {
+  uni.navigateTo({ url: `/pages/consent/index?view=${type}` });
+};
+
+const handleDeleteAccount = () => {
+  uni.showModal({
+    title: '⚠️ Delete Account',
+    content: 'Your account will be scheduled for deletion. You have 30 days to cancel by signing back in. After 30 days all your data will be permanently erased.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    confirmColor: '#ef4444',
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        uni.showLoading({ title: 'Processing...', mask: true });
+        await requestDeletionApi();
+        uni.hideLoading();
+        clearAuthState();
+        uni.showModal({
+          title: 'Deletion Scheduled',
+          content: 'Your account is scheduled for deletion in 30 days. To cancel, sign in again within 30 days.',
+          showCancel: false,
+          success: () => { uni.reLaunch({ url: LOGIN_PAGE }); }
+        });
+      } catch (e: any) {
+        uni.hideLoading();
+        uni.showToast({ title: e?.message || 'Failed, please try again', icon: 'none' });
+      }
+    }
+  });
 };
 
 const handleLogout = () => {
@@ -567,6 +624,12 @@ onMounted(() => {
 .modal-actions { display: flex; gap: 12px; margin-top: 32px; }
 .btn-secondary { flex: 1; height: 48px; background: #f1f5f9; color: #475569; font-weight: 600; border-radius: 12px; border: none; line-height: 48px; }
 .btn-primary { flex: 2; height: 48px; background: #2563eb; color: #fff; font-weight: 600; border-radius: 12px; border: none; line-height: 48px; }
+
+/* Danger row (Delete Account) */
+.menu-item-danger { }
+.menu-text-danger { color: #ef4444 !important; }
+.menu-arrow-danger { color: #ef4444 !important; }
+.menu-item-danger:active { background: #fff1f2; }
 
 /* Dark mode */
 .is-dark { background: #0f172a; }

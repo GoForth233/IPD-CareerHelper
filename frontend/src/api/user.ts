@@ -194,3 +194,24 @@ export const updatePreferencesApi = (data: { targetRole?: string; interviewMode?
     data,
   });
 };
+
+/**
+ * F25: Request account deletion (30-day soft-delete grace period).
+ * After calling this the JWT will return 410 on subsequent requests.
+ */
+export const requestDeletionApi = () => {
+  return request<string>({
+    url: '/users/me',
+    method: 'DELETE',
+  });
+};
+
+/**
+ * F25: Cancel a pending deletion request within the 30-day grace period.
+ */
+export const cancelDeletionApi = () => {
+  return request<string>({
+    url: '/users/me/cancel-deletion',
+    method: 'POST',
+  });
+};

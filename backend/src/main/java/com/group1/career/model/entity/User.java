@@ -82,6 +82,22 @@ public class User {
     @Column(name = "profile_snapshot", columnDefinition = "json")
     private String profileSnapshot;
 
+    /**
+     * F25: soft-delete timestamp. Non-null means the user has requested
+     * account deletion; a nightly job hard-deletes rows older than 30 days.
+     * All auth endpoints reject users with a non-null deleted_at.
+     */
+    @Column(name = "deleted_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime deletedAt;
+
+    /**
+     * F16: set by admin when status is changed to BANNED.
+     * Shown to the user when they attempt to log in.
+     */
+    @Column(name = "banned_reason", length = 255)
+    private String bannedReason;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

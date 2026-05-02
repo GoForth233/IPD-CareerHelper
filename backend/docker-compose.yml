@@ -1,4 +1,61 @@
 services:
+  # ─────────────────────────────────────────────
+  # MySQL 8 (F3 — self-hosted DB for prod VPS)
+  # Data persisted in a named volume so it survives container restarts.
+  # ─────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: careerloop-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DB:career_db}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PWD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─────────────────────────────────────────────
+  # Redis 7 (F1 — cache, rate-limiting, wx token)
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: careerloop-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-}
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1 --save 300 10
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
   # CareerLoop Spring Boot backend.
   # Image is built from ./Dockerfile and runs the `prod` Spring profile.
   app:
@@ -18,7 +75,13 @@ services:
       # using the service name. Override in .env.prod when running outside
       # compose (e.g. point to a managed Kubernetes service).
       BODY_LANG_SIDECAR_URL: ${BODY_LANG_SIDECAR_URL:-http://body-lang:8001}
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
     depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
       body-lang:
         condition: service_started
     healthcheck:
@@ -57,3 +120,7 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+volumes:
+  mysql_data:
+  redis_data:

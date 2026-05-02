@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  F27: Production logback configuration.
+  - Console appender for all profiles.
+  - ServerChan appender (ERROR+) active only in the `prod` profile.
+    Uses <springProperty> to pull the send key from Spring Environment
+    so it comes from .env.prod and is never hard-coded.
+-->
+<configuration scan="true" scanPeriod="30 seconds">
+
+  <!-- Pull alert config from Spring Environment -->
+  <springProperty scope="context" name="serverChanKey"
+                  source="alert.server-chan.send-key" defaultValue=""/>
+  <springProperty scope="context" name="serverChanEnabled"
+                  source="alert.server-chan.enabled"   defaultValue="false"/>
+
+  <!-- ─────────────────────────────────────────────
+       Console appender (all profiles)
+       ───────────────────────────────────────────── -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!-- ─────────────────────────────────────────────
+       ServerChan ERROR appender (prod profile only)
+       ───────────────────────────────────────────── -->
+  <springProfile name="prod">
+    <appender name="SERVER_CHAN"
+              class="com.group1.career.config.ServerChanAppender">
+      <sendKey>${serverChanKey}</sendKey>
+      <enabled>${serverChanEnabled}</enabled>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+      <appender-ref ref="SERVER_CHAN"/>
+    </root>
+
+    <logger name="com.group1.career" level="INFO"/>
+    <logger name="org.hibernate.SQL"  level="WARN"/>
+    <logger name="org.springframework.security" level="WARN"/>
+  </springProfile>
+
+  <!-- ─────────────────────────────────────────────
+       Dev / default profile: console only
+       ───────────────────────────────────────────── -->
+  <springProfile name="!prod">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+    <logger name="com.group1.career" level="DEBUG"/>
+    <logger name="org.hibernate.SQL"  level="DEBUG"/>
+  </springProfile>
+
+</configuration>

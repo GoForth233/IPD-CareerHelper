@@ -30,6 +30,15 @@ public class AssistantSession {
     @Column(name = "model_name", length = 50)
     private String modelName;
 
+    /**
+     * F15: which AI persona this session belongs to.
+     * MENTOR (小职) | CHALLENGER (小严) — drives system prompt selection
+     * and conversation_summaries separation.
+     */
+    @Column(name = "persona", length = 20, nullable = false)
+    @Builder.Default
+    private String persona = "MENTOR";
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

@@ -27,5 +27,18 @@ public interface UserService {
      * null input.
      */
     User hydrateUrl(User user);
+
+    /**
+     * F25: Mark account for deletion (30-day grace period).
+     * Sets deleted_at = now(). A nightly job hard-deletes rows older than 30 days.
+     * @param ipHash SHA-256 of the caller's IP for the audit log.
+     */
+    void requestDeletion(Long userId, String ipHash);
+
+    /**
+     * F25: Cancel a pending deletion request (within the 30-day grace period).
+     * Clears deleted_at.
+     */
+    void cancelDeletion(Long userId);
 }
 

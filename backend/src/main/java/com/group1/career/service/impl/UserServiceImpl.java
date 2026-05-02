@@ -1,8 +1,12 @@
 package com.group1.career.service.impl;
 
+import com.group1.career.common.ErrorCode;
+import com.group1.career.exception.BizException;
+import com.group1.career.model.entity.AccountDeletionLog;
 import com.group1.career.model.entity.User;
 import com.group1.career.model.entity.UserAuth;
 import com.group1.career.model.entity.UserRole;
+import com.group1.career.repository.AccountDeletionLogRepository;
 import com.group1.career.repository.UserAuthRepository;
 import com.group1.career.repository.UserRepository;
 import com.group1.career.repository.RoleRepository;
@@ -33,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final FileService fileService;
+    private final AccountDeletionLogRepository deletionLogRepository;
 
     private static final String EMAIL_PASSWORD = "EMAIL_PASSWORD";
     private static final String WECHAT = "WECHAT";
@@ -96,10 +101,18 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Invalid credential");
         }
 
+        User user = getUserById(userAuth.getUserId());
+        if (user.getDeletedAt() != null) {
+            throw new BizException(ErrorCode.ACCOUNT_DELETED);
+        }
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BizException(ErrorCode.ACCOUNT_BANNED);
+        }
+
         userAuth.setLastLoginTime(LocalDateTime.now());
         userAuthRepository.save(userAuth);
 
-        return getUserById(userAuth.getUserId());
+        return user;
     }
 
     @Override
@@ -148,9 +161,16 @@ public class UserServiceImpl implements UserService {
         Optional<UserAuth> userAuthOpt = userAuthRepository.findByIdentifierAndIdentityType(openid, WECHAT);
         if (userAuthOpt.isPresent()) {
             UserAuth userAuth = userAuthOpt.get();
+            User existing = getUserById(userAuth.getUserId());
+            if (existing.getDeletedAt() != null) {
+                throw new BizException(ErrorCode.ACCOUNT_DELETED);
+            }
+            if (existing.getStatus() != null && existing.getStatus() == 0) {
+                throw new BizException(ErrorCode.ACCOUNT_BANNED);
+            }
             userAuth.setLastLoginTime(LocalDateTime.now());
             userAuthRepository.save(userAuth);
-            return getUserById(userAuth.getUserId());
+            return existing;
         }
 
         User newUser = userRepository.save(User.builder().nickname("WeChat User").build());
@@ -190,6 +210,33 @@ public class UserServiceImpl implements UserService {
 
     private String normalizeIdentifier(String identifier) {
         return identifier == null ? null : identifier.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    @Transactional
+    public void requestDeletion(Long userId, String ipHash) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BizException(ErrorCode.USER_NOT_FOUND));
+        if (user.getDeletedAt() != null) {
+            return;
+        }
+        user.setDeletedAt(LocalDateTime.now());
+        userRepository.save(user);
+        deletionLogRepository.save(AccountDeletionLog.builder()
+                .userId(userId)
+                .ipHash(ipHash)
+                .build());
+        log.info("[F25] User {} requested account deletion", userId);
+    }
+
+    @Override
+    @Transactional
+    public void cancelDeletion(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BizException(ErrorCode.USER_NOT_FOUND));
+        user.setDeletedAt(null);
+        userRepository.save(user);
+        log.info("[F25] User {} cancelled account deletion request", userId);
     }
 
     @Override

@@ -105,10 +105,106 @@ public class AiServiceImpl implements AiService {
         }
     }
     
+    @Override
+    public String chat(List<Map<String, String>> messages, String model) {
+        try {
+            ObjectNode root = objectMapper.createObjectNode();
+            root.put("model", model != null ? model : modelName);
+
+            ArrayNode msgArray = root.putArray("messages");
+            boolean callerHasSystem = messages != null
+                    && !messages.isEmpty()
+                    && "system".equalsIgnoreCase(messages.get(0).get("role"));
+            if (!callerHasSystem) {
+                ObjectNode systemMsg = msgArray.addObject();
+                systemMsg.put("role", "system");
+                systemMsg.put("content", DEFAULT_SYSTEM_PROMPT);
+            }
+            if (messages != null) {
+                for (Map<String, String> msg : messages) {
+                    ObjectNode node = msgArray.addObject();
+                    node.put("role", msg.get("role"));
+                    node.put("content", msg.get("content"));
+                }
+            }
+
+            String requestBody = objectMapper.writeValueAsString(root);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(60))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                ObjectNode resJson = (ObjectNode) objectMapper.readTree(response.body());
+                if (resJson.has("choices") && resJson.get("choices").size() > 0) {
+                    return resJson.get("choices").get(0).get("message").get("content").asText();
+                }
+            }
+            log.error("AI API Error (model={}): {}", model, response.body());
+            return "AI service busy (Error: " + response.statusCode() + ")";
+        } catch (Exception e) {
+            log.error("AI Chat Failed (model={})", model, e);
+            return "Error: " + e.getMessage();
+        }
+    }
+
     // Single-turn shortcut
     @Override
     public String chat(String prompt) {
         return chat(List.of(Map.of("role", "user", "content", prompt)));
+    }
+
+    @Override
+    public String chatWithTools(List<Map<String, Object>> messages, List<Map<String, Object>> toolSchemas) {
+        try {
+            ObjectNode root = objectMapper.createObjectNode();
+            root.put("model", modelName);
+            root.put("tool_choice", "auto");
+
+            // Build messages array — supports role=tool and assistant tool_call messages
+            ArrayNode msgArray = root.putArray("messages");
+            if (messages != null) {
+                for (Map<String, Object> msg : messages) {
+                    ObjectNode node = msgArray.addObject();
+                    for (Map.Entry<String, Object> e : msg.entrySet()) {
+                        if (e.getValue() == null) {
+                            node.putNull(e.getKey());
+                        } else if (e.getValue() instanceof String s) {
+                            node.put(e.getKey(), s);
+                        } else {
+                            node.set(e.getKey(), objectMapper.valueToTree(e.getValue()));
+                        }
+                    }
+                }
+            }
+
+            // Attach tool schemas
+            if (toolSchemas != null && !toolSchemas.isEmpty()) {
+                root.set("tools", objectMapper.valueToTree(toolSchemas));
+            }
+
+            String requestBody = objectMapper.writeValueAsString(root);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                log.error("[F13] chatWithTools error status={}: {}", response.statusCode(), response.body());
+            }
+            return response.body();
+        } catch (Exception e) {
+            log.error("[F13] chatWithTools failed: {}", e.getMessage(), e);
+            return "{\"error\":\"" + e.getMessage() + "\"}";
+        }
     }
 
     // Deprecated single-turn diagnosis (kept for compatibility)

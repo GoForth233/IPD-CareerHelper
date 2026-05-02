@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface AssistantSessionRepository extends JpaRepository<AssistantSession, Long> {
     List<AssistantSession> findByUserIdOrderByUpdatedAtDesc(Long userId);
+    List<AssistantSession> findByUserId(Long userId);
+    void deleteByUserId(Long userId);
 }

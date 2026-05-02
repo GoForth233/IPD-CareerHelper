@@ -11,5 +11,6 @@ import java.util.Optional;
 public interface UserAuthRepository extends JpaRepository<UserAuth, Long> {
     Optional<UserAuth> findByIdentifierAndIdentityType(String identifier, String identityType);
     List<UserAuth> findByUserId(Long userId);
+    void deleteByUserId(Long userId);
 }
 
