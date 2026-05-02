@@ -178,6 +178,29 @@
             <artifactId>dashscope-sdk-java</artifactId>
             <version>2.20.6</version>
         </dependency>
+
+        <!-- Flyway database migrations (F3) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
+        <!-- Redis — rate limiting (F7), access token cache (F10), proactive job (F14) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Rome RSS/Atom parser — used by F8 article feed -->
+        <dependency>
+            <groupId>com.rometools</groupId>
+            <artifactId>rome</artifactId>
+            <version>2.1.0</version>
+        </dependency>
     </dependencies>
 
     <build>
