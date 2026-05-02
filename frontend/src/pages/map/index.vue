@@ -7,12 +7,27 @@
         <text class="back-icon">‹</text>
         <text class="back-text">Back</text>
       </view>
-      <text class="nav-title">Skill Map</text>
-      <view class="nav-right" @click="switchRole">
-        <text class="nav-action">Role</text>
+      <text class="nav-title">Career</text>
+      <view class="nav-right" @click="activeTab === 'map' ? switchRole() : null">
+        <text class="nav-action" v-if="activeTab === 'map'">Role</text>
       </view>
     </view>
 
+    <!-- Tab switcher -->
+    <view class="tab-bar">
+      <view class="tab-item" :class="{ 'tab-active': activeTab === 'map' }" @click="activeTab = 'map'">
+        <text class="tab-text">Skill Map</text>
+      </view>
+      <view class="tab-item" :class="{ 'tab-active': activeTab === 'plan' }" @click="activeTab = 'plan'">
+        <text class="tab-text">AI Plan</text>
+        <view class="tab-badge" v-if="plan && plan.version && plan.version > 0"></view>
+      </view>
+    </view>
+
+    <!-- ══════════════════════════════════════════
+         TAB: Skill Map (existing content)
+         ══════════════════════════════════════════ -->
+    <view v-if="activeTab === 'map'">
     <view class="page-intro">
       <text class="intro-title">Learning roadmap</text>
       <text class="intro-text">Use the timeline to see what is complete, what is active now, and what unlocks next for this role.</text>
@@ -29,72 +44,163 @@
       </view>
     </view>
 
-    <!-- Loading skeleton -->
-    <view class="skeleton-list" v-if="loading">
-      <view class="skel-card" v-for="i in 4" :key="i">
-        <view class="skel-line skel-w40"></view>
-        <view class="skel-line skel-w70"></view>
-        <view class="skel-line skel-w90"></view>
+      <!-- Loading skeleton -->
+      <view class="skeleton-list" v-if="loading">
+        <view class="skel-card" v-for="i in 4" :key="i">
+          <view class="skel-line skel-w40"></view>
+          <view class="skel-line skel-w70"></view>
+          <view class="skel-line skel-w90"></view>
+        </view>
       </view>
-    </view>
 
-    <!-- Empty state -->
-    <view class="empty-state" v-else-if="nodes.length === 0">
-      <text class="empty-icon">🗺️</text>
-      <text class="empty-text">No roadmap yet</text>
-      <text class="empty-sub">This role's learning path hasn't been published.</text>
-    </view>
+      <!-- Empty state -->
+      <view class="empty-state" v-else-if="nodes.length === 0">
+        <text class="empty-icon">🗺️</text>
+        <text class="empty-text">No roadmap yet</text>
+        <text class="empty-sub">This role's learning path hasn't been published.</text>
+      </view>
 
-    <!-- Real skill timeline -->
-    <view class="timeline" v-else>
-      <view class="tl-line"></view>
-      <view
-        class="tl-node"
-        v-for="(node, idx) in displayNodes"
-        :key="node.nodeId"
-        @click="openDetail(node)"
-      >
-        <view class="tl-dot" :class="dotClass(node)">{{ dotIcon(node) }}</view>
-        <view class="tl-card" :class="cardClass(node)">
-          <text class="tl-level">L{{ node.level }} · Stage {{ idx + 1 }}</text>
-          <text class="tl-title">{{ node.name }}</text>
-          <text class="tl-desc" v-if="node.description">{{ node.description }}</text>
-          <view class="tl-meta-row">
-            <text class="tl-meta" v-if="node.estimatedHours">~{{ node.estimatedHours }} h</text>
-            <view class="tl-badge" :class="badgeClass(node)">
-              <text class="badge-text">{{ statusLabel(node) }}</text>
+      <!-- Real skill timeline -->
+      <view class="timeline" v-else>
+        <view class="tl-line"></view>
+        <view
+          class="tl-node"
+          v-for="(node, idx) in displayNodes"
+          :key="node.nodeId"
+          @click="openDetail(node)"
+        >
+          <view class="tl-dot" :class="dotClass(node)">{{ dotIcon(node) }}</view>
+          <view class="tl-card" :class="cardClass(node)">
+            <text class="tl-level">L{{ node.level }} · Stage {{ idx + 1 }}</text>
+            <text class="tl-title">{{ node.name }}</text>
+            <text class="tl-desc" v-if="node.description">{{ node.description }}</text>
+            <view class="tl-meta-row">
+              <text class="tl-meta" v-if="node.estimatedHours">~{{ node.estimatedHours }} h</text>
+              <view class="tl-badge" :class="badgeClass(node)">
+                <text class="badge-text">{{ statusLabel(node) }}</text>
+              </view>
             </view>
           </view>
         </view>
       </view>
-    </view>
 
-    <view class="bottom-safe"></view>
+      <view class="bottom-safe"></view>
 
-    <!-- Detail sheet -->
-    <view class="sheet-mask" v-if="showDetail" @click="showDetail = false"></view>
-    <view class="detail-sheet" :class="{ 'sheet-open': showDetail }" v-if="selectedNode">
-      <view class="sheet-handle"></view>
-      <view class="sheet-header">
-        <text class="sheet-title">{{ selectedNode.name }}</text>
-        <text class="sheet-mastery">{{ statusLabel(selectedNode) }} · ~{{ selectedNode.estimatedHours || 10 }} h</text>
+      <!-- Detail sheet -->
+      <view class="sheet-mask" v-if="showDetail" @click="showDetail = false"></view>
+      <view class="detail-sheet" :class="{ 'sheet-open': showDetail }" v-if="selectedNode">
+        <view class="sheet-handle"></view>
+        <view class="sheet-header">
+          <text class="sheet-title">{{ selectedNode.name }}</text>
+          <text class="sheet-mastery">{{ statusLabel(selectedNode) }} · ~{{ selectedNode.estimatedHours || 10 }} h</text>
+        </view>
+        <view class="sheet-section">
+          <text class="sheet-label">What this stage covers</text>
+          <text class="sheet-advice">{{ selectedNode.description || 'Description coming soon.' }}</text>
+        </view>
+        <view class="sheet-section" v-if="prerequisiteName">
+          <text class="sheet-label">Prerequisite</text>
+          <view class="topic-tags">
+            <view class="topic-tag"><text class="topic-text">{{ prerequisiteName }}</text></view>
+          </view>
+        </view>
+        <view
+          class="sheet-btn"
+          :class="{ 'sheet-btn-disabled': isLocked(selectedNode) }"
+          @click="toggleNodeStatus(selectedNode)"
+        ><text class="sheet-btn-text">{{ ctaLabel(selectedNode) }}</text></view>
       </view>
-      <view class="sheet-section">
-        <text class="sheet-label">What this stage covers</text>
-        <text class="sheet-advice">{{ selectedNode.description || 'Description coming soon.' }}</text>
+    </view><!-- end map tab -->
+
+    <!-- ══════════════════════════════════════════
+         TAB: AI Career Plan (F28c)
+         ══════════════════════════════════════════ -->
+    <view v-if="activeTab === 'plan'" class="plan-tab">
+
+      <!-- Loading -->
+      <view class="plan-loading" v-if="planLoading">
+        <view class="plan-load-spinner"></view>
+        <text class="plan-load-text">AI 正在为你生成专属规划…</text>
+        <text class="plan-load-sub">通常需要 15–30 秒，请稍候</text>
       </view>
-      <view class="sheet-section" v-if="prerequisiteName">
-        <text class="sheet-label">Prerequisite</text>
-        <view class="topic-tags">
-          <view class="topic-tag"><text class="topic-text">{{ prerequisiteName }}</text></view>
+
+      <!-- No plan yet -->
+      <view class="plan-empty" v-else-if="!plan">
+        <text class="plan-empty-icon">🗺</text>
+        <text class="plan-empty-title">还没有 AI 职业规划</text>
+        <text class="plan-empty-sub">AI 会根据你的测评、简历和历史记录，生成一份专属的职业发展路径</text>
+        <view class="plan-gen-btn" @click="handleGenerate()">
+          <text class="plan-gen-btn-text">✨ 立即生成</text>
         </view>
       </view>
-      <view
-        class="sheet-btn"
-        :class="{ 'sheet-btn-disabled': isLocked(selectedNode) }"
-        @click="toggleNodeStatus(selectedNode)"
-      ><text class="sheet-btn-text">{{ ctaLabel(selectedNode) }}</text></view>
-    </view>
+
+      <!-- Plan content -->
+      <view v-else>
+
+        <!-- Target role card -->
+        <view class="plan-hero">
+          <text class="plan-hero-label">目标职位</text>
+          <text class="plan-hero-role">{{ plan.targetRole }}</text>
+          <text class="plan-hero-meta">v{{ plan.version }} · {{ formatDate(plan.lastUpdatedAt) }}</text>
+          <view class="plan-regen-btn" @click="handleGenerate(plan.targetRole)">
+            <text class="plan-regen-text">重新生成</text>
+          </view>
+        </view>
+
+        <!-- Weekly focus -->
+        <view class="plan-section" v-if="weeklyFocus.length">
+          <text class="plan-section-title">📌 本周重点</text>
+          <view class="focus-list">
+            <view class="focus-item" v-for="(item, i) in weeklyFocus" :key="i">
+              <view class="focus-dot">{{ i + 1 }}</view>
+              <text class="focus-text">{{ item }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- Milestones -->
+        <view class="plan-section" v-if="milestones.length">
+          <text class="plan-section-title">🎯 里程碑规划</text>
+          <view class="milestone-card" v-for="ms in milestones" :key="ms.horizon">
+            <view class="ms-header">
+              <view class="ms-horizon-badge">
+                <text class="ms-horizon-text">{{ horizonLabel(ms.horizon) }}</text>
+              </view>
+              <text class="ms-title">{{ ms.title }}</text>
+            </view>
+            <view class="ms-body">
+              <view class="ms-row" v-if="ms.actions && ms.actions.length">
+                <text class="ms-row-label">行动计划</text>
+                <view class="ms-tag-row">
+                  <view class="ms-tag ms-tag-action" v-for="a in ms.actions" :key="a">
+                    <text class="ms-tag-text">{{ a }}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="ms-row" v-if="ms.skills && ms.skills.length">
+                <text class="ms-row-label">技能清单</text>
+                <view class="ms-tag-row">
+                  <view class="ms-tag ms-tag-skill" v-for="s in ms.skills" :key="s">
+                    <text class="ms-tag-text">{{ s }}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="ms-row" v-if="ms.kpis && ms.kpis.length">
+                <text class="ms-row-label">成功标准</text>
+                <view class="ms-tag-row">
+                  <view class="ms-tag ms-tag-kpi" v-for="k in ms.kpis" :key="k">
+                    <text class="ms-tag-text">{{ k }}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view class="bottom-safe"></view>
+      </view>
+    </view><!-- end plan tab -->
+
   </view>
 </template>
 
@@ -107,15 +213,23 @@ import {
   getUserProgressApi,
   unlockNodeApi,
   completeNodeApi,
+  getCurrentCareerPlanApi,
+  generateCareerPlanApi,
   type CareerPath,
   type CareerNode,
   type UserCareerProgress,
+  type UserCareerPlan,
+  type CareerMilestone,
 } from '@/api/career';
 
-const darkPref = ref(false);
+// ── shared ────────────────────────────────────────────────────────────────────
+const darkPref     = ref(false);
 const topSafeHeight = ref(44);
+const activeTab    = ref<'map' | 'plan'>('map');
+
+// ── skill-map tab ─────────────────────────────────────────────────────────────
 const showDetail = ref(false);
-const loading = ref(true);
+const loading    = ref(true);
 
 const paths = ref<CareerPath[]>([]);
 const currentPath = ref<CareerPath | null>(null);
@@ -336,13 +450,66 @@ onMounted(() => {
   const opts = (pages[pages.length - 1] as any).options || {};
   const queryPathId = opts.pathId ? parseInt(opts.pathId) : undefined;
   loadAll(queryPathId && !isNaN(queryPathId) ? queryPathId : undefined);
+  loadPlan();
 });
 
 // Re-pull progress when the page becomes visible -- if a user marks a
 // node from a different page in the future, the timeline stays in sync.
 onShow(() => {
   refreshProgress();
+  if (activeTab.value === 'plan' && !plan.value) {
+    loadPlan();
+  }
 });
+
+// ── F28c: AI career plan ──────────────────────────────────────────────────────
+const plan        = ref<UserCareerPlan | null>(null);
+const planLoading = ref(false);
+const milestones  = computed<CareerMilestone[]>(() => {
+  if (!plan.value?.milestonesJson) return [];
+  try { return JSON.parse(plan.value.milestonesJson) as CareerMilestone[]; }
+  catch { return []; }
+});
+const weeklyFocus = computed<string[]>(() => {
+  if (!plan.value?.weeklyFocusJson) return [];
+  try { return JSON.parse(plan.value.weeklyFocusJson) as string[]; }
+  catch { return []; }
+});
+
+const loadPlan = async () => {
+  try {
+    plan.value = await getCurrentCareerPlanApi();
+  } catch { /* silent — empty state handles it */ }
+};
+
+const handleGenerate = async (targetRole?: string) => {
+  planLoading.value = true;
+  plan.value = null;
+  try {
+    plan.value = await generateCareerPlanApi(targetRole);
+    uni.showToast({ title: '规划生成完成 ✨', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '生成失败，请稍后再试', icon: 'none' });
+  } finally {
+    planLoading.value = false;
+  }
+};
+
+const horizonLabel = (h: string) => {
+  switch (h) {
+    case '6m': return '6个月';
+    case '1y': return '1年';
+    case '3y': return '3年';
+    case '5y': return '5年';
+    default:   return h;
+  }
+};
+
+const formatDate = (iso?: string) => {
+  if (!iso) return '';
+  const d = new Date(iso.replace(' ', 'T'));
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+};
 </script>
 
 <style scoped>
@@ -639,4 +806,134 @@ onShow(() => {
 .is-dark .sheet-advice { color: #94a3b8; }
 
 .is-dark .demo-notice { background: #1e293b; }
+
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex; background: #f1f5f9; border-radius: 12px;
+  padding: 4px; margin-bottom: 20px; gap: 4px;
+}
+.tab-item {
+  flex: 1; text-align: center; padding: 8px 0; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: background 0.15s;
+  position: relative;
+}
+.tab-active { background: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.tab-text { font-size: 14px; font-weight: 600; color: #64748b; }
+.tab-active .tab-text { color: #0f172a; }
+.tab-badge {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #2563eb;
+}
+
+/* ── AI Plan tab ─────────────────────────────────────────────────────────── */
+.plan-tab { padding-bottom: 40px; }
+
+/* Loading */
+.plan-loading {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 60px 20px; gap: 14px;
+}
+.plan-load-spinner {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid #e2e8f0; border-top-color: #2563eb;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.plan-load-text { font-size: 16px; font-weight: 700; color: #0f172a; }
+.plan-load-sub  { font-size: 13px; color: #94a3b8; text-align: center; line-height: 1.5; }
+
+/* Empty */
+.plan-empty {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 56px 20px;
+  background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px;
+}
+.plan-empty-icon  { font-size: 52px; margin-bottom: 16px; }
+.plan-empty-title { font-size: 18px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 8px; }
+.plan-empty-sub   { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 28px; }
+.plan-gen-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  border-radius: 14px; padding: 0 32px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+.plan-gen-btn:active { opacity: 0.85; }
+.plan-gen-btn-text { color: #ffffff; font-size: 16px; font-weight: 700; }
+
+/* Hero card */
+.plan-hero {
+  background: linear-gradient(135deg, #1e293b 0%, #1e40af 100%);
+  border-radius: 22px; padding: 24px; color: #fff; margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(30, 64, 175, 0.25);
+}
+.plan-hero-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; opacity: 0.65; display: block; margin-bottom: 6px; }
+.plan-hero-role  { font-size: 22px; font-weight: 800; display: block; margin-bottom: 6px; line-height: 1.2; }
+.plan-hero-meta  { font-size: 12px; opacity: 0.55; display: block; margin-bottom: 14px; }
+.plan-regen-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.15); border-radius: 999px;
+  padding: 5px 14px;
+}
+.plan-regen-btn:active { background: rgba(255,255,255,0.25); }
+.plan-regen-text { font-size: 13px; font-weight: 600; color: #fff; }
+
+/* Section */
+.plan-section { margin-bottom: 16px; }
+.plan-section-title { font-size: 16px; font-weight: 800; color: #0f172a; display: block; margin-bottom: 12px; }
+
+/* Weekly focus */
+.focus-list { display: flex; flex-direction: column; gap: 10px; }
+.focus-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;
+  padding: 14px 16px;
+}
+.focus-dot {
+  width: 26px; height: 26px; border-radius: 13px; flex-shrink: 0;
+  background: #2563eb; color: #fff; font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.focus-text { font-size: 14px; color: #334155; line-height: 1.5; flex: 1; }
+
+/* Milestone cards */
+.milestone-card {
+  background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px;
+  margin-bottom: 12px; overflow: hidden;
+}
+.ms-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px 12px;
+}
+.ms-horizon-badge {
+  background: #eff6ff; border-radius: 8px; padding: 4px 10px;
+  flex-shrink: 0;
+}
+.ms-horizon-text { font-size: 12px; font-weight: 700; color: #2563eb; }
+.ms-title { font-size: 15px; font-weight: 700; color: #1e293b; flex: 1; }
+.ms-body { padding: 0 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ms-row { display: flex; flex-direction: column; gap: 6px; }
+.ms-row-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+.ms-tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ms-tag { border-radius: 8px; padding: 4px 10px; }
+.ms-tag-text { font-size: 12px; font-weight: 500; }
+.ms-tag-action { background: #f0fdf4; }
+.ms-tag-action .ms-tag-text { color: #15803d; }
+.ms-tag-skill  { background: #eff6ff; }
+.ms-tag-skill  .ms-tag-text { color: #1d4ed8; }
+.ms-tag-kpi    { background: #fef9c3; }
+.ms-tag-kpi    .ms-tag-text { color: #854d0e; }
+
+/* Dark overrides for plan tab */
+.is-dark .plan-section-title { color: #f1f5f9; }
+.is-dark .focus-item,
+.is-dark .milestone-card { background: #1e293b; border-color: #334155; }
+.is-dark .focus-text    { color: #cbd5e1; }
+.is-dark .ms-title      { color: #f1f5f9; }
+.is-dark .plan-empty    { background: #1e293b; border-color: #334155; }
+.is-dark .plan-empty-title { color: #f1f5f9; }
+.is-dark .tab-bar       { background: #1e293b; }
+.is-dark .tab-active    { background: #334155; }
+.is-dark .tab-text      { color: #94a3b8; }
+.is-dark .tab-active .tab-text { color: #f1f5f9; }
 </style>

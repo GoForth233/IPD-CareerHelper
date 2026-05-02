@@ -3,8 +3,11 @@ package com.group1.career.controller;
 import com.group1.career.common.Result;
 import com.group1.career.model.entity.CareerNode;
 import com.group1.career.model.entity.CareerPath;
+import com.group1.career.model.entity.UserCareerPlan;
 import com.group1.career.model.entity.UserCareerProgress;
+import com.group1.career.service.CareerPlanService;
 import com.group1.career.service.CareerService;
+import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
@@ -23,6 +26,27 @@ import java.util.stream.Collectors;
 public class CareerController {
 
     private final CareerService careerService;
+    private final CareerPlanService careerPlanService;
+
+    // ─────────────────────────────────────────────
+    // F28c: AI personalised career plan
+    // ─────────────────────────────────────────────
+
+    @Operation(summary = "Generate (or regenerate) AI career plan for current user")
+    @PostMapping("/plan/generate")
+    public Result<UserCareerPlan> generatePlan(@RequestBody(required = false) GeneratePlanRequest req) {
+        Long userId = SecurityUtil.requireCurrentUserId();
+        String targetRole = req != null ? req.getTargetRole() : null;
+        UserCareerPlan plan = careerPlanService.generate(userId, targetRole);
+        return Result.success(plan);
+    }
+
+    @Operation(summary = "Get the current AI career plan for current user")
+    @GetMapping("/plan/current")
+    public Result<UserCareerPlan> getCurrentPlan() {
+        Long userId = SecurityUtil.requireCurrentUserId();
+        return Result.success(careerPlanService.getCurrent(userId).orElse(null));
+    }
 
     @Operation(summary = "Get all career paths")
     @GetMapping("/paths")
@@ -104,6 +128,11 @@ public class CareerController {
     }
 
     // ================= DTO Classes =================
+
+    @Data
+    public static class GeneratePlanRequest {
+        private String targetRole;
+    }
 
     @Data
     public static class UnlockNodeRequest {

@@ -103,9 +103,9 @@ aliyun:
   # 5. Aliyun AI (Qwen) 配置
   # ==============================
   ai:
-    # Auto-detected from legacy_sprint1
     api-key: ${ALIYUN_AI_API_KEY}
     model: qwen-max
+    fallback-mode: ${AI_FALLBACK_MODE:false}
 
   # ==============================
   # 7. DashScope Voice (Paraformer ASR + CosyVoice TTS)
@@ -148,3 +148,10 @@ jwt:
 bodylang:
   sidecar-url: ${BODY_LANG_SIDECAR_URL:}
   enabled: ${BODY_LANG_ENABLED:true}
+
+# ==============================
+# F29: Lightweight content safety
+#   Set CONTENT_SAFETY_ENABLED=false to bypass in dev / test environments.
+# ==============================
+content-safety:
+  enabled: ${CONTENT_SAFETY_ENABLED:true}

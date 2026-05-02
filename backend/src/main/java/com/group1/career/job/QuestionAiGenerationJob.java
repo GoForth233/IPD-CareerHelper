@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.model.entity.InterviewQuestion;
 import com.group1.career.repository.InterviewQuestionRepository;
 import com.group1.career.service.AiService;
+import com.group1.career.service.ContentSafetyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -42,6 +43,7 @@ public class QuestionAiGenerationJob {
     private final AiService aiService;
     private final InterviewQuestionRepository questionRepo;
     private final ObjectMapper objectMapper;
+    private final ContentSafetyService contentSafetyService;
 
     /**
      * Runs every Monday at 03:00 (avoids peak hours).
@@ -56,7 +58,15 @@ public class QuestionAiGenerationJob {
         for (String position : DEFAULT_POSITIONS) {
             try {
                 List<InterviewQuestion> generated = generateQuestionsForPosition(position);
-                questionRepo.saveAll(generated);
+                // F29: filter out any AI-generated content that fails safety check
+                List<InterviewQuestion> safe = generated.stream()
+                        .filter(q -> contentSafetyService.check(q.getContent()).passed())
+                        .toList();
+                questionRepo.saveAll(safe);
+                if (safe.size() < generated.size()) {
+                    log.warn("[QuestionAiGenerationJob] {} questions removed by content safety for '{}'",
+                            generated.size() - safe.size(), position);
+                }
                 totalSaved += generated.size();
                 log.info("[QuestionAiGenerationJob] Saved {} questions for position '{}'",
                         generated.size(), position);

@@ -1,5 +1,55 @@
 import request from '@/utils/request';
 
+// ─── F28c: AI Career Plan ────────────────────────────────────────────────────
+
+export interface CareerMilestone {
+  horizon: '6m' | '1y' | '3y' | '5y';
+  title: string;
+  skills: string[];
+  actions: string[];
+  kpis: string[];
+}
+
+export interface CareerStartState {
+  education?: string;
+  skills?: string[];
+  experience?: string;
+}
+
+export interface UserCareerPlan {
+  id?: number;
+  userId?: number;
+  targetRole?: string;
+  startStateJson?: string;
+  milestonesJson?: string;
+  weeklyFocusJson?: string;
+  modelUsed?: string;
+  generatedAt?: string;
+  lastUpdatedAt?: string;
+  version?: number;
+  // parsed helpers (set client-side after parsing JSON fields)
+  startState?: CareerStartState;
+  milestones?: CareerMilestone[];
+  weeklyFocus?: string[];
+}
+
+export const generateCareerPlanApi = (targetRole?: string) => {
+  return request<UserCareerPlan>({
+    url: '/api/careers/plan/generate',
+    method: 'POST',
+    data: { targetRole: targetRole || null },
+  });
+};
+
+export const getCurrentCareerPlanApi = () => {
+  return request<UserCareerPlan | null>({
+    url: '/api/careers/plan/current',
+    method: 'GET',
+  });
+};
+
+// ─── Career Paths & Progress ─────────────────────────────────────────────────
+
 export interface CareerPath {
   pathId?: number;
   code: string;
