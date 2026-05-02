@@ -73,6 +73,28 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  # Flyway — baseline-on-migrate lets the first deploy on an existing DB
+  # mark V1 as already applied and only run V2+.
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
+  # Redis (F1)
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DB:0}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
 knife4j:
   # Hide Swagger UI in prod — surface only via /actuator/health.
   enable: ${KNIFE4J_ENABLED:false}
@@ -96,6 +118,13 @@ wechat:
   miniapp:
     appid: ${WECHAT_APPID}
     secret: ${WECHAT_SECRET}
+  subscribe:
+    templates:
+      weekly-report:    ${WECHAT_TPL_WEEKLY_REPORT:}
+      interview-report: ${WECHAT_TPL_INTERVIEW_REPORT:}
+      assessment:       ${WECHAT_TPL_ASSESSMENT:}
+      resume-diagnosis: ${WECHAT_TPL_RESUME_DIAGNOSIS:}
+      ai-proactive:     ${WECHAT_TPL_AI_PROACTIVE:}
 
 # JWT_SECRET is required in prod; absent or short → JwtConfig fails fast.
 jwt:
@@ -105,6 +134,16 @@ jwt:
 bodylang:
   sidecar-url: ${BODY_LANG_SIDECAR_URL:http://body-lang:8001}
   enabled: ${BODY_LANG_ENABLED:true}
+
+# ==============================
+# F27: ERROR-level log alert via ServerChan (server酷)
+# Set SERVER_CHAN_SEND_KEY to the SendKey from sc.ftqq.com
+# ==============================
+alert:
+  server-chan:
+    enabled: ${ALERT_SERVERCHAN_ENABLED:true}
+    send-key: ${SERVER_CHAN_SEND_KEY:}
+  email: ${ALERT_EMAIL:3218778592@qq.com}
 
 logging:
   level:
