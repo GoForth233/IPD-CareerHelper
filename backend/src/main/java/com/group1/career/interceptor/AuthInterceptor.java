@@ -2,7 +2,10 @@ package com.group1.career.interceptor;
 
 import com.group1.career.common.ErrorCode;
 import com.group1.career.exception.BizException;
+import com.group1.career.model.entity.User;
+import com.group1.career.repository.UserRepository;
 import com.group1.career.utils.JwtUtils;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -10,13 +13,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
+@RequiredArgsConstructor
 public class AuthInterceptor implements HandlerInterceptor {
+
+    private final UserRepository userRepository;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String token = request.getHeader("Authorization");
 
-        // Assuming Bearer token
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
@@ -25,10 +30,24 @@ public class AuthInterceptor implements HandlerInterceptor {
             throw new BizException(ErrorCode.UNAUTHORIZED_ERROR);
         }
 
-        // Parse user id and store in request attributes for controllers to use
         Long userId = JwtUtils.getUserIdFromToken(token);
-        request.setAttribute("userId", userId);
 
+        // F25: reject soft-deleted accounts (410 Gone)
+        // F16: reject banned accounts (403 Forbidden)
+        // Exception: cancel-deletion endpoint must be accessible even after deleted_at is set
+        //            so the user can recover their account within the 30-day grace period.
+        boolean isCancelDeletion = request.getRequestURI().endsWith("/users/me/cancel-deletion");
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null) {
+            if (!isCancelDeletion && user.getDeletedAt() != null) {
+                throw new BizException(ErrorCode.ACCOUNT_DELETED);
+            }
+            if (user.getStatus() != null && user.getStatus() == 0) {
+                throw new BizException(ErrorCode.ACCOUNT_BANNED);
+            }
+        }
+
+        request.setAttribute("userId", userId);
         return true;
     }
 }

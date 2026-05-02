@@ -9,9 +9,15 @@ import com.group1.career.service.UserService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 @Tag(name = "User API")
 @RestController
@@ -79,6 +85,40 @@ public class UserController {
                 .interviewMode(dto.getInterviewMode())
                 .build());
         return Result.success(snapshotService.read(uid));
+    }
+
+    /**
+     * F25: Request account deletion (soft-delete with 30-day grace period).
+     * Sets deleted_at = now(). Subsequent authenticated requests return 410 Gone.
+     * The user may cancel within 30 days via POST /users/me/cancel-deletion.
+     */
+    @Operation(summary = "Request account deletion (30-day grace period)")
+    @DeleteMapping("/me")
+    public Result<String> requestDeletion(HttpServletRequest request) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        userService.requestDeletion(uid, hashIp(request.getRemoteAddr()));
+        return Result.success("Account deletion scheduled. You have 30 days to cancel.");
+    }
+
+    /**
+     * F25: Cancel a pending deletion request (within the 30-day grace period).
+     */
+    @Operation(summary = "Cancel pending account deletion")
+    @PostMapping("/me/cancel-deletion")
+    public Result<String> cancelDeletion() {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        userService.cancelDeletion(uid);
+        return Result.success("Account deletion cancelled.");
+    }
+
+    private static String hashIp(String ip) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest((ip == null ? "" : ip).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            return "";
+        }
     }
 
     @Data

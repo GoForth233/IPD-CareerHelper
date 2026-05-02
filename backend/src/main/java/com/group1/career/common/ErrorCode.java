@@ -11,7 +11,9 @@ public enum ErrorCode {
     FORBIDDEN(403, "Forbidden"),
     USER_NOT_FOUND(4001, "User Not Found"),
     USER_ALREADY_EXISTS(4002, "User Already Exists"),
-    RESUME_NOT_FOUND(4003, "Resume Not Found");
+    RESUME_NOT_FOUND(4003, "Resume Not Found"),
+    ACCOUNT_DELETED(410, "Account has been deleted"),
+    ACCOUNT_BANNED(4004, "Account has been banned");
 
     private final Integer code;
     private final String message;
