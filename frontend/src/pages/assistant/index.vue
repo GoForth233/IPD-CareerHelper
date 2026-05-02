@@ -4,15 +4,28 @@
     <view class="chat-nav">
       <view class="nav-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
       <view class="nav-row">
-        <view class="nav-bot-avatar">
-          <text class="nav-bot-emoji">🤖</text>
+        <view class="nav-bot-avatar" :style="{ background: currentPersona.gradient }">
+          <text class="nav-bot-emoji">{{ currentPersona.emoji }}</text>
         </view>
         <view class="nav-meta">
-          <text class="nav-name">AI Career Advisor</text>
+          <text class="nav-name">{{ currentPersona.name }}</text>
           <view class="nav-status-row">
             <view class="online-dot"></view>
-            <text class="nav-status">Online · Personalized to your profile</text>
+            <text class="nav-status">{{ currentPersona.tagline }}</text>
           </view>
+        </view>
+      </view>
+      <!-- F15: Persona switcher -->
+      <view class="persona-bar">
+        <view
+          v-for="p in PERSONAS"
+          :key="p.key"
+          class="persona-chip"
+          :class="{ 'persona-active': persona === p.key }"
+          @click="switchPersona(p.key)"
+        >
+          <text class="persona-emoji">{{ p.emoji }}</text>
+          <text class="persona-label">{{ p.label }}</text>
         </view>
       </view>
     </view>
@@ -26,18 +39,17 @@
     >
       <!-- Welcome card -->
       <view class="welcome-card">
-        <view class="welcome-icon">🎯</view>
-        <text class="welcome-title">Your Personal Career Advisor</text>
-        <text class="welcome-desc">I've reviewed your assessment profile and resume. I can provide personalized job-seeking advice.</text>
+        <view class="welcome-icon">{{ currentPersona.emoji }}</view>
+        <text class="welcome-title">{{ currentPersona.name }}</text>
+        <text class="welcome-desc">{{ currentPersona.intro }}</text>
         <view class="quick-actions">
-          <view class="quick-chip" @click="sendQuick('Help me optimize my resume')">
-            <text class="chip-text">Optimize Resume</text>
-          </view>
-          <view class="quick-chip" @click="sendQuick('What are some interview techniques?')">
-            <text class="chip-text">Interview Tips</text>
-          </view>
-          <view class="quick-chip" @click="sendQuick('What is the salary range for frontend developers?')">
-            <text class="chip-text">Industry Salary</text>
+          <view
+            v-for="chip in currentPersona.chips"
+            :key="chip"
+            class="quick-chip"
+            @click="sendQuick(chip)"
+          >
+            <text class="chip-text">{{ chip }}</text>
           </view>
         </view>
       </view>
@@ -98,9 +110,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { getTopSafeHeight } from '@/utils/safeArea';
-import { chatAiApi, type ChatMessage as ApiChatMessage } from '@/api/ai';
+import request from '@/utils/request';
 
 interface ChatMessage {
   role: 'user' | 'ai';
@@ -108,26 +120,64 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
-const SYSTEM_PROMPT = 'You are an AI career advisor for university students seeking jobs. Be concise, practical, and encouraging. Answer in the same language the user uses.';
+type PersonaKey = 'MENTOR' | 'CHALLENGER' | 'INTERVIEWER';
 
-const messages = ref<ChatMessage[]>([
+// F15: persona definitions
+const PERSONAS: { key: PersonaKey; emoji: string; label: string; name: string; tagline: string; intro: string; gradient: string; chips: string[] }[] = [
   {
-    role: 'ai',
-    content: 'Hi! I\'m your personal career advisor. I can help with resume tips, interview prep, and career planning. What would you like to know?',
+    key: 'MENTOR',
+    emoji: '🤝',
+    label: '小职',
+    name: '小职 · Career Mentor',
+    tagline: 'Online · Warm & encouraging',
+    intro: 'I\'m your warm career mentor! I can help with resume tips, interview prep, and career planning. What\'s on your mind?',
+    gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+    chips: ['Help me optimize my resume', 'Interview techniques?', 'Salary for frontend devs?'],
   },
-]);
+  {
+    key: 'CHALLENGER',
+    emoji: '💪',
+    label: '小严',
+    name: '小严 · Tough Coach',
+    tagline: 'Online · Strict & direct',
+    intro: 'No sugarcoating here. Tell me your plan and I\'ll tell you exactly what\'s wrong with it.',
+    gradient: 'linear-gradient(135deg, #dc2626, #f97316)',
+    chips: ['Review my career plan', 'Challenge my resume', 'Why am I not getting interviews?'],
+  },
+  {
+    key: 'INTERVIEWER',
+    emoji: '🎙️',
+    label: '小面',
+    name: '小面 · Mock Interviewer',
+    tagline: 'Online · Realistic interview practice',
+    intro: 'Let\'s practice! Tell me what role and interview type you want to prepare for (behavioral / technical / HR).',
+    gradient: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
+    chips: ['Practice behavioral interview', 'Technical interview for frontend', 'HR round for product manager'],
+  },
+];
 
-// Keeps a parallel history in the format the backend /api/ai/chat expects
-const apiHistory = ref<ApiChatMessage[]>([]);
+const persona = ref<PersonaKey>('MENTOR');
+const currentPersona = computed(() => PERSONAS.find((p) => p.key === persona.value)!);
+
+const messages = ref<ChatMessage[]>([]);
+const apiHistory = ref<{ role: string; content: string }[]>([]);
 
 const inputText = ref('');
 const scrollTop = ref(0);
 const topSafeHeight = ref(88);
 const darkPref = ref(false);
 const isSending = ref(false);
-
-// Dynamic current-time label for the chat divider
 const chatTimeLabel = ref('');
+
+const switchPersona = (key: PersonaKey) => {
+  if (persona.value === key) return;
+  persona.value = key;
+  // Clear history for fresh start with new persona
+  apiHistory.value = [];
+  messages.value = [
+    { role: 'ai', content: currentPersona.value.intro },
+  ];
+};
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -144,39 +194,35 @@ const sendMessage = async () => {
   const text = inputText.value.trim();
   if (!text || isSending.value) return;
 
-  // 1. Show user message immediately
   messages.value.push({ role: 'user', content: text });
   inputText.value = '';
   isSending.value = true;
   scrollToBottom();
 
-  // 2. Add typing indicator
   const typingIdx = messages.value.length;
   messages.value.push({ role: 'ai', content: '', isTyping: true });
   scrollToBottom();
 
-  // 3. Build message history for backend (system prompt + full conversation)
-  const payload: ApiChatMessage[] = [
-    { role: 'user', content: SYSTEM_PROMPT },
-    ...apiHistory.value,
-    { role: 'user', content: text },
-  ];
-
   try {
-    const reply = await chatAiApi(payload);
-
-    // 4. Replace typing indicator with real AI reply
-    messages.value[typingIdx] = { role: 'ai', content: reply || 'Sorry, I didn\'t get a response. Please try again.' };
-
-    // 5. Update history for next turn
+    const res = await request<{ reply: string }>({
+      url: '/api/chat/send',
+      method: 'POST',
+      data: {
+        message: text,
+        history: apiHistory.value,
+        persona: persona.value,
+      },
+    });
+    const reply = (res as any)?.reply ?? res ?? '';
+    messages.value[typingIdx] = { role: 'ai', content: reply || 'Sorry, no response. Please try again.' };
     apiHistory.value.push(
       { role: 'user', content: text },
-      { role: 'assistant', content: reply },
+      { role: 'assistant', content: String(reply) },
     );
   } catch (err: any) {
     messages.value[typingIdx] = {
       role: 'ai',
-      content: 'Sorry, I\'m having trouble connecting right now. Please check your network and try again.',
+      content: 'Connection error. Please check your network and try again.',
     };
   } finally {
     isSending.value = false;
@@ -187,12 +233,10 @@ const sendMessage = async () => {
 onMounted(() => {
   darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
   topSafeHeight.value = getTopSafeHeight();
-
-  // Fix AI-02: use real current time instead of hardcoded "Today 14:30"
   const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  chatTimeLabel.value = `Today ${h}:${m}`;
+  chatTimeLabel.value = `Today ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  // Initialise with persona greeting
+  messages.value = [{ role: 'ai', content: currentPersona.value.intro }];
 });
 </script>
 
@@ -272,6 +316,31 @@ onMounted(() => {
   color: var(--text-secondary);
   line-height: 1.35;
 }
+
+/* ---- Persona bar ---- */
+.persona-bar {
+  display: flex;
+  padding: 8px 16px 12px;
+  gap: 8px;
+}
+.persona-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1.5px solid rgba(60, 60, 67, 0.12);
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+.persona-chip:active { opacity: 0.75; }
+.persona-active {
+  background: #eff6ff;
+  border-color: #2563eb;
+}
+.persona-emoji { font-size: 14px; }
+.persona-label { font-size: 13px; font-weight: 600; color: #374151; }
+.persona-active .persona-label { color: #2563eb; }
 
 /* ---- Chat list ---- */
 .chat-list {

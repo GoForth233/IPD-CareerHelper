@@ -7,6 +7,7 @@ import com.group1.career.model.dto.UserProfileSnapshot;
 import com.group1.career.model.entity.*;
 import com.group1.career.repository.*;
 import com.group1.career.service.AiService;
+import com.group1.career.model.NotificationTypes;
 import com.group1.career.service.AssessmentService;
 import com.group1.career.service.CheckInService;
 import com.group1.career.service.NotificationService;
@@ -134,7 +135,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         // Push a notification so this result is reachable from Messages too.
         notificationService.push(
                 userId,
-                "ASSESSMENT_DONE",
+                NotificationTypes.ASSESSMENT_RESULT,
                 scale.getTitle() + " completed",
                 "Your result: " + (portrait == null || portrait.isBlank() ? "calculated" : portrait) +
                         ". Tap to read the full breakdown.",

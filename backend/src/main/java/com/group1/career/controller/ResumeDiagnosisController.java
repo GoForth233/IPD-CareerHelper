@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.common.Result;
 import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.Resume;
+import com.group1.career.model.NotificationTypes;
 import com.group1.career.service.AiService;
 import com.group1.career.service.FileService;
+import com.group1.career.service.NotificationService;
 import com.group1.career.service.ResumeService;
 import com.group1.career.utils.PdfTextExtractor;
 import com.group1.career.utils.SecurityUtil;
@@ -37,6 +39,7 @@ public class ResumeDiagnosisController {
     private final AiService aiService;
     private final ResumeService resumeService;
     private final FileService fileService;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Operation(summary = "Trigger AI resume diagnosis (resumeId-based, real Qwen call)")
@@ -74,6 +77,17 @@ public class ResumeDiagnosisController {
         DiagnosisResultDto result = parseAiResponse(aiResponse);
         result.setResumeId(resumeId);
         result.setRawAnalysis(aiResponse);
+
+        // F9: push in-app notification so the user can find the result in Messages
+        Long uid = SecurityUtil.currentUserId();
+        if (uid != null) {
+            notificationService.push(uid,
+                    NotificationTypes.RESUME_DIAGNOSIS,
+                    "Resume diagnosis complete",
+                    "Your resume scored " + result.getOverallScore() + "/100. Tap to read the feedback.",
+                    "/pages/resume-ai/index");
+        }
+
         return Result.success(result);
     }
 

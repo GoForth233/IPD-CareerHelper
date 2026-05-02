@@ -9,6 +9,7 @@ import com.group1.career.service.ConversationSummaryService;
 import com.group1.career.service.UserFactService;
 import com.group1.career.service.UserProfileSnapshotService;
 import com.group1.career.service.ai.FunctionCallingService;
+import com.group1.career.config.AiPersonas;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,16 +39,7 @@ public class ChatController {
     private final AssistantSessionRepository sessionRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Base persona. The {@link #buildMessages} method appends the user's
-     * cross-tool snapshot (assessment / resume / interview history) so the
-     * model can reference concrete past results instead of generic platitudes.
-     */
-    private static final String BASE_SYSTEM_PROMPT =
-            "You are '小职' (Little Career), a friendly and professional AI career planning assistant. " +
-            "Help college students with career planning, resume writing, interview preparation, " +
-            "and skill development advice. Always respond in a warm, encouraging tone. " +
-            "If the user asks something unrelated to careers, gently guide them back to career topics.";
+    /** F15: persona-aware base prompt is delegated to {@link AiPersonas}. */
 
     @Operation(summary = "Send chat message (synchronous response)")
     @PostMapping("/send")
@@ -134,9 +126,9 @@ public class ChatController {
      */
     private String buildSystemPrompt(String persona) {
         Long uid = SecurityUtil.currentUserId();
-        if (uid == null) return BASE_SYSTEM_PROMPT;
+        if (uid == null) return AiPersonas.systemPromptFor(persona);
 
-        StringBuilder sb = new StringBuilder(BASE_SYSTEM_PROMPT);
+        StringBuilder sb = new StringBuilder(AiPersonas.systemPromptFor(persona));
 
         String snapshot = snapshotService.renderForPrompt(uid);
         if (snapshot != null && !snapshot.isBlank()) {

@@ -20,6 +20,9 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromAddress;
 
+    @Value("${alert.email:3218778592@qq.com}")
+    private String alertEmail;
+
     @Async
     public void sendVerificationCode(String toEmail, String code, String purpose) {
         try {
@@ -47,6 +50,39 @@ public class EmailService {
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", toEmail, e.getMessage());
             throw new RuntimeException("Failed to send verification email");
+        }
+    }
+
+    /** F26: Notify admin email when a new user feedback is submitted. Best-effort. */
+    @Async
+    public void sendFeedbackAlert(Long feedbackId, String category, String userIdStr, String content, String contact) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromAddress);
+            helper.setTo(alertEmail);
+            helper.setSubject("【CareerLoop 用户反馈】" + category + " #" + feedbackId);
+            String html = """
+                    <div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:28px 20px;">
+                      <h2 style="color:#2457d6;margin-bottom:4px;">新用户反馈 #%d</h2>
+                      <p style="color:#64748b;font-size:13px;margin-bottom:18px;">类型：<strong>%s</strong>&nbsp;·&nbsp;用户：%s</p>
+                      <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:14px 16px;border-radius:4px;margin-bottom:16px;">
+                        <p style="margin:0;color:#1e293b;font-size:15px;white-space:pre-wrap;">%s</p>
+                      </div>
+                      %s
+                    </div>
+                    """.formatted(
+                    feedbackId, category,
+                    userIdStr != null ? "user#" + userIdStr : "匿名",
+                    content,
+                    contact != null && !contact.isBlank()
+                            ? "<p style='color:#475569;font-size:13px;'>联系方式：" + contact + "</p>"
+                            : "");
+            helper.setText(html, true);
+            mailSender.send(message);
+            log.info("[feedback] alert email sent for feedback#{}", feedbackId);
+        } catch (Exception e) {
+            log.warn("[feedback] failed to send alert email: {}", e.getMessage());
         }
     }
 

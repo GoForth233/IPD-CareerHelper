@@ -9,6 +9,7 @@ const routes = [
     children: [
       { path: 'dashboard', name: 'dashboard', component: () => import('@/views/Dashboard.vue') },
       { path: 'students', name: 'students', component: () => import('@/views/Students.vue') },
+      { path: 'users', name: 'users', component: () => import('@/views/Users.vue') },
       { path: 'skill-map', name: 'skill-map', component: () => import('@/views/SkillMap.vue') },
       { path: 'questions', name: 'questions', component: () => import('@/views/QuestionBank.vue') },
     ],

@@ -105,6 +105,11 @@
     <!-- Menu group 3: Legal & Support -->
     <text class="group-label">Legal & Support</text>
     <view class="menu-card">
+      <view class="menu-item" @click="navTo('/pages/user/feedback')">
+        <text class="menu-icon">💬</text>
+        <text class="menu-text">Feedback</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" @click="openConsent('privacy')">
         <text class="menu-icon">🔒</text>
         <text class="menu-text">Privacy Policy</text>
