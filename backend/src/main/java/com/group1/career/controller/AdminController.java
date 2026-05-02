@@ -276,11 +276,17 @@ public class AdminController {
 
     // ─────────────────── Question bank moderation ───────────────────
 
-    @Operation(summary = "List all questions (admin — includes HIDDEN status)")
+    @Operation(summary = "List all questions (admin — includes HIDDEN status). Optional ?source=AI_GENERATED&reviewStatus=PENDING_REVIEW filter.")
     @GetMapping("/questions")
-    public Result<List<InterviewQuestion>> listQuestions() {
+    public Result<List<InterviewQuestion>> listQuestions(
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String reviewStatus) {
         requireAdmin();
-        return Result.success(interviewQuestionRepository.findAll());
+        List<InterviewQuestion> all = interviewQuestionRepository.findAll();
+        return Result.success(all.stream()
+                .filter(q -> source == null || source.equals(q.getSource()))
+                .filter(q -> reviewStatus == null || reviewStatus.equals(q.getReviewStatus()))
+                .collect(java.util.stream.Collectors.toList()));
     }
 
     @Operation(summary = "Update a question (status, content, position, difficulty)")
@@ -294,7 +300,31 @@ public class AdminController {
         if (payload.getPosition() != null) existing.setPosition(payload.getPosition());
         if (payload.getDifficulty() != null) existing.setDifficulty(payload.getDifficulty());
         if (payload.getStatus() != null) existing.setStatus(payload.getStatus());
+        if (payload.getReviewStatus() != null) existing.setReviewStatus(payload.getReviewStatus());
+        if (payload.getAnswer() != null) existing.setAnswer(payload.getAnswer());
         return Result.success(interviewQuestionRepository.save(existing));
+    }
+
+    @Operation(summary = "Approve an AI-generated question (sets reviewStatus=PUBLISHED)")
+    @PostMapping("/questions/{id}/approve")
+    @AuditLog(action = "APPROVE_QUESTION", targetType = "QUESTION")
+    public Result<InterviewQuestion> approveQuestion(@PathVariable Long id) {
+        requireAdmin();
+        InterviewQuestion q = interviewQuestionRepository.findById(id)
+                .orElseThrow(() -> new BizException("Question not found"));
+        q.setReviewStatus("PUBLISHED");
+        return Result.success(interviewQuestionRepository.save(q));
+    }
+
+    @Operation(summary = "Reject an AI-generated question (sets reviewStatus=REJECTED)")
+    @PostMapping("/questions/{id}/reject")
+    @AuditLog(action = "REJECT_QUESTION", targetType = "QUESTION")
+    public Result<InterviewQuestion> rejectQuestion(@PathVariable Long id) {
+        requireAdmin();
+        InterviewQuestion q = interviewQuestionRepository.findById(id)
+                .orElseThrow(() -> new BizException("Question not found"));
+        q.setReviewStatus("REJECTED");
+        return Result.success(interviewQuestionRepository.save(q));
     }
 
     @Operation(summary = "Delete a question")

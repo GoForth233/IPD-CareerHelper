@@ -43,6 +43,7 @@ public class SearchQuestionBankTool implements AiTool {
         Page<InterviewQuestion> page = questionRepository.search(
                 keyword.isBlank() ? null : keyword,
                 null,
+                null,
                 PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "likes")));
         if (page.isEmpty()) return "No questions found matching keyword: " + keyword;
         StringBuilder sb = new StringBuilder("Question bank results for \"" + keyword + "\":\n");

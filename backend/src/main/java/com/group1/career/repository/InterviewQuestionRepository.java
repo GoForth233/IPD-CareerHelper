@@ -21,10 +21,13 @@ public interface InterviewQuestionRepository extends JpaRepository<InterviewQues
      * "popular" (likes desc, createdAt desc).
      */
     @Query("select q from InterviewQuestion q where q.status = 'APPROVED' " +
+            "and q.reviewStatus = 'PUBLISHED' " +
             "and (:position is null or q.position = :position) " +
-            "and (:difficulty is null or q.difficulty = :difficulty)")
+            "and (:difficulty is null or q.difficulty = :difficulty) " +
+            "and (:source is null or q.source = :source)")
     Page<InterviewQuestion> search(@Param("position") String position,
                                    @Param("difficulty") String difficulty,
+                                   @Param("source") String source,
                                    Pageable pageable);
 
     /**

@@ -32,10 +32,11 @@ public class QuestionBankController {
     public Result<MarketPageResponse> list(
             @RequestParam(required = false) String position,
             @RequestParam(required = false) String difficulty,
+            @RequestParam(required = false) String source,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Page<InterviewQuestion> p = service.list(position, difficulty, page, size);
+        Page<InterviewQuestion> p = service.list(position, difficulty, source, page, size);
         MarketPageResponse r = new MarketPageResponse();
         r.setItems(p.getContent());
         r.setTotal(p.getTotalElements());

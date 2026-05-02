@@ -55,7 +55,7 @@ public class RecommendQuestionsTool implements AiTool {
                 PageRequest.of(0, count));
 
         if (pool.isEmpty()) {
-            pool = questionRepository.search(null, null, PageRequest.of(0, count)).getContent();
+            pool = questionRepository.search(null, null, null, PageRequest.of(0, count)).getContent();
         }
         if (pool.isEmpty()) return "No questions available at the moment.";
 

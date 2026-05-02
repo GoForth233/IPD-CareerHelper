@@ -6,10 +6,12 @@ export interface MarketQuestion {
   difficulty: string;
   content: string;
   summary?: string | null;
+  answer?: string | null;
   contributorHash?: string | null;
   likes: number;
   drawCount: number;
   status: string;
+  source?: string;
   createdAt?: string;
 }
 
@@ -23,6 +25,7 @@ export interface MarketPageResponse {
 export interface ListMarketParams {
   position?: string;
   difficulty?: string;
+  source?: string;
   page?: number;
   size?: number;
 }

@@ -59,11 +59,17 @@ public class QuestionBankService {
     /** Page through the bank with optional filters. Sorting is "popular": likes desc, createdAt desc. */
     @Transactional(readOnly = true)
     public Page<InterviewQuestion> list(String position, String difficulty, int page, int size) {
+        return list(position, difficulty, null, page, size);
+    }
+
+    /** Page through the bank with optional filters including source (OFFICIAL / USER / AI_GENERATED). */
+    @Transactional(readOnly = true)
+    public Page<InterviewQuestion> list(String position, String difficulty, String source, int page, int size) {
         int safePage = Math.max(0, page);
         int safeSize = Math.min(50, Math.max(1, size));
         Sort sort = Sort.by(Sort.Direction.DESC, "likes")
                 .and(Sort.by(Sort.Direction.DESC, "createdAt"));
-        return repo.search(blankToNull(position), blankToNull(difficulty),
+        return repo.search(blankToNull(position), blankToNull(difficulty), blankToNull(source),
                 PageRequest.of(safePage, safeSize, sort));
     }
 
