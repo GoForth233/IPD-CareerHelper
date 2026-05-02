@@ -7,27 +7,42 @@
         <text class="page-title">Notifications</text>
         <view
           class="clear-btn"
-          v-if="systemMessages.length > 0 && unreadCount > 0"
+          v-if="filteredMessages.length > 0 && unreadCount > 0"
           @click="markAllReadHandler"
         ><text class="clear-btn-text">Mark all read</text></view>
       </view>
-      <text class="page-subtitle">Updates from your interviews, assessments, and resume reviews.</text>
+    </view>
+
+    <!-- F9: Category segment tabs -->
+    <view class="segment-wrap">
+      <view class="segment-bar">
+        <view
+          v-for="tab in TABS"
+          :key="tab.key"
+          class="seg-item"
+          :class="{ 'seg-active': activeTab === tab.key }"
+          @click="activeTab = tab.key as TabKey"
+        >
+          <text class="seg-text">{{ tab.label }}</text>
+          <view class="seg-badge" v-if="unreadByTab[tab.key] > 0">
+            <text class="seg-badge-text">{{ unreadByTab[tab.key] }}</text>
+          </view>
+        </view>
+      </view>
     </view>
 
     <!-- Message list -->
     <scroll-view class="msg-list" scroll-y>
-
-      <!-- System notifications -->
       <view class="list-wrap">
         <view
           class="msg-card"
           :class="{ 'msg-unread': item.unread }"
-          v-for="(item, idx) in systemMessages"
+          v-for="(item, idx) in filteredMessages"
           :key="idx"
           @click="handleSystemClick(item)"
         >
           <view class="avatar-wrap">
-            <view class="msg-avatar sys-av" :class="'sys-' + (idx % 2)">
+            <view class="msg-avatar sys-av" :class="'sys-' + (idx % 3)">
               <text class="av-emoji">{{ item.icon }}</text>
             </view>
             <view class="unread-dot" v-if="item.unread"></view>
@@ -43,10 +58,10 @@
       </view>
 
       <!-- Empty state -->
-      <view class="empty-state" v-if="!systemLoading && systemMessages.length === 0">
+      <view class="empty-state" v-if="!systemLoading && filteredMessages.length === 0">
         <text class="empty-icon">🔕</text>
         <text class="empty-text">No notifications yet</text>
-        <text class="empty-sub">Finish a mock interview or assessment, and it'll show up here.</text>
+        <text class="empty-sub">Complete an interview or assessment and it'll show up here.</text>
       </view>
     </scroll-view>
 
@@ -67,10 +82,64 @@ import {
 const topSafeHeight = ref(88);
 const darkPref = ref(false);
 
+// ─── F9: Category tabs ───────────────────────────────────────────────────────
+const TABS = [
+  { key: 'ALL',       label: 'All' },
+  { key: 'CAREER',    label: 'Career' },
+  { key: 'SYSTEM',    label: 'System' },
+  { key: 'AI',        label: 'AI' },
+];
+
+type TabKey = 'ALL' | 'CAREER' | 'SYSTEM' | 'AI';
+
+const TAB_TYPES: Record<TabKey, string[]> = {
+  ALL:    [],
+  CAREER: ['INTERVIEW_REPORT', 'ASSESSMENT_RESULT', 'RESUME_DIAGNOSIS', 'WEEKLY_REPORT', 'STREAK_WARNING', 'MARKET_LIKE'],
+  SYSTEM: ['SYSTEM', 'ADMIN_BROADCAST'],
+  AI:     ['AI_PROACTIVE'],
+};
+
+const activeTab = ref<TabKey>('ALL');
+
+// ─── Icon & label maps (all 9 types) ────────────────────────────────────────
+const iconForType = (type: string): string => {
+  switch (type) {
+    case 'INTERVIEW_REPORT':  return '🎤';
+    case 'INTERVIEW_COMPLETED': return '🎤';
+    case 'ASSESSMENT_RESULT': return '🧠';
+    case 'ASSESSMENT_DONE':   return '🧠';
+    case 'RESUME_DIAGNOSIS':  return '📄';
+    case 'RESUME_REVIEWED':   return '📄';
+    case 'WEEKLY_REPORT':     return '📊';
+    case 'STREAK_WARNING':    return '🔥';
+    case 'MARKET_LIKE':       return '❤️';
+    case 'AI_PROACTIVE':      return '🤖';
+    case 'ADMIN_BROADCAST':   return '📢';
+    default:                  return '🔔';
+  }
+};
+const nameForType = (type: string): string => {
+  switch (type) {
+    case 'INTERVIEW_REPORT':
+    case 'INTERVIEW_COMPLETED': return 'Interview';
+    case 'ASSESSMENT_RESULT':
+    case 'ASSESSMENT_DONE':     return 'Assessment';
+    case 'RESUME_DIAGNOSIS':
+    case 'RESUME_REVIEWED':     return 'Resume AI';
+    case 'WEEKLY_REPORT':       return 'Weekly Report';
+    case 'STREAK_WARNING':      return 'Check-in Streak';
+    case 'MARKET_LIKE':         return 'Market';
+    case 'AI_PROACTIVE':        return 'AI Advisor';
+    case 'ADMIN_BROADCAST':     return 'Announcement';
+    default:                    return 'System';
+  }
+};
+
 // System notifications come from the backend (/api/notifications).
 // Each row is a Notification + a derived UI shape used by the existing template.
 interface SystemMessageView {
   notificationId: number;
+  type: string;
   icon: string;
   name: string;
   time: string;
@@ -81,6 +150,24 @@ interface SystemMessageView {
 const systemMessages = ref<SystemMessageView[]>([]);
 const systemLoading = ref(false);
 const unreadCount = computed(() => systemMessages.value.filter((m) => m.unread).length);
+
+const filteredMessages = computed(() => {
+  if (activeTab.value === 'ALL') return systemMessages.value;
+  const allowed = TAB_TYPES[activeTab.value];
+  return systemMessages.value.filter((m) => allowed.includes(m.type));
+});
+
+const unreadByTab = computed<Record<string, number>>(() => {
+  const out: Record<string, number> = { ALL: 0, CAREER: 0, SYSTEM: 0, AI: 0 };
+  systemMessages.value.forEach((m) => {
+    if (!m.unread) return;
+    out['ALL']++;
+    for (const key of Object.keys(TAB_TYPES) as TabKey[]) {
+      if (TAB_TYPES[key].includes(m.type)) { out[key]++; break; }
+    }
+  });
+  return out;
+});
 
 const formatRelativeTime = (ts?: string): string => {
   if (!ts) return '';
@@ -98,29 +185,13 @@ const formatRelativeTime = (ts?: string): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-const iconForType = (type: string): string => {
-  switch (type) {
-    case 'INTERVIEW_COMPLETED': return '🎤';
-    case 'ASSESSMENT_DONE':     return '🧠';
-    case 'RESUME_REVIEWED':     return '📄';
-    default:                    return '🔔';
-  }
-};
-const nameForType = (type: string): string => {
-  switch (type) {
-    case 'INTERVIEW_COMPLETED': return 'Interview';
-    case 'ASSESSMENT_DONE':     return 'Assessment';
-    case 'RESUME_REVIEWED':     return 'Resume AI';
-    default:                    return 'System';
-  }
-};
-
 const loadSystemNotifications = async () => {
   systemLoading.value = true;
   try {
     const list: Notification[] = (await listNotificationsApi()) || [];
     systemMessages.value = list.map((n) => ({
       notificationId: n.notificationId,
+      type: n.type,
       icon: iconForType(n.type),
       name: nameForType(n.type) + (n.title ? ' · ' + n.title : ''),
       time: formatRelativeTime(n.createdAt),
@@ -287,7 +358,8 @@ onShow(() => {
   padding: 0 5px;
 }
 
-.badge-num {
+.badge-num,
+.seg-badge-text {
   font-size: 10px;
   font-weight: 700;
   color: #ffffff;
@@ -360,6 +432,7 @@ onShow(() => {
 }
 .sys-0 { background: linear-gradient(135deg, #fef08a, #fbbf24); }
 .sys-1 { background: linear-gradient(135deg, #c4b5fd, #8b5cf6); }
+.sys-2 { background: linear-gradient(135deg, #6ee7b7, #10b981); }
 
 .status-av {
   background: linear-gradient(135deg, #dbeafe, #bfdbfe);

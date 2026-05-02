@@ -10,6 +10,7 @@ import com.group1.career.model.entity.InterviewMessage;
 import com.group1.career.repository.InterviewMessageRepository;
 import com.group1.career.repository.InterviewRepository;
 import com.group1.career.service.CheckInService;
+import com.group1.career.model.NotificationTypes;
 import com.group1.career.service.InterviewService;
 import com.group1.career.service.NotificationService;
 import com.group1.career.service.UserProfileSnapshotService;
@@ -94,7 +95,7 @@ public class InterviewServiceImpl implements InterviewService {
         // AI evaluation report.
         notificationService.push(
                 saved.getUserId(),
-                "INTERVIEW_COMPLETED",
+                NotificationTypes.INTERVIEW_REPORT,
                 "Interview completed",
                 "Your " + saved.getPositionName() + " mock interview is finished. Tap to see your AI report.",
                 "/pages/interview/report?interviewId=" + saved.getInterviewId()

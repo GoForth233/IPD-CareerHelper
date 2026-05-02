@@ -5,6 +5,7 @@
       <el-menu :default-active="$route.name as string" router>
         <el-menu-item index="dashboard" :route="{ name: 'dashboard' }">Dashboard</el-menu-item>
         <el-menu-item index="students" :route="{ name: 'students' }">Students</el-menu-item>
+        <el-menu-item index="users" :route="{ name: 'users' }">User Management</el-menu-item>
         <el-menu-item index="skill-map" :route="{ name: 'skill-map' }">Skill Map Editor</el-menu-item>
         <el-menu-item index="questions" :route="{ name: 'questions' }">Question Bank</el-menu-item>
       </el-menu>
@@ -32,6 +33,7 @@ const headerTitle = computed(() => {
   const map: Record<string, string> = {
     dashboard: 'Organization Dashboard',
     students: 'Students',
+    users: 'User Management',
     'skill-map': 'Skill Map Editor',
     questions: 'Question Bank Moderation',
   };

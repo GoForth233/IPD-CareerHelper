@@ -3,6 +3,8 @@ package com.group1.career.controller;
 import com.group1.career.common.Result;
 import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.CareerNode;
+import com.group1.career.model.NotificationTypes;
+import com.group1.career.service.NotificationService;
 import com.group1.career.model.entity.CareerPath;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.InterviewQuestion;
@@ -28,6 +30,10 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,6 +61,7 @@ public class AdminController {
     private final CareerPathRepository careerPathRepository;
     private final CareerNodeRepository careerNodeRepository;
     private final InterviewQuestionRepository interviewQuestionRepository;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     // ─────────────────── Auth-shaped utilities ───────────────────
@@ -280,6 +287,93 @@ public class AdminController {
         return Result.success();
     }
 
+    // ─────────────────── F16: User management ───────────────────
+
+    @Operation(summary = "List all non-deleted users (paginated, optional nickname search)")
+    @GetMapping("/users")
+    public Result<Page<User>> listUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q) {
+        requireAdmin();
+        PageRequest pr = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<User> result = (q != null && !q.isBlank())
+                ? userRepository.searchByNickname(q.trim(), pr)
+                : userRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc(pr);
+        return Result.success(result);
+    }
+
+    @Operation(summary = "Get full user detail (admin)")
+    @GetMapping("/users/{userId}")
+    public Result<User> userDetail(@PathVariable Long userId) {
+        requireAdmin();
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new BizException("User not found"));
+        return Result.success(u);
+    }
+
+    @Operation(summary = "Ban a user — sets status=2 and records ban reason")
+    @PostMapping("/users/{userId}/ban")
+    public Result<User> banUser(@PathVariable Long userId, @RequestBody Map<String, String> body) {
+        requireAdmin();
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new BizException("User not found"));
+        String reason = body.getOrDefault("reason", "Violated community guidelines");
+        u.setStatus(2);
+        u.setBannedReason(reason);
+        User saved = userRepository.save(u);
+        notificationService.push(userId,
+                NotificationTypes.SYSTEM,
+                "Account suspended",
+                "Your account has been suspended. Reason: " + reason,
+                null);
+        log.info("[admin] user {} banned by admin {}: {}", userId, SecurityUtil.currentUserId(), reason);
+        return Result.success(saved);
+    }
+
+    @Operation(summary = "Unban a user — restores status=1 and clears ban reason")
+    @PostMapping("/users/{userId}/unban")
+    public Result<User> unbanUser(@PathVariable Long userId) {
+        requireAdmin();
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new BizException("User not found"));
+        u.setStatus(1);
+        u.setBannedReason(null);
+        User saved = userRepository.save(u);
+        notificationService.push(userId,
+                NotificationTypes.SYSTEM,
+                "Account restored",
+                "Your account restriction has been lifted. Welcome back!",
+                null);
+        log.info("[admin] user {} unbanned by admin {}", userId, SecurityUtil.currentUserId());
+        return Result.success(saved);
+    }
+
+    @Operation(summary = "Send admin broadcast to a single user or all active users")
+    @PostMapping("/broadcast")
+    public Result<Integer> broadcast(@RequestBody BroadcastRequest req) {
+        requireAdmin();
+        if (req.getTitle() == null || req.getTitle().isBlank()) throw new BizException("Title required");
+        if (req.getContent() == null || req.getContent().isBlank()) throw new BizException("Content required");
+        int count = 0;
+        if (req.getUserId() != null) {
+            notificationService.push(req.getUserId(), NotificationTypes.ADMIN_BROADCAST,
+                    req.getTitle(), req.getContent(), req.getLink());
+            count = 1;
+        } else {
+            List<User> active = userRepository.findAll().stream()
+                    .filter(u -> u.getDeletedAt() == null && u.getStatus() != null && u.getStatus() == 1)
+                    .toList();
+            for (User u : active) {
+                notificationService.push(u.getUserId(), NotificationTypes.ADMIN_BROADCAST,
+                        req.getTitle(), req.getContent(), req.getLink());
+                count++;
+            }
+        }
+        log.info("[admin] broadcast sent to {} users by admin {}", count, SecurityUtil.currentUserId());
+        return Result.success(count);
+    }
+
     // ─────────────────── Helpers + DTOs ───────────────────
 
     private static final List<String> RADAR_DIMENSIONS = List.of(
@@ -289,6 +383,14 @@ public class AdminController {
     private void requireAdmin() {
         Long uid = SecurityUtil.requireCurrentUserId();
         adminAuthService.requireAdmin(uid);
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class BroadcastRequest {
+        private Long userId;
+        private String title;
+        private String content;
+        private String link;
     }
 
     @Data @Builder @AllArgsConstructor @NoArgsConstructor
