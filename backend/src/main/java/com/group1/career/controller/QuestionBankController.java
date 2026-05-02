@@ -3,6 +3,7 @@ package com.group1.career.controller;
 import com.group1.career.common.Result;
 import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.InterviewQuestion;
+import com.group1.career.service.ContentSafetyService;
 import com.group1.career.service.QuestionBankService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +27,7 @@ import java.util.List;
 public class QuestionBankController {
 
     private final QuestionBankService service;
+    private final ContentSafetyService contentSafetyService;
 
     @Operation(summary = "List questions in the market with optional filters and pagination")
     @GetMapping
@@ -49,6 +51,15 @@ public class QuestionBankController {
     @PostMapping
     public Result<InterviewQuestion> contribute(@RequestBody ContributeRequest req) {
         Long uid = SecurityUtil.requireCurrentUserId();
+
+        // F29: content safety check before saving UGC
+        ContentSafetyService.ContentCheckResult safetyResult =
+                contentSafetyService.check(req.getContent());
+        if (!safetyResult.passed()) {
+            throw new BizException(safetyResult.reason() != null
+                    ? safetyResult.reason() : "内容审核未通过，请检查后重新提交");
+        }
+
         try {
             return Result.success(service.contribute(uid, req.getPosition(), req.getDifficulty(),
                     req.getContent(), req.getSummary()));

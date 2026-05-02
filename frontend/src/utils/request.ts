@@ -8,54 +8,73 @@ interface Result<T> {
   data: T;
 }
 
+type RequestOptions = UniApp.RequestOptions & {
+  silent?: boolean;   // suppress error toasts when true
+  _retried?: boolean; // F21: internal flag to prevent double-retry
+};
+
 /**
- * Generic Request Function
- * @param options uni.request options
- * @returns Promise<T>
+ * Generic Request Function — with F21 global error handling:
+ *   - 401: clear token, redirect to login
+ *   - 5xx: one auto-retry after 1.5 s, then show toast
+ *   - Network fail: friendly Chinese toast + reject
  */
-const request = <T>(options: UniApp.RequestOptions & { silent?: boolean }): Promise<T> => {
+const request = <T>(options: RequestOptions): Promise<T> => {
   return new Promise((resolve, reject) => {
-    // 1. Request Interceptor Logic
     const token = uni.getStorageSync('token');
-    const header = {
+    const header: Record<string, string> = {
       'Content-Type': 'application/json',
-      // ngrok-free.dev gates every request behind an HTML "abuse" interstitial
-      // unless this header is present (any value works). Without it the mini
-      // program just gets back a chunk of HTML and our JSON parser throws.
-      // Harmless when the backend is on a real domain — the header is just ignored.
       'ngrok-skip-browser-warning': '1',
-      ...options.header,
+      ...(options.header as Record<string, string>),
     };
+    if (token) header['Authorization'] = `Bearer ${token}`;
 
-    if (token) {
-      // @ts-ignore - Header index signature mismatch in Uni definitions sometimes
-      header['Authorization'] = `Bearer ${token}`;
-    }
-
-    // 2. Execute Request
     uni.request({
-      // AI-backed endpoints (diagnose / tailor / from-template) take 30-90s.
-      // WeChat's default 60s timeout will silently abort long requests, so
-      // raise the floor to 120s. Individual callers can override per-request.
+      // AI endpoints can take up to 2 min — keep this floor high
       timeout: 120_000,
       ...options,
-      url: `${BASE_URL}${options.url}`, // Auto-prepend Base URL
+      url: `${BASE_URL}${options.url}`,
       header,
       success: (res) => {
-        // 3. Response Interceptor Logic
         const statusCode = res.statusCode;
         const data = res.data as Result<T>;
 
-        // Success Case: HTTP 200 AND Business Code 200
-        if (statusCode === 200 && data.code === 200) {
+        if (statusCode === 200 && data?.code === 200) {
           resolve(data.data);
-        } else {
-          const errorMsg = data.message || 'Request Failed';
-          reject(new Error(errorMsg));
+          return;
         }
+
+        // F21: 401 → session expired, redirect to login
+        if (statusCode === 401) {
+          uni.removeStorageSync('token');
+          uni.removeStorageSync('userId');
+          if (!options.silent) {
+            uni.showToast({ title: '登录已过期，请重新登录', icon: 'none', duration: 2000 });
+          }
+          setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 1500);
+          reject(new Error('Unauthorized'));
+          return;
+        }
+
+        // F21: 5xx → retry once
+        if (statusCode >= 500 && !options._retried) {
+          setTimeout(() => {
+            request<T>({ ...options, _retried: true }).then(resolve).catch(reject);
+          }, 1500);
+          return;
+        }
+
+        const errorMsg = data?.message || `请求失败 (${statusCode})`;
+        if (!options.silent) {
+          uni.showToast({ title: errorMsg, icon: 'none', duration: 2500 });
+        }
+        reject(new Error(errorMsg));
       },
-      fail: (err) => {
-        reject(new Error('Network error, please check your connection'));
+      fail: (_err) => {
+        if (!options.silent) {
+          uni.showToast({ title: '网络异常，请检查网络连接', icon: 'none', duration: 2500 });
+        }
+        reject(new Error('网络异常，请检查网络连接'));
       },
     });
   });

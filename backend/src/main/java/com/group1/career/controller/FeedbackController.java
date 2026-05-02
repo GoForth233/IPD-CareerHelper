@@ -5,6 +5,7 @@ import com.group1.career.exception.BizException;
 import com.group1.career.model.entity.UserFeedback;
 import com.group1.career.repository.UserFeedbackRepository;
 import com.group1.career.service.AdminAuthService;
+import com.group1.career.service.ContentSafetyService;
 import com.group1.career.service.EmailService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,7 @@ public class FeedbackController {
     private final UserFeedbackRepository feedbackRepository;
     private final EmailService emailService;
     private final AdminAuthService adminAuthService;
+    private final ContentSafetyService contentSafetyService;
 
     // ─────────────────────────────────────────────
     // Public endpoint — no auth required
@@ -50,6 +52,13 @@ public class FeedbackController {
         if (req.getContent().length() > 2000) {
             throw new BizException("反馈内容不超过 2000 字");
         }
+
+        // F29: content safety check
+        ContentSafetyService.ContentCheckResult safety = contentSafetyService.check(req.getContent());
+        if (!safety.passed()) {
+            throw new BizException(safety.reason() != null ? safety.reason() : "内容审核未通过");
+        }
+
         String category = resolveCategory(req.getCategory());
 
         UserFeedback fb = UserFeedback.builder()

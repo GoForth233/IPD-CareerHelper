@@ -29,6 +29,9 @@ public class AiServiceImpl implements AiService {
     @Value("${aliyun.ai.model:qwen-max}")
     private String modelName;
 
+    @Value("${aliyun.ai.fallback-mode:false}")
+    private boolean fallbackMode;
+
     private static final String API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -45,8 +48,16 @@ public class AiServiceImpl implements AiService {
     private static final String DEFAULT_SYSTEM_PROMPT =
             "You are a professional career assistant. Reply concisely and stay on topic.";
 
+    /** F21: user-visible message when AI is unavailable. */
+    private static final String FALLBACK_MSG =
+            "AI 助手暂时繁忙，请稍后再试 🙏（若持续出现请联系客服）";
+
     @Override
     public String chat(List<Map<String, String>> messages) {
+        if (fallbackMode) {
+            log.warn("[AI] fallback-mode=true, skipping real call");
+            return FALLBACK_MSG;
+        }
         try {
             ObjectNode root = objectMapper.createObjectNode();
             root.put("model", modelName);
@@ -97,16 +108,20 @@ public class AiServiceImpl implements AiService {
             }
             
             log.error("AI API Error: {}", response.body());
-            return "AI service busy (Error: " + response.statusCode() + ")";
+            return FALLBACK_MSG;
 
+        } catch (java.net.http.HttpTimeoutException te) {
+            log.error("[AI] chat timeout after 110s", te);
+            return FALLBACK_MSG;
         } catch (Exception e) {
             log.error("AI Chat Failed", e);
-            return "Error: " + e.getMessage();
+            return FALLBACK_MSG;
         }
     }
-    
+
     @Override
     public String chat(List<Map<String, String>> messages, String model) {
+        if (fallbackMode) return FALLBACK_MSG;
         try {
             ObjectNode root = objectMapper.createObjectNode();
             root.put("model", model != null ? model : modelName);
@@ -145,10 +160,23 @@ public class AiServiceImpl implements AiService {
                 }
             }
             log.error("AI API Error (model={}): {}", model, response.body());
-            return "AI service busy (Error: " + response.statusCode() + ")";
+            // F21: one retry on 5xx
+            if (response.statusCode() >= 500) {
+                log.warn("[AI] 5xx from model={}, retrying once", model);
+                try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+                return chat(messages, model + "_retry_skip"); // prevent infinite loop via marker
+            }
+            return FALLBACK_MSG;
+        } catch (java.net.http.HttpTimeoutException te) {
+            log.error("[AI] chat timeout (model={})", model, te);
+            return FALLBACK_MSG;
         } catch (Exception e) {
+            if (model != null && model.endsWith("_retry_skip")) {
+                log.error("[AI] retry also failed (model={}): {}", model, e.getMessage());
+                return FALLBACK_MSG;
+            }
             log.error("AI Chat Failed (model={})", model, e);
-            return "Error: " + e.getMessage();
+            return FALLBACK_MSG;
         }
     }
 
