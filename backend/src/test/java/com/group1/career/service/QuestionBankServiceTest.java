@@ -41,36 +41,36 @@ public class QuestionBankServiceTest {
                         .content("Explain dependency injection").likes(5).build()
         );
         Page<InterviewQuestion> page = new PageImpl<>(questions);
-        when(repo.search(any(), any(), any(Pageable.class))).thenReturn(page);
+        when(repo.search(any(), any(), any(), any(Pageable.class))).thenReturn(page);
 
         Page<InterviewQuestion> result = questionBankService.list("Java Backend", "Normal", 0, 10);
 
         assertNotNull(result);
         assertEquals(2, result.getContent().size());
-        verify(repo).search(eq("Java Backend"), eq("Normal"), any(Pageable.class));
+        verify(repo).search(eq("Java Backend"), eq("Normal"), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("list — treats blank position as null filter")
     public void testList_BlankPositionFilter() {
-        when(repo.search(isNull(), any(), any(Pageable.class)))
+        when(repo.search(isNull(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         Page<InterviewQuestion> result = questionBankService.list("  ", "Normal", 0, 10);
 
         assertNotNull(result);
-        verify(repo).search(isNull(), eq("Normal"), any(Pageable.class));
+        verify(repo).search(isNull(), eq("Normal"), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("list — page size is capped at 50")
     public void testList_PageSizeCapped() {
-        when(repo.search(any(), any(), any(Pageable.class)))
+        when(repo.search(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         questionBankService.list(null, null, 0, 1000);
 
-        verify(repo).search(any(), any(), argThat(p -> p.getPageSize() == 50));
+        verify(repo).search(any(), any(), any(), argThat(p -> p.getPageSize() == 50));
     }
 
     // ========== contribute ==========

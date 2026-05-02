@@ -10,6 +10,7 @@ import com.group1.career.service.AiService;
 import com.group1.career.model.NotificationTypes;
 import com.group1.career.service.AssessmentService;
 import com.group1.career.service.CheckInService;
+import com.group1.career.service.WechatSubscribeService;
 import com.group1.career.service.NotificationService;
 import com.group1.career.service.UserProfileSnapshotService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final NotificationService notificationService;
     private final UserProfileSnapshotService snapshotService;
     private final CheckInService checkInService;
+    private final WechatSubscribeService wechatSubscribeService;
 
     @Override
     public List<AssessmentScale> getAllScales() {
@@ -148,6 +150,12 @@ public class AssessmentServiceImpl implements AssessmentService {
             checkInService.recordAction(userId, "ASSESSMENT");
         } catch (Exception e) {
             log.warn("[assessment] check-in record failed for user {}: {}", userId, e.toString());
+        }
+
+        try {
+            wechatSubscribeService.sendAssessmentResult(userId, scale.getTitle(), portrait);
+        } catch (Exception e) {
+            log.warn("[assessment] wx subscribe push failed for user {}: {}", userId, e.toString());
         }
 
         return record;

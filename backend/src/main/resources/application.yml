@@ -124,6 +124,12 @@ wechat:
   miniapp:
     appid: ${WECHAT_APPID:wx8bdae792853cc263}
     secret: ${WECHAT_SECRET}
+  subscribe:
+    tpl-weekly-report:    ${WECHAT_TPL_WEEKLY_REPORT:}
+    tpl-interview-report: ${WECHAT_TPL_INTERVIEW_REPORT:}
+    tpl-assessment:       ${WECHAT_TPL_ASSESSMENT:}
+    tpl-resume-diagnosis: ${WECHAT_TPL_RESUME_DIAGNOSIS:}
+    tpl-ai-proactive:     ${WECHAT_TPL_AI_PROACTIVE:}
 
 # ==============================
 # 8. JWT signing

@@ -11,6 +11,17 @@
       <view style="width:64px;"></view>
     </view>
 
+    <view class="source-tabs">
+      <view
+        v-for="s in sources"
+        :key="s.value"
+        :class="['source-tab', sourceFilter === s.value ? 'source-tab-on' : '']"
+        @click="setSource(s.value)"
+      >
+        <text class="source-tab-text">{{ s.label }}</text>
+      </view>
+    </view>
+
     <view class="filters">
       <input
         class="filter-input"
@@ -83,15 +94,26 @@
       >
         <view class="q-head">
           <text class="q-pos">{{ q.position }}</text>
-          <text :class="['q-diff', diffClass(q.difficulty)]">{{ q.difficulty }}</text>
+          <view class="q-badges">
+            <text v-if="q.source === 'OFFICIAL'" class="badge badge-official">Official</text>
+            <text v-else-if="q.source === 'AI_GENERATED'" class="badge badge-ai">AI</text>
+            <text :class="['q-diff', diffClass(q.difficulty)]">{{ q.difficulty }}</text>
+          </view>
         </view>
         <text class="q-content">{{ q.content }}</text>
+        <view v-if="q.answer && expandedId === q.id" class="q-answer">
+          <text class="q-answer-label">Reference Answer</text>
+          <text class="q-answer-text">{{ q.answer }}</text>
+        </view>
         <view class="q-foot">
           <view class="like-btn" @click="like(q)">
             <text class="like-icon">{{ likedSet.has(q.id) ? '♥' : '♡' }}</text>
             <text class="like-count">{{ q.likes }}</text>
           </view>
           <text class="q-meta">drawn {{ q.drawCount }}×</text>
+          <view v-if="q.answer" class="answer-btn" @click="toggleAnswer(q.id)">
+            <text class="answer-btn-text">{{ expandedId === q.id ? 'Hide Answer' : 'Show Answer' }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -118,6 +140,14 @@ const topSafeHeight = ref(52);
 const positionFilter = ref('');
 const difficultyFilter = ref<string>(''); // '' = any
 const difficulties = ['', 'Easy', 'Normal', 'Hard'];
+const sourceFilter = ref<string>(''); // '' = all sources
+const sources = [
+  { label: 'All', value: '' },
+  { label: '✓ Official', value: 'OFFICIAL' },
+  { label: '👤 Community', value: 'USER' },
+  { label: '🤖 AI', value: 'AI_GENERATED' },
+];
+const expandedId = ref<number | null>(null);
 
 const items = ref<MarketQuestion[]>([]);
 const total = ref(0);
@@ -136,6 +166,16 @@ const goBack = () => uni.navigateBack({ delta: 1 });
 
 const setDifficulty = (d: string) => {
   difficultyFilter.value = d;
+};
+
+const setSource = (s: string) => {
+  sourceFilter.value = s;
+  page.value = 0;
+  load();
+};
+
+const toggleAnswer = (id: number) => {
+  expandedId.value = expandedId.value === id ? null : id;
 };
 
 const onPickDifficulty = (e: any) => {
@@ -157,6 +197,7 @@ const load = async () => {
     const res = await listMarketApi({
       position: positionFilter.value.trim() || undefined,
       difficulty: difficultyFilter.value || undefined,
+      source: sourceFilter.value || undefined,
       page: page.value,
       size,
     });
@@ -360,6 +401,33 @@ onShow(() => {
 .page-meta { font-size: 13px; color: #64748b; font-weight: 600; }
 
 .bottom-safe { height: calc(env(safe-area-inset-bottom, 0px) + 24px); }
+
+.source-tabs { display: flex; gap: 8px; margin: 8px 0; overflow-x: auto; padding-bottom: 2px; }
+.source-tab { padding: 6px 14px; border-radius: 999px; background: #f1f5f9; white-space: nowrap; }
+.source-tab-text { font-size: 12px; font-weight: 600; color: #475569; }
+.source-tab-on { background: #0f172a; }
+.source-tab-on .source-tab-text { color: #fff; }
+
+.q-badges { display: flex; align-items: center; gap: 6px; }
+.badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; }
+.badge-official { background: #dcfce7; color: #047857; }
+.badge-ai { background: #fef3c7; color: #b45309; }
+
+.q-answer { margin-top: 8px; padding: 10px; background: #f8faff; border-radius: 10px; }
+.q-answer-label { font-size: 11px; font-weight: 700; color: #2563eb; display: block; margin-bottom: 4px; }
+.q-answer-text { font-size: 13px; color: #334155; line-height: 1.6; }
+
+.answer-btn { margin-left: auto; padding: 3px 10px; background: #eff6ff; border-radius: 999px; }
+.answer-btn-text { font-size: 11px; font-weight: 700; color: #2563eb; }
+
+.is-dark .source-tab { background: #1e293b; }
+.is-dark .source-tab-text { color: #94a3b8; }
+.is-dark .source-tab-on { background: #f8fafc; }
+.is-dark .source-tab-on .source-tab-text { color: #0f172a; }
+.is-dark .q-answer { background: #1e293b; }
+.is-dark .q-answer-text { color: #cbd5e1; }
+.is-dark .answer-btn { background: rgba(37,99,235,0.18); }
+.is-dark .answer-btn-text { color: #93c5fd; }
 
 .is-dark { background-color: #0f172a; }
 .is-dark .nav-title,

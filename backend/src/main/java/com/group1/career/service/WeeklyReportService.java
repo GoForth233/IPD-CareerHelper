@@ -48,6 +48,7 @@ public class WeeklyReportService {
     private final NotificationService notificationService;
     private final AiService aiService;
     private final ObjectMapper objectMapper;
+    private final WechatSubscribeService wechatSubscribeService;
 
     /**
      * Build and push the report for every eligible user. Returns a small
@@ -147,6 +148,11 @@ public class WeeklyReportService {
                 summary,
                 "/pages/interview/history"
         );
+        try {
+            wechatSubscribeService.sendWeeklyReport(userId, summary);
+        } catch (Exception e) {
+            log.warn("[weekly-report] wx subscribe push failed for user {}: {}", userId, e.toString());
+        }
         return true;
     }
 

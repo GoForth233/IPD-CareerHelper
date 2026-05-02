@@ -59,9 +59,12 @@ export interface InterviewQuestion {
   difficulty: string;
   content: string;
   summary?: string;
+  answer?: string;
   likes?: number;
   drawCount?: number;
   status?: string;
+  source?: string;
+  reviewStatus?: string;
   createdAt?: string;
 }
 
@@ -98,7 +101,12 @@ export const api = {
   deleteNode: (nodeId: number) => http.delete<void>(`/api/admin/career-paths/nodes/${nodeId}`),
 
   // Question bank
-  listQuestions: () => http.get<InterviewQuestion[]>('/api/admin/questions'),
+  listQuestions: (params?: { source?: string; reviewStatus?: string }) =>
+    http.get<InterviewQuestion[]>('/api/admin/questions', { params }),
+  listPendingReview: () =>
+    http.get<InterviewQuestion[]>('/api/admin/questions', { params: { reviewStatus: 'PENDING_REVIEW' } }),
+  approveQuestion: (id: number) => http.post<InterviewQuestion>(`/api/admin/questions/${id}/approve`, {}),
+  rejectQuestion: (id: number) => http.post<InterviewQuestion>(`/api/admin/questions/${id}/reject`, {}),
   updateQuestion: (id: number, payload: Partial<InterviewQuestion>) =>
     http.post<InterviewQuestion>(`/api/admin/questions/${id}`, payload),
   deleteQuestion: (id: number) => http.delete<void>(`/api/admin/questions/${id}`),
