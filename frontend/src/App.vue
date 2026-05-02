@@ -2,7 +2,22 @@
 import { onLaunch } from "@dcloudio/uni-app";
 import { isLoggedIn, LOGIN_PAGE } from "@/utils/auth";
 
+/** Must match AGREEMENT_VERSION in pages/consent/index.vue */
+const AGREEMENT_VERSION = '1.0';
+const CONSENT_KEY = `consent_v${AGREEMENT_VERSION}`;
+const CONSENT_PAGE = '/pages/consent/index';
+
 onLaunch(() => {
+  // F2: First-launch consent gate.
+  // If the user has never accepted the Privacy Policy + age check, always
+  // show the consent page regardless of login state. The consent page
+  // handles the subsequent routing (login page or home).
+  const hasConsent = uni.getStorageSync(CONSENT_KEY);
+  if (!hasConsent) {
+    uni.reLaunch({ url: CONSENT_PAGE });
+    return;
+  }
+
   // Cold-start gate: real users *and* guests both keep their session.
   // Previously a guest's lack of `userId` would bounce them back to the
   // login page on every relaunch; the auth helper now treats the guest
