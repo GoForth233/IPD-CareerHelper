@@ -3,8 +3,12 @@ package com.group1.career.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.common.Result;
+import com.group1.career.repository.AssistantSessionRepository;
 import com.group1.career.service.AiService;
+import com.group1.career.service.ConversationSummaryService;
+import com.group1.career.service.UserFactService;
 import com.group1.career.service.UserProfileSnapshotService;
+import com.group1.career.service.ai.FunctionCallingService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +31,11 @@ import java.util.Map;
 public class ChatController {
 
     private final AiService aiService;
+    private final FunctionCallingService functionCallingService;
     private final UserProfileSnapshotService snapshotService;
+    private final ConversationSummaryService summaryService;
+    private final UserFactService userFactService;
+    private final AssistantSessionRepository sessionRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -44,8 +52,19 @@ public class ChatController {
     @Operation(summary = "Send chat message (synchronous response)")
     @PostMapping("/send")
     public Result<ChatResponseDto> sendMessage(@RequestBody ChatRequestDto request) {
-        List<Map<String, String>> messages = buildMessages(request.getHistory(), request.getMessage());
-        String reply = aiService.chat(messages);
+        List<Map<String, String>> messages = buildMessages(request.getHistory(), request.getMessage(), request.getPersona());
+        Long uid = SecurityUtil.currentUserId();
+        // F13: use function calling for authenticated users; fall back to plain chat for guests
+        String reply = (uid != null)
+                ? functionCallingService.chat(messages, uid)
+                : aiService.chat(messages);
+
+        // F11/F12: Async rollup + fact extraction after each turn
+        if (uid != null && request.getSessionId() != null) {
+            String persona = request.getPersona() != null ? request.getPersona() : "MENTOR";
+            summaryService.triggerRollupIfNeeded(uid, persona, request.getSessionId());
+            userFactService.extractAndSaveAsync(uid, request.getSessionId());
+        }
 
         ChatResponseDto response = new ChatResponseDto();
         response.setReply(reply);
@@ -56,10 +75,21 @@ public class ChatController {
     @GetMapping(value = "/stream", produces = "text/event-stream")
     public SseEmitter streamMessage(
             @RequestParam String message,
-            @RequestParam(required = false) String historyJson) {
+            @RequestParam(required = false) String historyJson,
+            @RequestParam(required = false) String persona,
+            @RequestParam(required = false) Long sessionId) {
 
         List<Map<String, String>> history = parseHistory(historyJson);
-        List<Map<String, String>> messages = buildMessages(history, message);
+        List<Map<String, String>> messages = buildMessages(history, message, persona);
+
+        // F11/F12: Async rollup + fact extraction after streaming turn
+        Long uid = SecurityUtil.currentUserId();
+        if (uid != null && sessionId != null) {
+            String p = persona != null ? persona : "MENTOR";
+            summaryService.triggerRollupIfNeeded(uid, p, sessionId);
+            userFactService.extractAndSaveAsync(uid, sessionId);
+        }
+
         return aiService.streamChat(messages);
     }
 
@@ -79,12 +109,12 @@ public class ChatController {
         }
     }
 
-    private List<Map<String, String>> buildMessages(List<Map<String, String>> history, String userMessage) {
+    private List<Map<String, String>> buildMessages(List<Map<String, String>> history, String userMessage, String persona) {
         List<Map<String, String>> messages = new ArrayList<>();
 
         Map<String, String> systemMsg = new HashMap<>();
         systemMsg.put("role", "system");
-        systemMsg.put("content", buildSystemPrompt());
+        systemMsg.put("content", buildSystemPrompt(persona));
         messages.add(systemMsg);
 
         if (history != null) {
@@ -100,18 +130,31 @@ public class ChatController {
     }
 
     /**
-     * Compose the persona with the caller's portrait so the assistant can
-     * say "based on your INFP assessment and your last interview score of 72,
-     * focus on..." instead of generic "consider improving communication."
-     * If the user is unauthenticated or the snapshot is empty we just
-     * return the base persona unchanged.
+     * F11: Compose system prompt = base persona + cross-tool snapshot + rolling memory summary.
      */
-    private String buildSystemPrompt() {
+    private String buildSystemPrompt(String persona) {
         Long uid = SecurityUtil.currentUserId();
         if (uid == null) return BASE_SYSTEM_PROMPT;
+
+        StringBuilder sb = new StringBuilder(BASE_SYSTEM_PROMPT);
+
         String snapshot = snapshotService.renderForPrompt(uid);
-        if (snapshot == null || snapshot.isBlank()) return BASE_SYSTEM_PROMPT;
-        return BASE_SYSTEM_PROMPT + "\n\n" + snapshot;
+        if (snapshot != null && !snapshot.isBlank()) {
+            sb.append("\n\n").append(snapshot);
+        }
+
+        String p = (persona != null && !persona.isBlank()) ? persona : "MENTOR";
+        String memory = summaryService.getLatestSummary(uid, p);
+        if (!memory.isBlank()) {
+            sb.append("\n\n[LONG-TERM MEMORY — past conversation summary]\n").append(memory);
+        }
+
+        String facts = userFactService.renderForPrompt(uid);
+        if (!facts.isBlank()) {
+            sb.append("\n\n").append(facts);
+        }
+
+        return sb.toString();
     }
 
     // ================= DTO Classes =================
@@ -120,6 +163,10 @@ public class ChatController {
     public static class ChatRequestDto {
         private String message;
         private List<Map<String, String>> history;
+        /** F15/F11: MENTOR | CHALLENGER. Defaults to MENTOR if absent. */
+        private String persona;
+        /** F11: session ID for summary rollup trigger. */
+        private Long sessionId;
     }
 
     @Data
