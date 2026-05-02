@@ -8,6 +8,10 @@
         <el-menu-item index="users" :route="{ name: 'users' }">User Management</el-menu-item>
         <el-menu-item index="skill-map" :route="{ name: 'skill-map' }">Skill Map Editor</el-menu-item>
         <el-menu-item index="questions" :route="{ name: 'questions' }">Question Bank</el-menu-item>
+        <el-menu-item index="content" :route="{ name: 'content' }">Content Manager</el-menu-item>
+        <el-menu-item index="broadcast" :route="{ name: 'broadcast' }">Broadcast</el-menu-item>
+        <el-menu-item index="analytics" :route="{ name: 'analytics' }">Analytics</el-menu-item>
+        <el-menu-item index="audit-log" :route="{ name: 'audit-log' }">Audit Log</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -36,6 +40,10 @@ const headerTitle = computed(() => {
     users: 'User Management',
     'skill-map': 'Skill Map Editor',
     questions: 'Question Bank Moderation',
+    content: 'Content Manager',
+    broadcast: 'Broadcast',
+    analytics: 'Analytics',
+    'audit-log': 'Audit Log',
   };
   return map[route.name as string] || 'Admin';
 });

@@ -18,6 +18,16 @@ import com.group1.career.repository.OrganizationRepository;
 import com.group1.career.repository.UserRepository;
 import com.group1.career.service.AdminAuthService;
 import com.group1.career.service.WeeklyReportService;
+import com.group1.career.aspect.AuditLog;
+import com.group1.career.model.entity.AdminAuditLog;
+import com.group1.career.model.entity.HomeArticle;
+import com.group1.career.model.entity.HomeVideo;
+import com.group1.career.repository.AdminAuditLogRepository;
+import com.group1.career.repository.AssessmentRecordRepository;
+import com.group1.career.repository.CheckInRepository;
+import com.group1.career.repository.HomeArticleRepository;
+import com.group1.career.repository.HomeVideoRepository;
+import com.group1.career.repository.UsageEventRepository;
 import com.group1.career.utils.SecurityUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,8 +45,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +75,12 @@ public class AdminController {
     private final InterviewQuestionRepository interviewQuestionRepository;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final HomeVideoRepository homeVideoRepository;
+    private final HomeArticleRepository homeArticleRepository;
+    private final UsageEventRepository usageEventRepository;
+    private final AdminAuditLogRepository adminAuditLogRepository;
+    private final AssessmentRecordRepository assessmentRecordRepository;
+    private final CheckInRepository checkInRepository;
 
     // ─────────────────── Auth-shaped utilities ───────────────────
 
@@ -281,6 +299,7 @@ public class AdminController {
 
     @Operation(summary = "Delete a question")
     @DeleteMapping("/questions/{id}")
+    @AuditLog(action = "DELETE_QUESTION", targetType = "QUESTION")
     public Result<Void> deleteQuestion(@PathVariable Long id) {
         requireAdmin();
         interviewQuestionRepository.deleteById(id);
@@ -314,6 +333,7 @@ public class AdminController {
 
     @Operation(summary = "Ban a user — sets status=2 and records ban reason")
     @PostMapping("/users/{userId}/ban")
+    @AuditLog(action = "BAN_USER", targetType = "USER")
     public Result<User> banUser(@PathVariable Long userId, @RequestBody Map<String, String> body) {
         requireAdmin();
         User u = userRepository.findById(userId)
@@ -333,6 +353,7 @@ public class AdminController {
 
     @Operation(summary = "Unban a user — restores status=1 and clears ban reason")
     @PostMapping("/users/{userId}/unban")
+    @AuditLog(action = "UNBAN_USER", targetType = "USER")
     public Result<User> unbanUser(@PathVariable Long userId) {
         requireAdmin();
         User u = userRepository.findById(userId)
@@ -351,6 +372,7 @@ public class AdminController {
 
     @Operation(summary = "Send admin broadcast to a single user or all active users")
     @PostMapping("/broadcast")
+    @AuditLog(action = "BROADCAST", targetType = "NOTIFICATION", idParamIndex = -1)
     public Result<Integer> broadcast(@RequestBody BroadcastRequest req) {
         requireAdmin();
         if (req.getTitle() == null || req.getTitle().isBlank()) throw new BizException("Title required");
@@ -372,6 +394,109 @@ public class AdminController {
         }
         log.info("[admin] broadcast sent to {} users by admin {}", count, SecurityUtil.currentUserId());
         return Result.success(count);
+    }
+
+    // ─────────────────── F17: Content management ───────────────────
+
+    @Operation(summary = "List home videos (paginated, newest-first)")
+    @GetMapping("/content/videos")
+    public Result<Page<HomeVideo>> listVideos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        requireAdmin();
+        PageRequest pr = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "fetchedAt"));
+        return Result.success(homeVideoRepository.findAll(pr));
+    }
+
+    @Operation(summary = "Delete a home video")
+    @DeleteMapping("/content/videos/{id}")
+    @AuditLog(action = "DELETE_VIDEO", targetType = "HOME_VIDEO")
+    public Result<Void> deleteVideo(@PathVariable Long id) {
+        requireAdmin();
+        homeVideoRepository.deleteById(id);
+        return Result.success();
+    }
+
+    @Operation(summary = "List all home articles (admin view, newest first)")
+    @GetMapping("/content/articles")
+    public Result<List<HomeArticle>> listArticles() {
+        requireAdmin();
+        return Result.success(homeArticleRepository.findAll(
+                Sort.by(Sort.Direction.DESC, "publishedAt")));
+    }
+
+    @Operation(summary = "Create a home article (manual entry)")
+    @PostMapping("/content/articles")
+    @AuditLog(action = "CREATE_ARTICLE", targetType = "HOME_ARTICLE", idParamIndex = -1)
+    public Result<HomeArticle> createArticle(@RequestBody HomeArticle payload) {
+        requireAdmin();
+        payload.setId(null);
+        if (payload.getPublishedAt() == null) payload.setPublishedAt(LocalDateTime.now());
+        return Result.success(homeArticleRepository.save(payload));
+    }
+
+    @Operation(summary = "Update a home article")
+    @PutMapping("/content/articles/{id}")
+    @AuditLog(action = "UPDATE_ARTICLE", targetType = "HOME_ARTICLE")
+    public Result<HomeArticle> updateArticle(@PathVariable Long id, @RequestBody HomeArticle payload) {
+        requireAdmin();
+        HomeArticle existing = homeArticleRepository.findById(id)
+                .orElseThrow(() -> new BizException("Article not found"));
+        if (payload.getTitle() != null) existing.setTitle(payload.getTitle());
+        if (payload.getSummary() != null) existing.setSummary(payload.getSummary());
+        if (payload.getImageUrl() != null) existing.setImageUrl(payload.getImageUrl());
+        if (payload.getSourceUrl() != null) existing.setSourceUrl(payload.getSourceUrl());
+        if (payload.getCategory() != null) existing.setCategory(payload.getCategory());
+        if (payload.getPublishedAt() != null) existing.setPublishedAt(payload.getPublishedAt());
+        return Result.success(homeArticleRepository.save(existing));
+    }
+
+    @Operation(summary = "Delete a home article")
+    @DeleteMapping("/content/articles/{id}")
+    @AuditLog(action = "DELETE_ARTICLE", targetType = "HOME_ARTICLE")
+    public Result<Void> deleteArticle(@PathVariable Long id) {
+        requireAdmin();
+        homeArticleRepository.deleteById(id);
+        return Result.success();
+    }
+
+    // ─────────────────── F18: Analytics ───────────────────
+
+    @Operation(summary = "Analytics summary — platform totals + 30-day event breakdown")
+    @GetMapping("/analytics/summary")
+    public Result<AnalyticsSummaryDto> analyticsSummary() {
+        requireAdmin();
+        LocalDateTime since30 = LocalDateTime.now().minusDays(30);
+
+        long totalUsers       = userRepository.count();
+        long totalInterviews  = interviewRepository.count();
+        long totalAssessments = assessmentRecordRepository.count();
+        long totalCheckIns    = checkInRepository.count();
+
+        Map<String, Long> eventBreakdown = new LinkedHashMap<>();
+        for (Object[] row : usageEventRepository.countByEventTypeSince(since30)) {
+            eventBreakdown.put((String) row[0], (Long) row[1]);
+        }
+
+        return Result.success(AnalyticsSummaryDto.builder()
+                .totalUsers(totalUsers)
+                .totalInterviews(totalInterviews)
+                .totalAssessments(totalAssessments)
+                .totalCheckIns(totalCheckIns)
+                .eventBreakdown30d(eventBreakdown)
+                .build());
+    }
+
+    // ─────────────────── F19: Audit log ───────────────────
+
+    @Operation(summary = "Admin audit log (paginated, newest first)")
+    @GetMapping("/audit-log")
+    public Result<Page<AdminAuditLog>> listAuditLog(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        requireAdmin();
+        return Result.success(adminAuditLogRepository.findAllByOrderByCreatedAtDesc(
+                PageRequest.of(page, size)));
     }
 
     // ─────────────────── Helpers + DTOs ───────────────────
@@ -411,6 +536,15 @@ public class AdminController {
         private String major;
         private int interviewCount;
         private Integer lastInterviewScore;
+    }
+
+    @Data @Builder @AllArgsConstructor @NoArgsConstructor
+    public static class AnalyticsSummaryDto {
+        private long totalUsers;
+        private long totalInterviews;
+        private long totalAssessments;
+        private long totalCheckIns;
+        private Map<String, Long> eventBreakdown30d;
     }
 
     @Data @Builder @AllArgsConstructor @NoArgsConstructor
