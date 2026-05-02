@@ -12,6 +12,10 @@ const routes = [
       { path: 'users', name: 'users', component: () => import('@/views/Users.vue') },
       { path: 'skill-map', name: 'skill-map', component: () => import('@/views/SkillMap.vue') },
       { path: 'questions', name: 'questions', component: () => import('@/views/QuestionBank.vue') },
+      { path: 'content', name: 'content', component: () => import('@/views/ContentManager.vue') },
+      { path: 'broadcast', name: 'broadcast', component: () => import('@/views/Broadcast.vue') },
+      { path: 'analytics', name: 'analytics', component: () => import('@/views/Analytics.vue') },
+      { path: 'audit-log', name: 'audit-log', component: () => import('@/views/AuditLog.vue') },
     ],
   },
 ];
