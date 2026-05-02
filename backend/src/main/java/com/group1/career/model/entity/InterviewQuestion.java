@@ -80,6 +80,32 @@ public class InterviewQuestion {
     @Builder.Default
     private String status = "APPROVED";
 
+    /**
+     * F28a three-tier source:
+     * <ul>
+     *   <li>OFFICIAL — admin-seeded canonical questions (pre-loaded in V3 seed SQL)</li>
+     *   <li>USER — crowd-sourced via /api/questions (default)</li>
+     *   <li>AI_GENERATED — produced by F13 function-calling</li>
+     * </ul>
+     */
+    @Column(name = "source", length = 20, nullable = false)
+    @Builder.Default
+    private String source = "USER";
+
+    /**
+     * F28a review workflow:
+     * PUBLISHED — visible in the public list (default for USER/OFFICIAL)<br>
+     * PENDING_REVIEW — AI_GENERATED awaits admin moderation<br>
+     * REJECTED — hidden by admin
+     */
+    @Column(name = "review_status", length = 20, nullable = false)
+    @Builder.Default
+    private String reviewStatus = "PUBLISHED";
+
+    /** Reference answer in Markdown. Set on OFFICIAL and AI_GENERATED questions. */
+    @Column(name = "answer", columnDefinition = "TEXT")
+    private String answer;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
