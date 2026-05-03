@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # F22: Daily MySQL backup → Aliyun OSS
-# Crontab: 0 2 * * * /opt/careerloop/backend/scripts/backup-mysql.sh >> /var/log/careerloop-backup.log 2>&1
+# Crontab: 0 2 * * * /home/ubuntu/careerloop/backend/scripts/backup-mysql.sh >> /var/log/careerloop-backup.log 2>&1
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

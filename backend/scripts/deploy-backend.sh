@@ -18,7 +18,7 @@ set -euo pipefail
 
 SERVER_USER="${DEPLOY_USER:-ubuntu}"
 SERVER_HOST="${DEPLOY_HOST:-43.138.240.228}"
-SERVER_DIR="${DEPLOY_DIR:-/opt/careerloop}"
+SERVER_DIR="${DEPLOY_DIR:-/home/ubuntu/careerloop}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-master}"
 
 echo "========================================"
