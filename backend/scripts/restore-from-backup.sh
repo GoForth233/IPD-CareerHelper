@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../.env.prod" 2>/dev/null || true
 
 DB_NAME="${MYSQL_DB:-career_db}"
-DB_USER="${MYSQL_USER:-root}"
+DB_USER="root"
 DB_PASS="${MYSQL_ROOT_PASSWORD:-}"
 
 OSS_BUCKET="${OSS_BUCKET_NAME:-careerloop-prod}"

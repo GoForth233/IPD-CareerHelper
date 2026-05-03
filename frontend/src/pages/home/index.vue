@@ -384,7 +384,10 @@ onPullDownRefresh(async () => {
     const userId = uni.getStorageSync('userId');
     const numericUserId = Number(userId);
     const uid = userId && !isNaN(numericUserId) && numericUserId > 0 ? numericUserId : undefined;
-    await refreshHomeContentApi(uid);
+    // Fire-and-forget: trigger a fresh Bilibili pull in the background.
+    // We deliberately do NOT await this — a 429 rate-limit or network
+    // hiccup must never prevent the local content from reloading.
+    refreshHomeContentApi(uid).catch(() => {/* rate-limited or offline, ignore */});
     await Promise.all([loadHomeContent(), loadCheckin()]);
     uni.showToast({ title: '已刷新', icon: 'success' });
   } catch {
