@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # F22: Host resource monitor — alerts via Server酱 when disk > 80% or free RAM < 500 MB.
-# Crontab: */10 * * * * /opt/careerloop/scripts/host-metrics.sh >> /var/log/careerloop-metrics.log 2>&1
+# Crontab: */10 * * * * /opt/careerloop/backend/scripts/host-metrics.sh >> /var/log/careerloop-metrics.log 2>&1
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

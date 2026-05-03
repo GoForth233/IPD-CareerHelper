@@ -182,6 +182,10 @@ const onAgree = () => {
   recordConsentOnServer();
   if (isLoggedIn()) {
     uni.switchTab({ url: '/pages/home/index' });
+  } else if (!uni.getStorageSync('onboarding_v1_seen')) {
+    // F20: First-time users see onboarding after accepting consent,
+    // before they reach the login page.
+    uni.reLaunch({ url: '/pages/onboarding/index' });
   } else {
     uni.reLaunch({ url: LOGIN_PAGE });
   }
