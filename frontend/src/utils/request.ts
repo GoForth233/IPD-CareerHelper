@@ -8,6 +8,13 @@ interface Result<T> {
   data: T;
 }
 
+const isResultEnvelope = <T>(value: unknown): value is Result<T> => {
+  return !!value
+    && typeof value === 'object'
+    && 'code' in value
+    && ('data' in value || 'message' in value);
+};
+
 type RequestOptions = UniApp.RequestOptions & {
   silent?: boolean;   // suppress error toasts when true
   _retried?: boolean; // F21: internal flag to prevent double-retry
@@ -37,10 +44,26 @@ const request = <T>(options: RequestOptions): Promise<T> => {
       header,
       success: (res) => {
         const statusCode = res.statusCode;
-        const data = res.data as Result<T>;
+        const data = res.data;
 
-        if (statusCode === 200 && data?.code === 200) {
-          resolve(data.data);
+        if (statusCode >= 200 && statusCode < 300) {
+          if (isResultEnvelope<T>(data)) {
+            if (data.code === 200) {
+              resolve(data.data);
+              return;
+            }
+
+            const errorMsg = data.message || `请求失败 (${statusCode})`;
+            if (!options.silent) {
+              uni.showToast({ title: errorMsg, icon: 'none', duration: 2500 });
+            }
+            reject(new Error(errorMsg));
+            return;
+          }
+
+          // Some endpoints return raw arrays/objects/files instead of the
+          // common Result envelope. A 2xx HTTP status is still a success.
+          resolve(data as T);
           return;
         }
 
@@ -64,7 +87,9 @@ const request = <T>(options: RequestOptions): Promise<T> => {
           return;
         }
 
-        const errorMsg = data?.message || `请求失败 (${statusCode})`;
+        const errorMsg = isResultEnvelope<T>(data) && data.message
+          ? data.message
+          : `请求失败 (${statusCode})`;
         if (!options.silent) {
           uni.showToast({ title: errorMsg, icon: 'none', duration: 2500 });
         }

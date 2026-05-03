@@ -1,5 +1,5 @@
 <template>
-  <view class="home-page" :class="{ 'is-dark': darkPref }">
+  <view class="home-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="top-bar">
@@ -214,6 +214,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import { openLink } from '@/utils/openLink';
+import { refreshHomeContentApi } from '@/api/home';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import {
   getHomeContentApi,
@@ -224,6 +225,9 @@ import {
 } from '@/api/home';
 import { getCheckInStatusApi, type CheckInStatus } from '@/api/checkin';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
+import { useTheme } from '@/utils/theme';
+
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const userInfo = ref<{
   nickname: string;
@@ -243,7 +247,6 @@ const avatarSrc = computed(() => {
 });
 
 const topSafeHeight = ref(88);
-const darkPref = ref(false);
 const searchQuery = ref('');
 
 const videos = ref<BiliVideoCard[]>([]);
@@ -363,7 +366,7 @@ const syncUserFromStorage = () => {
 
 onMounted(() => {
   syncUserFromStorage();
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
   loadHomeContent();
   loadCheckin();
@@ -376,16 +379,16 @@ onShow(() => {
   loadCheckin();
 });
 
-// Pull-to-refresh: the user wants a fresh batch *now* without waiting for
-// the daily cron. We re-fetch from the same endpoint; the backend rotates
-// per-user pseudo-randomly using dayOfYear+userId so the next morning the
-// batch shifts naturally.
 onPullDownRefresh(async () => {
   try {
+    const userId = uni.getStorageSync('userId');
+    const numericUserId = Number(userId);
+    const uid = userId && !isNaN(numericUserId) && numericUserId > 0 ? numericUserId : undefined;
+    await refreshHomeContentApi(uid);
     await Promise.all([loadHomeContent(), loadCheckin()]);
-    uni.showToast({ title: 'Refreshed', icon: 'success' });
+    uni.showToast({ title: '已刷新', icon: 'success' });
   } catch {
-    uni.showToast({ title: 'Refresh failed', icon: 'none' });
+    uni.showToast({ title: '刷新失败', icon: 'none' });
   } finally {
     uni.stopPullDownRefresh();
   }

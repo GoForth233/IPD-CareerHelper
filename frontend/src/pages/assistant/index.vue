@@ -1,5 +1,5 @@
 <template>
-  <view class="chat-page" :class="{ 'is-dark': darkPref }">
+  <view class="chat-page" :class="[themeClass, fontClass]">
     <!-- Custom nav bar -->
     <view class="chat-nav">
       <view class="nav-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
@@ -113,6 +113,9 @@
 import { ref, computed, nextTick, onMounted } from 'vue';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import request from '@/utils/request';
+import { useTheme } from '@/utils/theme';
+
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 interface ChatMessage {
   role: 'user' | 'ai';
@@ -165,7 +168,6 @@ const apiHistory = ref<{ role: string; content: string }[]>([]);
 const inputText = ref('');
 const scrollTop = ref(0);
 const topSafeHeight = ref(88);
-const darkPref = ref(false);
 const isSending = ref(false);
 const chatTimeLabel = ref('');
 
@@ -232,7 +234,7 @@ const sendMessage = async () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
   const now = new Date();
   chatTimeLabel.value = `Today ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;

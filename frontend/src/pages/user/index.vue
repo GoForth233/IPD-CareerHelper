@@ -1,5 +1,5 @@
 <template>
-  <view class="user-page" :class="{ 'is-dark': darkPref }">
+  <view class="user-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
@@ -75,9 +75,19 @@
     <text class="group-label">Appearance & Accessibility</text>
     <view class="menu-card">
       <view class="menu-item">
-        <text class="menu-icon">🌙</text>
-        <text class="menu-text">Dark Mode</text>
-        <switch class="dark-switch" :checked="darkPref" color="#2563eb" @change="toggleDark" />
+        <text class="menu-icon">�</text>
+        <text class="menu-text">Theme</text>
+        <view class="theme-pills">
+          <view class="pill" :class="{ 'pill-active': theme === 'light' }" @click="applyTheme('light')">
+            <text>☀️</text>
+          </view>
+          <view class="pill" :class="{ 'pill-active': theme === 'dark' }" @click="applyTheme('dark')">
+            <text>🌙</text>
+          </view>
+          <view class="pill" :class="{ 'pill-active': theme === 'green' }" @click="applyTheme('green')">
+            <text>🌿</text>
+          </view>
+        </view>
       </view>
       <view class="menu-item">
         <text class="menu-icon">🔤</text>
@@ -85,19 +95,35 @@
         <view class="font-pills">
           <view
             class="pill"
-            :class="{ 'pill-active': fontPref === 'compact' }"
-            @click="setFont('compact')"
+            :class="{ 'pill-active': font === 'compact' }"
+            @click="applyFont('compact')"
           ><text>Sm</text></view>
           <view
             class="pill"
-            :class="{ 'pill-active': fontPref === 'standard' }"
-            @click="setFont('standard')"
+            :class="{ 'pill-active': font === 'standard' }"
+            @click="applyFont('standard')"
           ><text>Md</text></view>
           <view
             class="pill"
-            :class="{ 'pill-active': fontPref === 'large' }"
-            @click="setFont('large')"
+            :class="{ 'pill-active': font === 'large' }"
+            @click="applyFont('large')"
           ><text>Lg</text></view>
+        </view>
+      </view>
+      <view class="menu-item">
+        <text class="menu-icon">🌐</text>
+        <text class="menu-text">Language / 语言</text>
+        <view class="font-pills">
+          <view
+            class="pill"
+            :class="{ 'pill-active': currentLang === 'zh-CN' }"
+            @click="applyLang('zh-CN')"
+          ><text>中文</text></view>
+          <view
+            class="pill"
+            :class="{ 'pill-active': currentLang === 'en-US' }"
+            @click="applyLang('en-US')"
+          ><text>EN</text></view>
         </view>
       </view>
     </view>
@@ -172,6 +198,27 @@ import { getUserInterviewsApi } from '@/api/interview';
 import { getUserResumesApi } from '@/api/resume';
 import { updateUserApi, getUserInfoApi, requestDeletionApi } from '@/api/user';
 import { uploadFileApi } from '@/api/file';
+import { useTheme, type ThemeKey, type FontKey } from '@/utils/theme';
+import { setLocale, currentLocale, type LangCode } from '@/locales/index';
+
+const { theme, font, themeClass, fontClass, setTheme, setFont } = useTheme();
+const currentLang = ref<LangCode>(currentLocale());
+
+const applyTheme = (t: ThemeKey) => {
+  setTheme(t);
+  uni.showToast({ title: t === 'dark' ? '深色模式' : t === 'green' ? '护眼绿主题' : '亮色模式', icon: 'none' });
+};
+
+const applyFont = (f: FontKey) => {
+  setFont(f);
+  uni.showToast({ title: '字号已更新', icon: 'none' });
+};
+
+const applyLang = (lang: LangCode) => {
+  setLocale(lang);
+  currentLang.value = lang;
+  uni.showToast({ title: lang === 'zh-CN' ? '已切换为中文' : 'Switched to English', icon: 'none' });
+};
 
 const userInfo = ref({
   nickname: '',
@@ -197,8 +244,6 @@ const avatarSrc = computed(() => {
   if (raw && /^https?:\/\//i.test(raw)) return raw;
   return '/static/default-avatar.png';
 });
-const darkPref = ref(false);
-const fontPref = ref('standard');
 const topSafeHeight = ref(44);
 
 const statsInterviews = ref(0);
@@ -300,18 +345,6 @@ const handleAvatarClick = () => {
   });
 };
 
-const toggleDark = (e: any) => {
-  darkPref.value = e.detail.value;
-  uni.setStorageSync('app_pref_dark', darkPref.value ? '1' : '0');
-  uni.showToast({ title: darkPref.value ? 'Dark mode enabled' : 'Dark mode disabled', icon: 'none' });
-};
-
-const setFont = (size: string) => {
-  fontPref.value = size;
-  uni.setStorageSync('app_pref_font', size);
-  uni.showToast({ title: 'Saved', icon: 'none' });
-};
-
 const openConsent = (type: 'privacy' | 'terms') => {
   uni.navigateTo({ url: `/pages/consent/index?view=${type}` });
 };
@@ -398,9 +431,6 @@ onMounted(() => {
     editForm.value.major = userInfo.value.major || '';
     editForm.value.gradYear = userInfo.value.gradYear || '';
   }
-
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
-  fontPref.value = uni.getStorageSync('app_pref_font') || 'standard';
 
   topSafeHeight.value = getTopSafeHeight();
 
@@ -572,11 +602,12 @@ onMounted(() => {
 .dark-switch { transform: scale(0.85); }
 
 .font-pills { display: flex; gap: 6px; }
+.theme-pills { display: flex; gap: 6px; }
 
 /* Each pill needs >=44pt for thumb access (HCI: Apple HIG / WCAG 2.5.5).
    Inner <text> stays small for visual rhythm. */
 .pill {
-  min-width: 44px; min-height: 32px;
+  min-width: 44px; min-height: 44px;
   padding: 6px 14px; border-radius: 10px;
   font-size: 13px; font-weight: 600; color: #64748b;
   background: #f1f5f9;

@@ -2,6 +2,7 @@ package com.group1.career.service.impl;
 
 import com.alibaba.dashscope.audio.asr.recognition.Recognition;
 import com.alibaba.dashscope.audio.asr.recognition.RecognitionParam;
+import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisAudioFormat;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisParam;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesizer;
 import com.alibaba.dashscope.utils.Constants;
@@ -192,10 +193,16 @@ public class VoiceServiceImpl implements VoiceService {
         // truncate just in case a future prompt forgets the brevity hint.
         String clipped = text.length() > 4000 ? text.substring(0, 4000) : text;
 
+        // The API key used here is from Alibaba Cloud Model Studio in China.
+        // The Java SDK examples default to the Singapore websocket endpoint;
+        // using that endpoint with a China-region key can finish without audio.
+        Constants.baseWebsocketApiUrl = "wss://dashscope.aliyuncs.com/api-ws/v1/inference";
+
         SpeechSynthesisParam param = SpeechSynthesisParam.builder()
                 .apiKey(apiKey)
                 .model(ttsModel)
                 .voice(ttsVoice)
+                .format(SpeechSynthesisAudioFormat.MP3_22050HZ_MONO_256KBPS)
                 .build();
         // Per docs: re-instantiate the synthesizer for every call; it isn't
         // thread-safe and reusing it across calls leaks WebSocket state.
@@ -205,7 +212,9 @@ public class VoiceServiceImpl implements VoiceService {
             ByteBuffer audio = synthesizer.call(clipped);
             long elapsed = System.currentTimeMillis() - t0;
             if (audio == null || audio.remaining() == 0) {
-                throw new BizException("TTS returned empty audio");
+                throw new BizException("TTS returned empty audio"
+                        + " (requestId=" + synthesizer.getLastRequestId()
+                        + ", firstPacketDelay=" + synthesizer.getFirstPackageDelay() + "ms)");
             }
             byte[] bytes = new byte[audio.remaining()];
             audio.get(bytes);

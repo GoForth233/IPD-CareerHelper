@@ -108,6 +108,8 @@ services:
     # network. Don't expose to the host except for local debugging.
     expose:
       - "8001"
+    mem_limit: 512m
+    cpus: "0.5"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8001/health"]
       interval: 30s
@@ -120,6 +122,26 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  # ─────────────────────────────────────────────
+  # Uptime Kuma (F22 — production monitoring)
+  # Accessible via Nginx reverse proxy at /kuma/
+  # or directly on 127.0.0.1:3001 for SSH tunnel.
+  # ─────────────────────────────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: careerloop-uptime
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
 volumes:
   mysql_data:
   redis_data:
+  uptime_kuma_data:

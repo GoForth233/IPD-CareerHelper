@@ -6,6 +6,8 @@ import { isLoggedIn, LOGIN_PAGE } from "@/utils/auth";
 const AGREEMENT_VERSION = '1.0';
 const CONSENT_KEY = `consent_v${AGREEMENT_VERSION}`;
 const CONSENT_PAGE = '/pages/consent/index';
+const ONBOARDING_KEY = 'onboarding_v1_seen';
+const ONBOARDING_PAGE = '/pages/onboarding/index';
 
 onLaunch(() => {
   // F2: First-launch consent gate.
@@ -15,6 +17,13 @@ onLaunch(() => {
   const hasConsent = uni.getStorageSync(CONSENT_KEY);
   if (!hasConsent) {
     uni.reLaunch({ url: CONSENT_PAGE });
+    return;
+  }
+
+  // F20: First-run onboarding — show once after consent is accepted.
+  const hasSeenOnboarding = uni.getStorageSync(ONBOARDING_KEY);
+  if (!hasSeenOnboarding) {
+    uni.reLaunch({ url: ONBOARDING_PAGE });
     return;
   }
 
@@ -47,8 +56,8 @@ onLaunch(() => {
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --text-tertiary: #8e8e93;
-  --border-color: #cbd5e1;
-  --border-strong: #b6c4d8;
+  --border-color: #b8c8d8;
+  --border-strong: #9aafc5;
   --interactive-label: var(--primary-color);
 
   --surface-1: #ffffff;
@@ -60,10 +69,10 @@ onLaunch(() => {
   --radius-lg: 20px;
   --radius-xl: 24px;
 
-  --shadow-xs: 0 1px 4px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.05);
-  --shadow-card: 0 4px 16px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-xs:   0 1px 3px rgba(0,0,0,0.08),  0 1px 8px  rgba(0,0,0,0.05);
+  --shadow-sm:   0 2px 8px  rgba(0,0,0,0.12),  0 1px 3px  rgba(0,0,0,0.07);
+  --shadow-card: 0 4px 16px rgba(0,0,0,0.14),  0 2px 6px  rgba(0,0,0,0.08);
+  --shadow-lg:   0 8px 24px rgba(0,0,0,0.18),  0 4px 10px rgba(0,0,0,0.10);
 
   --nav-back-width: 64px;
 
@@ -112,6 +121,55 @@ onLaunch(() => {
   }
 }
 /* #endif */
+
+/* ─── F5: 护眼绿主题 ─── */
+.theme-green {
+  background-color: #f0fdf4 !important;
+}
+.theme-green .ui-card,
+.theme-green .card,
+.theme-green .panel,
+.theme-green .section-card,
+.theme-green .app-surface {
+  background: #ffffff;
+  border-color: #bbf7d0;
+  box-shadow: 0 2px 8px rgba(5,150,105,0.08), 0 1px 3px rgba(5,150,105,0.05);
+}
+.theme-green .ui-list-item,
+.theme-green .list-item,
+.theme-green .item {
+  border-color: #bbf7d0;
+}
+.theme-green .ui-btn-primary,
+.theme-green .btn-primary,
+.theme-green .btn-send {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(5,150,105,0.3);
+}
+.theme-green .ui-input,
+.theme-green .input,
+.theme-green textarea.ui-input {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+/* ─── F6: 字号档位 ─── */
+.font-compact {
+  --font-hero:    24px;
+  --font-title:   16px;
+  --font-section: 15px;
+  --font-body:    13px;
+  --font-caption: 11px;
+  --font-micro:   10px;
+}
+.font-large {
+  --font-hero:    32px;
+  --font-title:   20px;
+  --font-section: 19px;
+  --font-body:    17px;
+  --font-caption: 15px;
+  --font-micro:   13px;
+}
 
 /* 全局基础样式 */
 page {
@@ -320,32 +378,22 @@ button {
 /* ============================================================== *
  *  WeChat Mini-Program parity layer
  *  -----------------------------------------------------------------
- *  WeChat's webview renders box-shadows ~50% lighter than Chrome,
- *  backdrop-filter is unsupported, <button> ships its own ::after
- *  decoration, and uniapp wrappers default to overflow:hidden which
- *  clips shadows entirely. The H5 build doesn't suffer any of this.
- *  This block patches all of those gaps for mp-weixin.
+ *  IMPORTANT: CSS custom properties set on :root / page do NOT
+ *  reliably cascade into scoped component <style> blocks in the
+ *  mini-program runtime (the variable is resolved at compile time,
+ *  not inherited from the document root). Therefore we AVOID
+ *  re-declaring variables here and instead directly override the
+ *  concrete CSS properties on known global selectors.
  * ============================================================== */
 /* #ifdef MP-WEIXIN */
 
-/* 1) Significantly boost shadow values for the dimmer MP renderer.
-      The MP WebView renders RGBA opacity roughly 50% lighter than
-      Chrome, so we need ~2x the alpha to look equivalent.
-      Re-declare on both :root and page for full cascade coverage. */
-:root,
+/* 1) Global page background: slightly darker blue-gray so white cards
+      have strong contrast and shadows become perceptible. */
 page {
-  --shadow-xs:   0 1px 3px rgba(0,0,0,0.10),  0 1px 8px  rgba(0,0,0,0.06);
-  --shadow-sm:   0 2px 8px  rgba(0,0,0,0.14),  0 1px 3px  rgba(0,0,0,0.08);
-  --shadow-card: 0 4px 16px rgba(0,0,0,0.16),  0 2px 6px  rgba(0,0,0,0.10);
-  --shadow-lg:   0 8px 24px rgba(0,0,0,0.20),  0 4px 10px rgba(0,0,0,0.12);
-
-  /* Stronger borders so cards read well at any brightness level */
-  --border-color:  #b8c8da;
-  --border-strong: #9eb0c4;
+  background-color: #eaeff5;
 }
 
-/* 2) Kill WeChat's native <button> decoration so our own
-      border / radius / shadow / background actually show up. */
+/* 2) Kill WeChat's native <button> decoration. */
 button {
   background: transparent;
   padding: 0;
@@ -359,72 +407,47 @@ button::after {
   content: none !important;
 }
 
-/* 3) Any container that owns a box-shadow MUST be overflow:visible.
-      border-radius alone does NOT clip shadows — only overflow:hidden
-      does. uni-app wrappers sometimes inherit hidden, making shadows
-      vanish entirely on device. */
+/* 3) Global card selectors: hardcode shadow + border directly so the
+      values are NOT dependent on CSS variable resolution. */
 .ui-card,
 .card,
 .panel,
 .section-card,
 .app-surface,
-.ui-card-strong,
-.feature-item,
-.msg-card,
-.video-card,
-.article-card,
-.consultation-card,
-.career-card,
-.assessment-card,
-.check-in-card,
-.checkin-card,
-.stat-box,
-.resume-card,
-.profile-card,
-.memory-card,
-.feedback-card {
+.ui-card-strong {
   overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22),
+              0 2px 6px  rgba(0,0,0,0.12);
 }
 
-/* 4) Compensate for the MP WebView's lighter gradient rendering:
-      make gradients deeper / more saturated. */
-page {
-  --primary-soft:  #dbeafe;
-  --accent-soft:   #ffedd5;
-  --surface-2:     #f1f5f9;
-  --surface-3:     #e8eef4;
+/* 4) Global list items (menu rows, etc.) */
+.ui-list-item,
+.list-item,
+.item {
+  border: 1.5px solid #b0bfd0;
 }
 
-/* 5) Inputs and textareas don't inherit font-size / color cleanly.
-      Pin them so they match H5. */
+/* 5) Inputs: pin font-size and color.
+      Only apply the stronger border to elements that use the .ui-input
+      / .input utility classes (form inputs). Do NOT add border to bare
+      <input> / <textarea> elements — those are used inside custom
+      wrappers (like the chat bar) that provide their own border. */
 .ui-input,
 .input,
-textarea.ui-input,
+textarea.ui-input {
+  font-size: 14px;
+  color: #0f172a;
+  border: 1.5px solid #b0bfd0;
+}
 input,
 textarea {
   font-size: 14px;
-  color: var(--text-primary);
+  color: #0f172a;
 }
 
-/* 6) Boost icon badge / chip shadow (these use inline box-shadow
-      values not tied to variables — override them globally). */
-.icon-assess  { box-shadow: 0 4px 14px rgba(37, 99, 235, 0.22) !important; }
-.icon-map     { box-shadow: 0 4px 14px rgba(99, 102, 241, 0.22) !important; }
-.icon-ai      { box-shadow: 0 4px 14px rgba(168, 85, 247, 0.22) !important; }
-.icon-interview { box-shadow: 0 4px 14px rgba(249, 115, 22, 0.22) !important; }
-
-/* 7) Segment control / tab pills — ensure active tab pops on device */
-.seg-active,
-.tab-active {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
-}
-
-/* 8) backdrop-filter is entirely unsupported in WeChat mini program.
-      Elements that rely on it for frosted glass look fine at high
-      opacity (≥ 85%), but translucent-background elements (≤ 50%)
-      become invisible. Override the most common patterns:
-      - Frosted nav bars / sticky footers → opaque white/gray
-      - Glassmorphism cards inside gradient backgrounds → solid white 80% */
+/* 6) backdrop-filter unsupported — replace frosted navbars/footers
+      with solid fallbacks. */
 .chat-nav,
 .sticky-cta,
 .bottom-bar,
@@ -433,10 +456,10 @@ textarea {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-.chat-nav        { background: #ffffff; }
+.chat-nav  { background: #ffffff; }
 .sticky-cta,
 .bottom-bar,
-.toolbar         { background: rgba(245, 245, 247, 1); }
+.toolbar   { background: #f5f5f7; }
 
 /* #endif */
 </style>

@@ -78,3 +78,11 @@ export const getHomeContentApi = (userId?: number) => {
     silent: true,
   });
 };
+
+export const refreshHomeContentApi = (userId?: number) => {
+  return request<string>({
+    url: userId ? `/api/homepage/refresh?userId=${userId}` : '/api/homepage/refresh',
+    method: 'POST',
+    silent: true,
+  });
+};

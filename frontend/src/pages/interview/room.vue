@@ -438,6 +438,7 @@ const fetchAndPlayGreeting = async () => {
     const res = await voiceGreetingApi(interviewId.value);
     applyVoiceResponse(res);
   } catch (e: any) {
+    lastAiText.value = '语音合成暂时失败，请先切换到文字模式继续面试。';
     showToast(e?.message || 'Failed to load greeting', 'error');
   } finally {
     isThinking.value = false;
@@ -450,6 +451,7 @@ const sendVoiceTurn = async (filePath: string) => {
     const res = await voiceTurnApi(interviewId.value, filePath, 'mp3');
     applyVoiceResponse(res);
   } catch (e: any) {
+    lastAiText.value = '语音合成暂时失败，请先切换到文字模式继续面试。';
     showToast(e?.message || 'Voice turn failed', 'error');
   } finally {
     isThinking.value = false;
