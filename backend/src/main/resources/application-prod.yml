@@ -75,11 +75,16 @@ spring:
 
   # Flyway — baseline-on-migrate lets the first deploy on an existing DB
   # mark V1 as already applied and only run V2+.
+  # repair-on-migrate: automatically re-calculates checksums for resolved
+  # migrations before running new ones. This handles the case where a
+  # migration file was edited after being applied (e.g. V7 was fixed
+  # multiple times), preventing the "checksum mismatch" startup failure.
   flyway:
     enabled: true
     baseline-on-migrate: true
     baseline-version: 1
     locations: classpath:db/migration
+    repair-on-migrate: true
 
   # Redis (F1)
   data:
