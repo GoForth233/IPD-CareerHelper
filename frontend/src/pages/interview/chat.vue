@@ -105,13 +105,16 @@ onMounted(async () => {
         try {
           const greeting = await generateGreetingApi(interviewId.value);
           if (greeting) messages.value = [greeting];
+        } catch (greetErr: any) {
+          uni.showToast({ title: greetErr?.message || 'AI service error', icon: 'none', duration: 3000 });
         } finally {
           aiTyping.value = false;
           stopTypingTimer();
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load interview:', error);
+      uni.showToast({ title: error?.message || 'Failed to load interview', icon: 'none' });
     }
   }
 });
