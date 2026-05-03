@@ -7,11 +7,11 @@
 -- =====================================================================
 
 ALTER TABLE `home_articles`
-    ADD COLUMN IF NOT EXISTS `source` VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
-    ADD COLUMN IF NOT EXISTS `pinned` TINYINT(1)  NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS `hidden` TINYINT(1)  NOT NULL DEFAULT 0;
+    ADD COLUMN `source` VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
+    ADD COLUMN `pinned` TINYINT(1)  NOT NULL DEFAULT 0,
+    ADD COLUMN `hidden` TINYINT(1)  NOT NULL DEFAULT 0;
 
 -- Deduplicate index on source_url so the RSS job can't insert the same
 -- article twice (ON DUPLICATE KEY UPDATE used in the job).
 ALTER TABLE `home_articles`
-    ADD UNIQUE KEY IF NOT EXISTS `uk_home_articles_source_url` (`source_url`(400));
+    ADD UNIQUE KEY `uk_home_articles_source_url` (`source_url`(400));
