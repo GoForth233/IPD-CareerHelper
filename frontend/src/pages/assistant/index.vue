@@ -220,9 +220,10 @@ const sendMessage = async () => {
       { role: 'assistant', content: String(reply) },
     );
   } catch (err: any) {
+    const errMsg = err?.message || String(err) || 'Unknown error';
     messages.value[typingIdx] = {
       role: 'ai',
-      content: 'Connection error. Please check your network and try again.',
+      content: `⚠️ Request failed: ${errMsg}\n\nPlease check your network and try again.`,
     };
   } finally {
     isSending.value = false;
@@ -622,4 +623,39 @@ onMounted(() => {
 .is-dark .chat-input {
   color: #f8fafc;
 }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to assistant/chat page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* backdrop-filter unsupported — use solid background for input bar */
+.input-bar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: #f5f5f7;
+}
+
+/* Stronger border on the pill-shaped input row */
+.input-row {
+  border: 1.5px solid #b8c8d8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+
+/* Chat nav: solid white instead of frosted */
+.chat-nav {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: #ffffff;
+  border-bottom: 1px solid #d0dae4;
+}
+
+/* Welcome card: content card gets depth */
+.welcome-card {
+  overflow: visible;
+  border: 1px solid #b8c8d8;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.14);
+}
+
+/* #endif */
 </style>

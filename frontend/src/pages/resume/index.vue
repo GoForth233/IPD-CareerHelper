@@ -171,8 +171,11 @@ const loadResumes = async () => {
   }
   isLoading.value = true;
   try {
-    const resumes = await getUserResumesApi(numericId);
-    resumeList.value = (resumes || []).map((r: Resume) => ({
+    const raw = await getUserResumesApi(numericId);
+    // Guard against the API returning a non-array (e.g. a paginated
+    // wrapper object or a null body) to prevent ".map is not a function".
+    const resumes: Resume[] = Array.isArray(raw) ? raw : [];
+    resumeList.value = resumes.map((r: Resume) => ({
       resumeId: r.resumeId,
       name: r.title || r.fileUrl?.split('/').pop() || 'Untitled.pdf',
       date: formatRelative(r.updatedAt || r.createdAt),
