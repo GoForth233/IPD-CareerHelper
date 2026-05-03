@@ -132,7 +132,8 @@ const loadResumes = async () => {
   const userId = Number(uni.getStorageSync('userId'));
   if (!userId || isNaN(userId) || userId <= 0) return;
   try {
-    userResumes.value = (await getUserResumesApi(userId)) || [];
+    const raw = await getUserResumesApi(userId);
+    userResumes.value = Array.isArray(raw) ? raw : [];
   } catch {
     userResumes.value = [];
   }

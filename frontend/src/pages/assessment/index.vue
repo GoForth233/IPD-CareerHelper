@@ -136,8 +136,9 @@ const loadAll = async () => {
       // shouldn't see a hard error, just an empty completed-set.
       getMyAssessmentRecordsApi().catch(() => []),
     ]);
-    scales.value = scaleList || [];
-    completedScales.value = new Set((records || []).map((r) => r.scaleId));
+    scales.value = Array.isArray(scaleList) ? scaleList : [];
+    const safeRecords = Array.isArray(records) ? records : [];
+    completedScales.value = new Set(safeRecords.map((r) => r.scaleId));
   } catch (e: any) {
     uni.showToast({ title: e?.message || 'Failed to load', icon: 'none' });
     scales.value = [];
