@@ -721,4 +721,26 @@ onShow(() => {
 .is-dark .sheet-option,
 .is-dark .sheet-title-bar,
 .is-dark .sheet-cancel { background: #1e293b; border-color: #334155; }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to resume hub page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* Sheet panels already have 96% opacity — just strip the
+   unneeded backdrop-filter call. */
+.sheet-title-bar,
+.sheet-option {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: #ffffff;
+}
+
+/* Resume cards and add cards: overflow:visible for shadow */
+.resume-card,
+.add-card {
+  overflow: visible;
+}
+
+/* #endif */
 </style>

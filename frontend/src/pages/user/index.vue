@@ -661,4 +661,33 @@ onMounted(() => {
 .is-dark .field-label { color: #e2e8f0; }
 .is-dark .field-input { background: #0f172a; border-color: #334155; color: #f8fafc; }
 .is-dark .btn-secondary { background: #334155; color: #e2e8f0; }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to user/profile page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* Header card: gradient + box-shadow. Needs overflow:visible so the
+   shadow renders on device (the shadow is NOT clipped by border-radius
+   alone; it's only clipped by overflow:hidden). */
+.header-card {
+  overflow: visible;
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.32),
+              0 4px 10px  rgba(37, 99, 235, 0.20);
+}
+
+/* Stats bar: white card, switch to overflow:visible for shadow */
+.stats-bar {
+  overflow: visible;
+}
+
+/* Menu cards use overflow:hidden for the divider lines, so swap to
+   filter:drop-shadow which lives outside the layer. */
+.menu-card {
+  overflow: hidden;
+  box-shadow: none;
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.12));
+}
+
+/* #endif */
 </style>

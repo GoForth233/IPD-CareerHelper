@@ -566,4 +566,27 @@ onShow(() => {
 .is-dark .msg-time {
   color: #94a3b8;
 }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to messages page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* Message cards: pure content, can be overflow:visible */
+.msg-card {
+  overflow: visible;
+}
+
+/* Segment bar: overflow:visible for shadow, active tab gets a tint */
+.segment-bar {
+  overflow: visible;
+}
+
+.seg-active {
+  background: var(--primary-soft);
+  color: var(--primary-color);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.14);
+}
+
+/* #endif */
 </style>

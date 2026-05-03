@@ -449,4 +449,34 @@ onShow(() => {
 .is-dark .summary-text,
 .is-dark .flow-desc,
 .is-dark .tag { color: #94a3b8; }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to assessment page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* The blue gradient hero card uses overflow:hidden to clip its
+   decorative shapes. Use filter:drop-shadow so it still has depth. */
+.status-card {
+  overflow: hidden;
+  box-shadow: none;
+  filter: drop-shadow(0 12px 24px rgba(37, 99, 235, 0.30));
+}
+
+/* Assessment list cards: no overflow:hidden needed, give them
+   stronger shadow via overflow:visible. */
+.assessment-card {
+  overflow: visible;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* backdrop-filter not supported in mp; replace radar pill with
+   solid white/translucent background as fallback. */
+.radar-placeholder {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* #endif */
 </style>

@@ -662,4 +662,48 @@ const handleAvatarClick = () => {
 .is-dark .article-summary,
 .is-dark .consult-body,
 .is-dark .path-desc { color: #94a3b8; }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to home page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* Force GPU compositing on icon pills so the gradient + border-radius
+   renders crisp instead of blurry — this is a known mini-program
+   anti-aliasing regression on gradient backgrounds. */
+.feature-icon {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Video cards keep overflow:hidden for image clipping, so box-shadow
+   is clipped. Switch to filter:drop-shadow which lives OUTSIDE the
+   composited layer and survives overflow:hidden. */
+.video-card {
+  overflow: hidden;
+  box-shadow: none;
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.14));
+}
+
+/* Article / consult / path / feature cards CAN be overflow:visible
+   because they have no full-bleed images, so use normal box-shadow. */
+.article-card,
+.consult-card,
+.path-card {
+  overflow: visible;
+}
+
+.feature-item {
+  overflow: visible;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* Checkin card: gradient background + shadow — boost visibility */
+.checkin-card {
+  overflow: visible;
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.20), 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* #endif */
 </style>

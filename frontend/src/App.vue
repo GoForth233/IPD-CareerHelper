@@ -320,23 +320,28 @@ button {
 /* ============================================================== *
  *  WeChat Mini-Program parity layer
  *  -----------------------------------------------------------------
- *  WeChat's webview renders ~30% lighter box-shadows than Chrome,
- *  its <button> ships an ::after that overrides our radii/borders,
- *  and uniapp wrappers default to overflow:hidden which clips
- *  shadows. The H5 build doesn't suffer any of this, hence the
- *  visual gap. The block below reaches feature-parity for mp-weixin.
+ *  WeChat's webview renders box-shadows ~50% lighter than Chrome,
+ *  backdrop-filter is unsupported, <button> ships its own ::after
+ *  decoration, and uniapp wrappers default to overflow:hidden which
+ *  clips shadows entirely. The H5 build doesn't suffer any of this.
+ *  This block patches all of those gaps for mp-weixin.
  * ============================================================== */
 /* #ifdef MP-WEIXIN */
 
-/* 1) Boost shadow strength to compensate for the dimmer mp renderer.
-      Re-declare the variables both on :root and page so the cascade
-      lands regardless of which selector the renderer respects. */
+/* 1) Significantly boost shadow values for the dimmer MP renderer.
+      The MP WebView renders RGBA opacity roughly 50% lighter than
+      Chrome, so we need ~2x the alpha to look equivalent.
+      Re-declare on both :root and page for full cascade coverage. */
 :root,
 page {
-  --shadow-xs: 0 1px 4px rgba(15, 23, 42, 0.10);
-  --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.12);
-  --shadow-card: 0 6px 18px rgba(15, 23, 42, 0.14);
-  --shadow-lg: 0 10px 28px rgba(15, 23, 42, 0.18);
+  --shadow-xs:   0 1px 3px rgba(0,0,0,0.10),  0 1px 8px  rgba(0,0,0,0.06);
+  --shadow-sm:   0 2px 8px  rgba(0,0,0,0.14),  0 1px 3px  rgba(0,0,0,0.08);
+  --shadow-card: 0 4px 16px rgba(0,0,0,0.16),  0 2px 6px  rgba(0,0,0,0.10);
+  --shadow-lg:   0 8px 24px rgba(0,0,0,0.20),  0 4px 10px rgba(0,0,0,0.12);
+
+  /* Stronger borders so cards read well at any brightness level */
+  --border-color:  #b8c8da;
+  --border-strong: #9eb0c4;
 }
 
 /* 2) Kill WeChat's native <button> decoration so our own
@@ -354,21 +359,44 @@ button::after {
   content: none !important;
 }
 
-/* 3) Containers that own a box-shadow must NOT clip themselves.
-      `border-radius` alone does NOT clip a shadow — only
-      `overflow:hidden` does. uniapp's wrappers sometimes inherit
-      hidden, which is why your shadows "vanish" on the device. */
+/* 3) Any container that owns a box-shadow MUST be overflow:visible.
+      border-radius alone does NOT clip shadows — only overflow:hidden
+      does. uni-app wrappers sometimes inherit hidden, making shadows
+      vanish entirely on device. */
 .ui-card,
 .card,
 .panel,
 .section-card,
 .app-surface,
-.ui-card-strong {
+.ui-card-strong,
+.feature-item,
+.msg-card,
+.video-card,
+.article-card,
+.consultation-card,
+.career-card,
+.assessment-card,
+.check-in-card,
+.checkin-card,
+.stat-box,
+.resume-card,
+.profile-card,
+.memory-card,
+.feedback-card {
   overflow: visible;
 }
 
-/* 4) Inputs and textareas in mp-weixin do not inherit font-size /
-      color cleanly. Pin them explicitly so the look matches H5. */
+/* 4) Compensate for the MP WebView's lighter gradient rendering:
+      make gradients deeper / more saturated. */
+page {
+  --primary-soft:  #dbeafe;
+  --accent-soft:   #ffedd5;
+  --surface-2:     #f1f5f9;
+  --surface-3:     #e8eef4;
+}
+
+/* 5) Inputs and textareas don't inherit font-size / color cleanly.
+      Pin them so they match H5. */
 .ui-input,
 .input,
 textarea.ui-input,
@@ -377,6 +405,38 @@ textarea {
   font-size: 14px;
   color: var(--text-primary);
 }
+
+/* 6) Boost icon badge / chip shadow (these use inline box-shadow
+      values not tied to variables — override them globally). */
+.icon-assess  { box-shadow: 0 4px 14px rgba(37, 99, 235, 0.22) !important; }
+.icon-map     { box-shadow: 0 4px 14px rgba(99, 102, 241, 0.22) !important; }
+.icon-ai      { box-shadow: 0 4px 14px rgba(168, 85, 247, 0.22) !important; }
+.icon-interview { box-shadow: 0 4px 14px rgba(249, 115, 22, 0.22) !important; }
+
+/* 7) Segment control / tab pills — ensure active tab pops on device */
+.seg-active,
+.tab-active {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+}
+
+/* 8) backdrop-filter is entirely unsupported in WeChat mini program.
+      Elements that rely on it for frosted glass look fine at high
+      opacity (≥ 85%), but translucent-background elements (≤ 50%)
+      become invisible. Override the most common patterns:
+      - Frosted nav bars / sticky footers → opaque white/gray
+      - Glassmorphism cards inside gradient backgrounds → solid white 80% */
+.chat-nav,
+.sticky-cta,
+.bottom-bar,
+.toolbar,
+.nav-bar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.chat-nav        { background: #ffffff; }
+.sticky-cta,
+.bottom-bar,
+.toolbar         { background: rgba(245, 245, 247, 1); }
 
 /* #endif */
 </style>
