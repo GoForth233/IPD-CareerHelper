@@ -5,7 +5,7 @@ set -euo pipefail
 
 SERVER_USER="${DEPLOY_USER:-ubuntu}"
 SERVER_HOST="${DEPLOY_HOST:-43.138.240.228}"
-SERVER_DIR="${DEPLOY_DIR:-/opt/careerloop/backend}"
+SERVER_DIR="${DEPLOY_DIR:-/opt/careerloop}"
 
 echo "========================================"
 echo " CareerLoop Backend ROLLBACK"
@@ -19,7 +19,7 @@ if [ "${CONFIRM}" != "yes" ]; then
 fi
 
 ssh "${SERVER_USER}@${SERVER_HOST}" "
-  cd ${SERVER_DIR}
+  cd ${SERVER_DIR}/backend
   echo '[rollback] Switching :rollback → :latest'
   docker tag careerloop-backend:rollback careerloop-backend:latest
   echo '[rollback] Restarting backend container'

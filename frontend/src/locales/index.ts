@@ -16,12 +16,12 @@ export const LANG_KEY = 'app_lang';
 export type LangCode = 'zh-CN' | 'en-US';
 
 function detectLang(): LangCode {
-  const stored = uni.getStorageSync(LANG_KEY) as LangCode;
-  if (stored === 'zh-CN' || stored === 'en-US') return stored;
   try {
+    const stored = uni.getStorageSync(LANG_KEY) as LangCode;
+    if (stored === 'zh-CN' || stored === 'en-US') return stored;
     const sysLang = uni.getSystemInfoSync().language || '';
     if (sysLang.startsWith('en')) return 'en-US';
-  } catch { /* ignore */ }
+  } catch { /* ignore — uni not ready or storage unavailable */ }
   return 'zh-CN';
 }
 

@@ -20,50 +20,67 @@ const THEME_KEY = 'app_pref_theme';
 const DARK_KEY  = 'app_pref_dark';
 const FONT_KEY  = 'app_pref_font';
 
+// ── Module-level singleton refs ──────────────────────────────────────────────
+// All components that call useTheme() share these exact same refs, so a
+// setTheme() call in user/index.vue instantly updates themeClass in
+// home/index.vue and assistant/index.vue without needing a page remount.
+const _theme = ref<ThemeKey>(_readTheme());
+const _font  = ref<FontKey>(_readFont());
+
+const _themeClass = computed(() => {
+  if (_theme.value === 'dark')  return 'is-dark';
+  if (_theme.value === 'green') return 'theme-green';
+  return '';
+});
+
+const _fontClass = computed(() => {
+  if (_font.value === 'compact') return 'font-compact';
+  if (_font.value === 'large')   return 'font-large';
+  return '';
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function useTheme() {
-  const theme = ref<ThemeKey>(_readTheme());
-  const font  = ref<FontKey>(_readFont());
-
-  const themeClass = computed(() => {
-    if (theme.value === 'dark') return 'is-dark';
-    if (theme.value === 'green') return 'theme-green';
-    return '';
-  });
-
-  const fontClass = computed(() => {
-    if (font.value === 'compact') return 'font-compact';
-    if (font.value === 'large')   return 'font-large';
-    return '';
-  });
-
   function setTheme(t: ThemeKey) {
-    theme.value = t;
+    _theme.value = t;
     uni.setStorageSync(THEME_KEY, t);
     uni.setStorageSync(DARK_KEY, t === 'dark' ? '1' : '0');
   }
 
   function setFont(f: FontKey) {
-    font.value = f;
+    _font.value = f;
     uni.setStorageSync(FONT_KEY, f);
   }
 
   function refresh() {
-    theme.value = _readTheme();
-    font.value  = _readFont();
+    _theme.value = _readTheme();
+    _font.value  = _readFont();
   }
 
-  return { theme, font, themeClass, fontClass, setTheme, setFont, refresh };
+  return {
+    theme: _theme,
+    font: _font,
+    themeClass: _themeClass,
+    fontClass: _fontClass,
+    setTheme,
+    setFont,
+    refresh,
+  };
 }
 
 function _readTheme(): ThemeKey {
-  const stored = uni.getStorageSync(THEME_KEY) as ThemeKey;
-  if (stored === 'dark' || stored === 'green' || stored === 'light') return stored;
-  const isDark = uni.getStorageSync(DARK_KEY) === '1';
-  return isDark ? 'dark' : 'light';
+  try {
+    const stored = uni.getStorageSync(THEME_KEY) as ThemeKey;
+    if (stored === 'dark' || stored === 'green' || stored === 'light') return stored;
+    const isDark = uni.getStorageSync(DARK_KEY) === '1';
+    return isDark ? 'dark' : 'light';
+  } catch { return 'light'; }
 }
 
 function _readFont(): FontKey {
-  const stored = uni.getStorageSync(FONT_KEY) as FontKey;
-  if (stored === 'compact' || stored === 'large') return stored;
+  try {
+    const stored = uni.getStorageSync(FONT_KEY) as FontKey;
+    if (stored === 'compact' || stored === 'large') return stored;
+  } catch { /* ignore */ }
   return 'standard';
 }
