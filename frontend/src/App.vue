@@ -20,11 +20,18 @@ onLaunch(() => {
     return;
   }
 
-  // F20: First-run onboarding — show once after consent is accepted.
+  // F20: First-run onboarding — show once, only for users who haven't
+  // logged in yet. Existing users (already have a session) skip it so a
+  // deploy doesn't force-redirect everyone who has been using the app.
   const hasSeenOnboarding = uni.getStorageSync(ONBOARDING_KEY);
-  if (!hasSeenOnboarding) {
+  if (!hasSeenOnboarding && !isLoggedIn()) {
     uni.reLaunch({ url: ONBOARDING_PAGE });
     return;
+  }
+  // Mark as seen so the onboarding never shows again, even for guests who
+  // skip past it without explicitly finishing.
+  if (!hasSeenOnboarding) {
+    uni.setStorageSync(ONBOARDING_KEY, '1');
   }
 
   // Cold-start gate: real users *and* guests both keep their session.
