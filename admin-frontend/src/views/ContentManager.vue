@@ -35,13 +35,25 @@
           <el-button type="primary" @click="openArticleDialog(null)">+ 新增文章</el-button>
         </div>
         <el-table :data="articles" v-loading="loadingArticles" stripe border style="width:100%">
-          <el-table-column prop="id" label="ID" width="70" />
-          <el-table-column prop="title" label="标题" show-overflow-tooltip />
-          <el-table-column prop="category" label="分类" width="100" />
-          <el-table-column prop="summary" label="摘要" show-overflow-tooltip />
-          <el-table-column prop="publishedAt" label="发布时间" width="175" />
-          <el-table-column label="操作" width="160" fixed="right">
+          <el-table-column prop="id" label="ID" width="60" />
+          <el-table-column label="标题" show-overflow-tooltip min-width="200">
             <template #default="{ row }">
+              <el-tag v-if="row.pinned" type="warning" size="small" style="margin-right:4px">置顶</el-tag>
+              <el-tag v-if="row.hidden" type="info"    size="small" style="margin-right:4px">隐藏</el-tag>
+              {{ row.title }}
+            </template>
+          </el-table-column>
+          <el-table-column label="来源" width="110">
+            <template #default="{ row }">
+              <el-tag :type="sourceTagType(row.source)" size="small">{{ sourceLabel(row.source) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="category" label="分类" width="90" />
+          <el-table-column prop="publishedAt" label="发布时间" width="160" />
+          <el-table-column label="操作" width="220" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" @click="togglePin(row)"  :type="row.pinned ? 'warning' : ''">{{ row.pinned ? '取消置顶' : '置顶' }}</el-button>
+              <el-button size="small" @click="toggleHide(row)" :type="row.hidden ? '' : 'info'">{{ row.hidden ? '取消隐藏' : '隐藏' }}</el-button>
               <el-button size="small" @click="openArticleDialog(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="deleteArticle(row)">删除</el-button>
             </template>
@@ -89,7 +101,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import http from '@/api';
 
 interface VideoRow { id: number; bvid: string; title: string; upName?: string; keyword?: string; viewCount?: number; fetchedAt?: string; }
-interface ArticleRow { id?: number; title: string; summary?: string; sourceUrl?: string; imageUrl?: string; category?: string; publishedAt?: string; }
+interface ArticleRow { id?: number; title: string; summary?: string; sourceUrl?: string; imageUrl?: string; category?: string; publishedAt?: string; source?: string; pinned?: boolean; hidden?: boolean; }
 
 const activeTab = ref('videos');
 
@@ -169,6 +181,25 @@ const deleteArticle = async (row: ArticleRow) => {
 };
 
 const fmtNum = (n?: number) => n == null ? '-' : n.toLocaleString();
+
+const sourceLabel = (source?: string) => ({ MANUAL: '手动', RSS_JUEJIN: '掘金', RSS_36KR: '36氪' }[source ?? ''] ?? source ?? '-');
+const sourceTagType = (source?: string) => ({ MANUAL: 'success', RSS_JUEJIN: 'primary', RSS_36KR: 'warning' }[source ?? ''] ?? '');
+
+const togglePin = async (row: ArticleRow) => {
+  try {
+    const updated: any = await http.patch(`/api/admin/content/articles/${row.id}/pin`);
+    row.pinned = updated.pinned;
+    ElMessage.success(updated.pinned ? '已置顶' : '已取消置顶');
+  } catch (e: any) { ElMessage.error(e?.message || '操作失败'); }
+};
+
+const toggleHide = async (row: ArticleRow) => {
+  try {
+    const updated: any = await http.patch(`/api/admin/content/articles/${row.id}/hide`);
+    row.hidden = updated.hidden;
+    ElMessage.success(updated.hidden ? '已隐藏' : '已取消隐藏');
+  } catch (e: any) { ElMessage.error(e?.message || '操作失败'); }
+};
 
 watch(activeTab, (tab) => {
   if (tab === 'videos') loadVideos();

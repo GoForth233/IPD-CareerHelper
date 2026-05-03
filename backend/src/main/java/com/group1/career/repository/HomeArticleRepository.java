@@ -15,4 +15,6 @@ public interface HomeArticleRepository extends JpaRepository<HomeArticle, Long> 
      * without a published_at still have a stable order.
      */
     List<HomeArticle> findAllByOrderByPublishedAtDescIdDesc(Pageable pageable);
+
+    List<HomeArticle> findAllByHiddenFalseOrderByPinnedDescPublishedAtDescIdDesc(Pageable pageable);
 }
