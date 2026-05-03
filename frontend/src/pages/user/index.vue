@@ -468,7 +468,7 @@ onMounted(() => {
   background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
   border-radius: 20px; padding: 24px 20px; margin: 12px 0 16px;
   display: flex; align-items: center; gap: 16px;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+  box-shadow: 0 10px 28px rgba(37,99,235,0.38), 0 4px 10px rgba(37,99,235,0.22);
 }
 
 .header-guest {
@@ -509,8 +509,8 @@ onMounted(() => {
   display: flex; align-items: center;
   background: #ffffff; border-radius: 16px;
   padding: 16px 0; margin-bottom: 24px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid #b8c8d8;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
 }
 
 .stat-item {
@@ -539,8 +539,8 @@ onMounted(() => {
 .menu-card {
   background: #ffffff; border-radius: 16px;
   overflow: hidden; margin-bottom: 24px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid #b8c8d8;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
 }
 
 .menu-item {

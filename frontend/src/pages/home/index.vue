@@ -422,7 +422,7 @@ const handleAvatarClick = () => {
 <style scoped>
 .home-page {
   min-height: 100vh;
-  background-color: var(--page-ios-gray);
+  background-color: #e8eef5;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -434,8 +434,9 @@ const handleAvatarClick = () => {
 .search-bar {
   flex: 1; display: flex; align-items: center;
   height: 42px; background: #ffffff;
-  border: 1px solid var(--border-color); border-radius: 14px;
-  padding: 0 16px; box-shadow: var(--shadow-xs);
+  border: 1px solid #b8c8d8; border-radius: 14px;
+  padding: 0 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 }
 .search-icon-wrap { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; margin-right: 6px; }
 .search-icon-svg { font-size: 14px; }
@@ -460,39 +461,42 @@ const handleAvatarClick = () => {
 .feature-item {
   width: calc(50% - 6px);
   display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
-  background: #ffffff; border: 1px solid var(--border-color);
+  background: #ffffff;
+  border: 1px solid #b8c8d8;
   border-radius: 16px; padding: 16px;
-  box-shadow: var(--shadow-sm); box-sizing: border-box;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08);
+  box-sizing: border-box;
 }
 .feature-icon {
   width: 56px; height: 56px; border-radius: 18px;
   display: flex; justify-content: center; align-items: center;
   transition: transform 0.15s ease;
+  transform: translateZ(0);
 }
 .feature-icon:active { transform: scale(0.92); }
 .fi-char { font-size: 26px; }
-.icon-assess  { background: linear-gradient(145deg, #dbeafe, #bfdbfe); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12); }
-.icon-map     { background: linear-gradient(145deg, #e0e7ff, #c7d2fe); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12); }
-.icon-ai      { background: linear-gradient(145deg, #fae8ff, #f0abfc 30%, #e9d5ff); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.12); }
-.icon-interview { background: linear-gradient(145deg, #ffedd5, #fed7aa); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.12); }
+.icon-assess   { background: linear-gradient(145deg, #b8d4ff, #85aef5); box-shadow: 0 4px 12px rgba(37,99,235,0.22); }
+.icon-map      { background: linear-gradient(145deg, #c0ccff, #96a8f0); box-shadow: 0 4px 12px rgba(99,102,241,0.22); }
+.icon-ai       { background: linear-gradient(145deg, #e8c4ff, #cc80f0); box-shadow: 0 4px 12px rgba(168,85,247,0.22); }
+.icon-interview{ background: linear-gradient(145deg, #ffc89a, #ffaa5a); box-shadow: 0 4px 12px rgba(249,115,22,0.22); }
 .feature-label { font-size: 14px; font-weight: 700; color: #1e293b; line-height: 1.25; min-height: 36px; }
 
 /* ---- Daily check-in chip ---- */
 .checkin-card {
   display: flex; align-items: center; justify-content: space-between;
   margin: 16px 20px 0; padding: 14px 16px;
-  background: linear-gradient(135deg, #ecfeff, #cffafe 60%, #a5f3fc);
-  border: 1px solid #bae6fd; border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(135deg, #a8e8f8, #5ecde8 60%, #30b8d8);
+  border: 1px solid #38b0cc; border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(6,182,212,0.30), 0 1px 4px rgba(0,0,0,0.10);
 }
 .checkin-card:active { transform: scale(0.99); }
 .checkin-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .checkin-kicker {
-  font-size: 10px; font-weight: 700; color: #0e7490;
+  font-size: 10px; font-weight: 700; color: #054260;
   letter-spacing: 0.08em; text-transform: uppercase;
 }
-.checkin-title { font-size: 18px; font-weight: 800; color: #0c4a6e; line-height: 1.1; }
-.checkin-sub { font-size: 12px; color: #155e75; margin-top: 2px; }
+.checkin-title { font-size: 18px; font-weight: 800; color: #021e30; line-height: 1.1; }
+.checkin-sub { font-size: 12px; color: #063a52; margin-top: 2px; }
 .checkin-right {
   display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
   min-width: 110px;
@@ -505,7 +509,7 @@ const handleAvatarClick = () => {
   height: 100%; background: linear-gradient(90deg, #0891b2, #06b6d4);
   border-radius: 3px; transition: width 0.3s ease;
 }
-.checkin-cta { font-size: 12px; font-weight: 700; color: #0e7490; }
+.checkin-cta { font-size: 12px; font-weight: 700; color: #043650; }
 .checkin-tip {
   margin: 6px 20px 0; padding: 6px 14px;
   font-size: 11.5px; color: #64748b; line-height: 1.4;
@@ -540,8 +544,9 @@ const handleAvatarClick = () => {
   display: inline-flex; flex-direction: column;
   width: 240px; flex-shrink: 0;
   background: #ffffff; border-radius: var(--radius-md);
-  overflow: hidden; border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm); transition: transform 0.15s;
+  overflow: hidden; border: 1px solid #b8c8d8;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
+  transition: transform 0.15s;
 }
 .video-card:active { transform: scale(0.98); }
 .video-cover { width: 100%; height: 134px; position: relative; overflow: hidden; background: #e2e8f0; }
@@ -572,9 +577,9 @@ const handleAvatarClick = () => {
 .article-list { display: flex; flex-direction: column; gap: 12px; padding: 0 20px; }
 .article-card {
   display: flex; align-items: stretch; gap: 14px;
-  background: #ffffff; border: 1px solid var(--border-color);
+  background: #ffffff; border: 1px solid #b8c8d8;
   border-radius: var(--radius-md); padding: 14px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
   transition: transform 0.15s;
 }
 .article-card:active { transform: scale(0.99); }
@@ -603,9 +608,9 @@ const handleAvatarClick = () => {
 /* ---- Consultation cards ---- */
 .consult-list { display: flex; flex-direction: column; gap: 12px; padding: 0 20px; }
 .consult-card {
-  background: #ffffff; border: 1px solid var(--border-color);
+  background: #ffffff; border: 1px solid #b8c8d8;
   border-radius: var(--radius-md); padding: 14px 16px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
   display: flex; flex-direction: column; gap: 6px;
 }
 .consult-head { display: flex; flex-direction: column; gap: 4px; }
@@ -620,7 +625,9 @@ const handleAvatarClick = () => {
   width: calc(50% - 6px); box-sizing: border-box;
   border-radius: var(--radius-md); padding: 16px;
   display: flex; flex-direction: column; gap: 6px;
-  border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);
+  background: #ffffff;
+  border: 1px solid #b8c8d8;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
 }
 .path-name { font-size: 15px; font-weight: 700; color: #0f172a; }
 .path-desc {

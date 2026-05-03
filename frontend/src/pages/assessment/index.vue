@@ -320,13 +320,13 @@ onShow(() => {
 
 .assessment-card {
   background-color: #ffffff;
-  border: 1px solid var(--border-color);
+  border: 1px solid #b8c8d8;
   border-radius: 20px;
   padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
   transition: transform 0.2s ease;
 }
 

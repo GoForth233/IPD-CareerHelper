@@ -318,11 +318,11 @@ onShow(() => {
 .segment-bar {
   display: flex;
   background: #ffffff;
-  border: 1px solid var(--border-color);
+  border: 1px solid #b8c8d8;
   border-radius: 14px;
   padding: 4px;
   gap: 2px;
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.11);
 }
 
 .seg-item {
@@ -387,8 +387,8 @@ onShow(() => {
   background: #ffffff;
   padding: 16px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid #b8c8d8;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
   transition: transform 0.1s;
 }
 
