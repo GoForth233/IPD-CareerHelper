@@ -663,30 +663,35 @@ onMounted(() => {
 .is-dark .btn-secondary { background: #334155; color: #e2e8f0; }
 
 /* ================================================================
- *  MP-WEIXIN parity overrides (scoped to user/profile page)
+ *  MP-WEIXIN parity overrides — HARDCODED values, no CSS vars.
  * ================================================================ */
 /* #ifdef MP-WEIXIN */
 
-/* Header card: gradient + box-shadow. Needs overflow:visible so the
-   shadow renders on device (the shadow is NOT clipped by border-radius
-   alone; it's only clipped by overflow:hidden). */
+.user-page {
+  background-color: #eaeff5;
+}
+
 .header-card {
   overflow: visible;
-  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.32),
-              0 4px 10px  rgba(37, 99, 235, 0.20);
+  box-shadow: 0 10px 30px rgba(37,99,235,0.40),
+              0 4px 12px  rgba(37,99,235,0.24);
 }
 
-/* Stats bar: white card, switch to overflow:visible for shadow */
 .stats-bar {
   overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.18),
+              0 1px 5px  rgba(0,0,0,0.10);
 }
 
-/* Menu cards use overflow:hidden for the divider lines, so swap to
-   filter:drop-shadow which lives outside the layer. */
 .menu-card {
   overflow: hidden;
   box-shadow: none;
-  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.12));
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.18));
+}
+
+.menu-item:not(:last-child)::after {
+  background: #c0ccd8;
 }
 
 /* #endif */

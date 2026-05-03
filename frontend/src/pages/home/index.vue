@@ -664,45 +664,83 @@ const handleAvatarClick = () => {
 .is-dark .path-desc { color: #94a3b8; }
 
 /* ================================================================
- *  MP-WEIXIN parity overrides (scoped to home page)
+ *  MP-WEIXIN parity overrides — HARDCODED values, no CSS vars.
+ *  CSS custom properties set on :root / page may not cascade into
+ *  scoped component styles in the mini-program runtime, so we
+ *  bypass var() entirely and write concrete values here.
  * ================================================================ */
 /* #ifdef MP-WEIXIN */
 
-/* Force GPU compositing on icon pills so the gradient + border-radius
-   renders crisp instead of blurry — this is a known mini-program
-   anti-aliasing regression on gradient backgrounds. */
+/* ---- Page background: slightly more contrast vs. white cards ---- */
+.home-page {
+  background-color: #eaeff5;
+}
+
+/* ---- Feature grid cards ---- */
+.feature-item {
+  overflow: visible;
+  background: #ffffff;
+  border: 1.5px solid #b0bfd0;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22),
+              0 2px 6px  rgba(0,0,0,0.14);
+}
+
+/* ---- Icon pills: force GPU compositing to fix blurry border-radius ---- */
 .feature-icon {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   will-change: transform;
 }
 
-/* Video cards keep overflow:hidden for image clipping, so box-shadow
-   is clipped. Switch to filter:drop-shadow which lives OUTSIDE the
-   composited layer and survives overflow:hidden. */
+/* ---- Stronger icon-background colours ---- */
+.icon-assess   { background: linear-gradient(145deg, #c3d8ff, #93b8ff); box-shadow: 0 4px 14px rgba(37,99,235,0.28); }
+.icon-map      { background: linear-gradient(145deg, #ccd5ff, #a5b3fa); box-shadow: 0 4px 14px rgba(99,102,241,0.28); }
+.icon-ai       { background: linear-gradient(145deg, #eed4ff, #d68ef5); box-shadow: 0 4px 14px rgba(168,85,247,0.28); }
+.icon-interview{ background: linear-gradient(145deg, #ffd7b0, #ffb96a); box-shadow: 0 4px 14px rgba(249,115,22,0.28); }
+
+/* ---- Search bar ---- */
+.search-bar {
+  background: #ffffff;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+/* ---- Daily check-in card ---- */
+.checkin-card {
+  overflow: visible;
+  background: linear-gradient(135deg, #baeeff, #7dd8f5 60%, #4dc4ea);
+  border: 1.5px solid #45b8d8;
+  box-shadow: 0 4px 16px rgba(6,182,212,0.30),
+              0 2px 6px  rgba(0,0,0,0.10);
+}
+.checkin-kicker { color: #065278; }
+.checkin-title  { color: #031e2f; }
+.checkin-sub    { color: #084d6a; }
+.checkin-cta    { color: #065278; }
+
+/* ---- Article / consult / path cards ---- */
+.article-card,
+.consult-card {
+  overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.18),
+              0 1px 5px  rgba(0,0,0,0.10);
+}
+
+.path-card {
+  overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.18),
+              0 1px 5px  rgba(0,0,0,0.10);
+}
+
+/* ---- Video cards: overflow:hidden must stay for image clipping,
+        so use filter:drop-shadow which renders outside the layer ---- */
 .video-card {
   overflow: hidden;
   box-shadow: none;
-  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.14));
-}
-
-/* Article / consult / path / feature cards CAN be overflow:visible
-   because they have no full-bleed images, so use normal box-shadow. */
-.article-card,
-.consult-card,
-.path-card {
-  overflow: visible;
-}
-
-.feature-item {
-  overflow: visible;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08);
-}
-
-/* Checkin card: gradient background + shadow — boost visibility */
-.checkin-card {
-  overflow: visible;
-  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.20), 0 1px 4px rgba(0,0,0,0.08);
+  filter: drop-shadow(0 3px 12px rgba(0,0,0,0.22));
 }
 
 /* #endif */

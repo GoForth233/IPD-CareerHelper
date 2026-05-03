@@ -568,24 +568,31 @@ onShow(() => {
 }
 
 /* ================================================================
- *  MP-WEIXIN parity overrides (scoped to messages page)
+ *  MP-WEIXIN parity overrides — HARDCODED values, no CSS vars.
  * ================================================================ */
 /* #ifdef MP-WEIXIN */
 
-/* Message cards: pure content, can be overflow:visible */
-.msg-card {
-  overflow: visible;
+.messages-page {
+  background-color: #eaeff5;
 }
 
-/* Segment bar: overflow:visible for shadow, active tab gets a tint */
+.msg-card {
+  overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.18),
+              0 1px 5px  rgba(0,0,0,0.10);
+}
+
 .segment-bar {
   overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.14);
 }
 
 .seg-active {
-  background: var(--primary-soft);
-  color: var(--primary-color);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.14);
+  background: #dbeafe;
+  color: #2563eb;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.22);
 }
 
 /* #endif */
