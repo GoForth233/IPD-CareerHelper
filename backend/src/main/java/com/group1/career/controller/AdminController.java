@@ -490,6 +490,28 @@ public class AdminController {
         return Result.success();
     }
 
+    @Operation(summary = "Toggle pin status of a home article")
+    @PatchMapping("/content/articles/{id}/pin")
+    @AuditLog(action = "TOGGLE_PIN_ARTICLE", targetType = "HOME_ARTICLE")
+    public Result<HomeArticle> togglePin(@PathVariable Long id) {
+        requireAdmin();
+        HomeArticle article = homeArticleRepository.findById(id)
+                .orElseThrow(() -> new BizException("Article not found"));
+        article.setPinned(!Boolean.TRUE.equals(article.getPinned()));
+        return Result.success(homeArticleRepository.save(article));
+    }
+
+    @Operation(summary = "Toggle hidden status of a home article")
+    @PatchMapping("/content/articles/{id}/hide")
+    @AuditLog(action = "TOGGLE_HIDE_ARTICLE", targetType = "HOME_ARTICLE")
+    public Result<HomeArticle> toggleHide(@PathVariable Long id) {
+        requireAdmin();
+        HomeArticle article = homeArticleRepository.findById(id)
+                .orElseThrow(() -> new BizException("Article not found"));
+        article.setHidden(!Boolean.TRUE.equals(article.getHidden()));
+        return Result.success(homeArticleRepository.save(article));
+    }
+
     // ─────────────────── F18: Analytics ───────────────────
 
     @Operation(summary = "Analytics summary — platform totals + 30-day event breakdown")

@@ -77,9 +77,9 @@ public class HomepageController {
                 .map(this::toVideoCard)
                 .collect(Collectors.toList());
 
-        // 2. Articles — newest first, capped.
+        // 2. Articles — pinned first, then newest, excludes hidden.
         List<ArticleDto> articles = homeArticleRepository
-                .findAllByOrderByPublishedAtDescIdDesc(PageRequest.of(0, ARTICLE_LIMIT))
+                .findAllByHiddenFalseOrderByPinnedDescPublishedAtDescIdDesc(PageRequest.of(0, ARTICLE_LIMIT))
                 .stream()
                 .map(this::toArticleDto)
                 .collect(Collectors.toList());

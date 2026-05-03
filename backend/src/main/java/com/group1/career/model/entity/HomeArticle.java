@@ -49,6 +49,21 @@ public class HomeArticle {
     @Column(name = "category", length = 32)
     private String category;
 
+    /** Origin: MANUAL (admin-entered) | RSS_JUEJIN | RSS_36KR */
+    @Column(name = "source", length = 20)
+    @Builder.Default
+    private String source = "MANUAL";
+
+    /** Admin-pinned articles appear at the top of the home feed. */
+    @Column(name = "pinned", nullable = false)
+    @Builder.Default
+    private Boolean pinned = false;
+
+    /** Hidden articles are excluded from the home feed. */
+    @Column(name = "hidden", nullable = false)
+    @Builder.Default
+    private Boolean hidden = false;
+
     @Column(name = "published_at")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime publishedAt;
