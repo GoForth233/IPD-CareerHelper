@@ -11,6 +11,7 @@ import com.group1.career.repository.HomeVideoRepository;
 import com.group1.career.repository.InterviewRepository;
 import com.group1.career.repository.UserRepository;
 import com.group1.career.service.CareerService;
+import com.group1.career.service.HomeContentRefreshJob;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
@@ -19,7 +20,9 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -50,12 +55,39 @@ public class HomepageController {
     private static final int CONSULTATION_LIMIT = 3;
     private static final int CAREER_CARD_LIMIT = 4;
 
+    private static final int REFRESH_RATE_LIMIT = 3;
+    private static final long REFRESH_WINDOW_MINUTES = 5L;
+
     private final CareerService careerService;
     private final UserRepository userRepository;
     private final InterviewRepository interviewRepository;
     private final HomeVideoRepository homeVideoRepository;
     private final HomeArticleRepository homeArticleRepository;
     private final HomeConsultationRepository homeConsultationRepository;
+    private final HomeContentRefreshJob homeContentRefreshJob;
+    private final StringRedisTemplate redisTemplate;
+
+    @Operation(summary = "Manually trigger a fresh Bilibili video pull (rate-limited: 3×/5 min per user)")
+    @PostMapping("/refresh")
+    public Result<String> triggerRefresh(@RequestParam(required = false) Long userId) {
+        String key = "home:refresh:" + (userId != null ? "u:" + userId : "anon");
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            redisTemplate.expire(key, REFRESH_WINDOW_MINUTES, TimeUnit.MINUTES);
+        }
+        if (count != null && count > REFRESH_RATE_LIMIT) {
+            return Result.error(429, "刷新太频繁，请 5 分钟后再试");
+        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                int written = homeContentRefreshJob.refresh();
+                log.info("[home-refresh] manual trigger wrote {} new videos (user={})", written, userId);
+            } catch (Exception e) {
+                log.error("[home-refresh] manual trigger failed", e);
+            }
+        });
+        return Result.success("内容刷新已触发");
+    }
 
     @Operation(summary = "Get homepage aggregated feed (videos, articles, consultations, paths, stats)")
     @GetMapping("/feed")

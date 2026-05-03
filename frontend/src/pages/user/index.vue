@@ -1,10 +1,10 @@
 <template>
-  <view class="user-page" :class="{ 'is-dark': darkPref }">
+  <view class="user-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
-      <text class="page-title">Profile</text>
-      <text class="page-subtitle">Manage your account, preferences, and career assets.</text>
+      <text class="page-title">{{ $t('profile.title') }}</text>
+      <text class="page-subtitle">{{ $t('profile.subtitle') }}</text>
     </view>
 
     <!-- Header card: logged in -->
@@ -28,101 +28,127 @@
 
     <!-- Header card: not logged in -->
     <view class="header-card header-guest" v-else>
-      <text class="guest-title">Not Signed In</text>
-      <text class="guest-desc">Sign in to sync assessments, resumes, and interview records</text>
-      <button class="btn-login" @click="goLogin">Sign In</button>
+      <text class="guest-title">{{ $t('profile.notSignedIn') }}</text>
+      <text class="guest-desc">{{ $t('profile.notSignedInDesc') }}</text>
+      <button class="btn-login" @click="goLogin">{{ $t('profile.signIn') }}</button>
     </view>
 
     <!-- Stats bar -->
     <view class="stats-bar" v-if="isLoggedIn">
       <view class="stat-item">
         <text class="stat-val">{{ statsInterviews }}</text>
-        <text class="stat-label">Interviews</text>
+        <text class="stat-label">{{ $t('profile.interviews') }}</text>
       </view>
       <view class="stat-divider"></view>
       <view class="stat-item">
         <text class="stat-val">{{ statsResumes }}</text>
-        <text class="stat-label">Resumes</text>
+        <text class="stat-label">{{ $t('profile.resumes') }}</text>
       </view>
     </view>
 
     <!-- Menu group 1: My Assets -->
-    <text class="group-label">My Assets</text>
+    <text class="group-label">{{ $t('profile.assets') }}</text>
     <view class="menu-card">
       <view class="menu-item" @click="goResumes">
         <text class="menu-icon">📄</text>
-        <text class="menu-text">Resume Hub</text>
+        <text class="menu-text">{{ $t('profile.resumeHub') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="navTo('/pages/assessment/index')">
         <text class="menu-icon">📝</text>
-        <text class="menu-text">My Assessments</text>
+        <text class="menu-text">{{ $t('profile.myAssessments') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="navTo('/pages/interview/history')">
         <text class="menu-icon">💼</text>
-        <text class="menu-text">Interview Records</text>
+        <text class="menu-text">{{ $t('profile.interviewRecords') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" v-if="isLoggedIn" @click="navTo('/pages/user/memory')">
         <text class="menu-icon">🧠</text>
-        <text class="menu-text">AI Memory</text>
+        <text class="menu-text">{{ $t('profile.aiMemory') }}</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
 
     <!-- Menu group 2: Appearance & Accessibility -->
-    <text class="group-label">Appearance & Accessibility</text>
+    <text class="group-label">{{ $t('profile.appearance') }}</text>
     <view class="menu-card">
       <view class="menu-item">
-        <text class="menu-icon">🌙</text>
-        <text class="menu-text">Dark Mode</text>
-        <switch class="dark-switch" :checked="darkPref" color="#2563eb" @change="toggleDark" />
+        <text class="menu-icon">�</text>
+        <text class="menu-text">{{ $t('profile.theme') }}</text>
+        <view class="theme-pills">
+          <view class="pill" :class="{ 'pill-active': theme === 'light' }" @click="applyTheme('light')">
+            <text>☀️</text>
+          </view>
+          <view class="pill" :class="{ 'pill-active': theme === 'dark' }" @click="applyTheme('dark')">
+            <text>🌙</text>
+          </view>
+          <view class="pill" :class="{ 'pill-active': theme === 'green' }" @click="applyTheme('green')">
+            <text>🌿</text>
+          </view>
+        </view>
       </view>
       <view class="menu-item">
         <text class="menu-icon">🔤</text>
-        <text class="menu-text">Font Size</text>
+        <text class="menu-text">{{ $t('profile.fontSize') }}</text>
         <view class="font-pills">
           <view
             class="pill"
-            :class="{ 'pill-active': fontPref === 'compact' }"
-            @click="setFont('compact')"
-          ><text>Sm</text></view>
+            :class="{ 'pill-active': font === 'compact' }"
+            @click="applyFont('compact')"
+          ><text>{{ $t('profile.fontSmall') }}</text></view>
           <view
             class="pill"
-            :class="{ 'pill-active': fontPref === 'standard' }"
-            @click="setFont('standard')"
-          ><text>Md</text></view>
+            :class="{ 'pill-active': font === 'standard' }"
+            @click="applyFont('standard')"
+          ><text>{{ $t('profile.fontMedium') }}</text></view>
           <view
             class="pill"
-            :class="{ 'pill-active': fontPref === 'large' }"
-            @click="setFont('large')"
-          ><text>Lg</text></view>
+            :class="{ 'pill-active': font === 'large' }"
+            @click="applyFont('large')"
+          ><text>{{ $t('profile.fontLarge') }}</text></view>
+        </view>
+      </view>
+      <view class="menu-item">
+        <text class="menu-icon">🌐</text>
+        <text class="menu-text">{{ $t('profile.language') }}</text>
+        <view class="font-pills">
+          <view
+            class="pill"
+            :class="{ 'pill-active': currentLang === 'zh-CN' }"
+            @click="applyLang('zh-CN')"
+          ><text>中文</text></view>
+          <view
+            class="pill"
+            :class="{ 'pill-active': currentLang === 'en-US' }"
+            @click="applyLang('en-US')"
+          ><text>EN</text></view>
         </view>
       </view>
     </view>
 
     <!-- Menu group 3: Legal & Support -->
-    <text class="group-label">Legal & Support</text>
+    <text class="group-label">{{ $t('profile.legalAndSupport') }}</text>
     <view class="menu-card">
       <view class="menu-item" @click="navTo('/pages/user/feedback')">
         <text class="menu-icon">💬</text>
-        <text class="menu-text">Feedback</text>
+        <text class="menu-text">{{ $t('profile.feedback') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="openConsent('privacy')">
         <text class="menu-icon">🔒</text>
-        <text class="menu-text">Privacy Policy</text>
+        <text class="menu-text">{{ $t('profile.privacyPolicy') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="openConsent('terms')">
         <text class="menu-icon">📋</text>
-        <text class="menu-text">Terms of Service</text>
+        <text class="menu-text">{{ $t('profile.termsOfService') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item menu-item-danger" v-if="isLoggedIn" @click="handleDeleteAccount">
         <text class="menu-icon">🗑️</text>
-        <text class="menu-text menu-text-danger">Delete Account</text>
+        <text class="menu-text menu-text-danger">{{ $t('profile.deleteAccount') }}</text>
         <text class="menu-arrow menu-arrow-danger">›</text>
       </view>
     </view>
@@ -132,7 +158,7 @@
 
     <view class="bottom-section">
       <!-- Logout -->
-      <button class="btn-logout" v-if="isLoggedIn" @click="handleLogout">Sign Out</button>
+      <button class="btn-logout" v-if="isLoggedIn" @click="handleLogout">{{ $t('profile.signOut') }}</button>
       <view class="bottom-safe"></view>
     </view>
 
@@ -166,12 +192,35 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getUserInterviewsApi } from '@/api/interview';
 import { getUserResumesApi } from '@/api/resume';
 import { updateUserApi, getUserInfoApi, requestDeletionApi } from '@/api/user';
 import { uploadFileApi } from '@/api/file';
+import { useTheme, type ThemeKey, type FontKey } from '@/utils/theme';
+import { setLocale, currentLocale, type LangCode } from '@/locales/index';
+
+const { t } = useI18n();
+const { theme, font, themeClass, fontClass, setTheme, setFont } = useTheme();
+const currentLang = ref<LangCode>(currentLocale());
+
+const applyTheme = (themeKey: ThemeKey) => {
+  setTheme(themeKey);
+  uni.showToast({ title: themeKey === 'dark' ? '深色模式' : themeKey === 'green' ? '护眼绿主题' : '亮色模式', icon: 'none' });
+};
+
+const applyFont = (f: FontKey) => {
+  setFont(f);
+  uni.showToast({ title: '字号已更新', icon: 'none' });
+};
+
+const applyLang = (lang: LangCode) => {
+  setLocale(lang);
+  currentLang.value = lang;
+  uni.showToast({ title: lang === 'zh-CN' ? '已切换为中文' : 'Switched to English', icon: 'none' });
+};
 
 const userInfo = ref({
   nickname: '',
@@ -197,8 +246,6 @@ const avatarSrc = computed(() => {
   if (raw && /^https?:\/\//i.test(raw)) return raw;
   return '/static/default-avatar.png';
 });
-const darkPref = ref(false);
-const fontPref = ref('standard');
 const topSafeHeight = ref(44);
 
 const statsInterviews = ref(0);
@@ -300,18 +347,6 @@ const handleAvatarClick = () => {
   });
 };
 
-const toggleDark = (e: any) => {
-  darkPref.value = e.detail.value;
-  uni.setStorageSync('app_pref_dark', darkPref.value ? '1' : '0');
-  uni.showToast({ title: darkPref.value ? 'Dark mode enabled' : 'Dark mode disabled', icon: 'none' });
-};
-
-const setFont = (size: string) => {
-  fontPref.value = size;
-  uni.setStorageSync('app_pref_font', size);
-  uni.showToast({ title: 'Saved', icon: 'none' });
-};
-
 const openConsent = (type: 'privacy' | 'terms') => {
   uni.navigateTo({ url: `/pages/consent/index?view=${type}` });
 };
@@ -346,15 +381,15 @@ const handleDeleteAccount = () => {
 
 const handleLogout = () => {
   uni.showModal({
-    title: 'Sign Out',
-    content: 'Are you sure you want to sign out? Your local data will be cleared.',
+    title: t('profile.signOutConfirmTitle'),
+    content: t('profile.signOutConfirmContent'),
     confirmColor: '#ef4444',
     success: (res) => {
       if (res.confirm) {
         clearAuthState();
         userId.value = '';
         userInfo.value = { nickname: '', avatarUrl: '', avatarViewUrl: '', school: '', major: '', gradYear: '' };
-        uni.showToast({ title: 'Signed out', icon: 'success' });
+        uni.showToast({ title: t('common.success'), icon: 'success' });
         setTimeout(() => {
           uni.reLaunch({ url: LOGIN_PAGE });
         }, 400);
@@ -398,9 +433,6 @@ onMounted(() => {
     editForm.value.major = userInfo.value.major || '';
     editForm.value.gradYear = userInfo.value.gradYear || '';
   }
-
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
-  fontPref.value = uni.getStorageSync('app_pref_font') || 'standard';
 
   topSafeHeight.value = getTopSafeHeight();
 
@@ -468,7 +500,7 @@ onMounted(() => {
   background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
   border-radius: 20px; padding: 24px 20px; margin: 12px 0 16px;
   display: flex; align-items: center; gap: 16px;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+  box-shadow: 0 10px 28px rgba(37,99,235,0.38), 0 4px 10px rgba(37,99,235,0.22);
 }
 
 .header-guest {
@@ -509,8 +541,8 @@ onMounted(() => {
   display: flex; align-items: center;
   background: #ffffff; border-radius: 16px;
   padding: 16px 0; margin-bottom: 24px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid #b8c8d8;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
 }
 
 .stat-item {
@@ -539,8 +571,8 @@ onMounted(() => {
 .menu-card {
   background: #ffffff; border-radius: 16px;
   overflow: hidden; margin-bottom: 24px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid #b8c8d8;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
 }
 
 .menu-item {
@@ -572,11 +604,12 @@ onMounted(() => {
 .dark-switch { transform: scale(0.85); }
 
 .font-pills { display: flex; gap: 6px; }
+.theme-pills { display: flex; gap: 6px; }
 
 /* Each pill needs >=44pt for thumb access (HCI: Apple HIG / WCAG 2.5.5).
    Inner <text> stays small for visual rhythm. */
 .pill {
-  min-width: 44px; min-height: 32px;
+  min-width: 44px; min-height: 44px;
   padding: 6px 14px; border-radius: 10px;
   font-size: 13px; font-weight: 600; color: #64748b;
   background: #f1f5f9;
@@ -661,4 +694,38 @@ onMounted(() => {
 .is-dark .field-label { color: #e2e8f0; }
 .is-dark .field-input { background: #0f172a; border-color: #334155; color: #f8fafc; }
 .is-dark .btn-secondary { background: #334155; color: #e2e8f0; }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides — HARDCODED values, no CSS vars.
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+.user-page {
+  background-color: #eaeff5;
+}
+
+.header-card {
+  overflow: visible;
+  box-shadow: 0 10px 30px rgba(37,99,235,0.40),
+              0 4px 12px  rgba(37,99,235,0.24);
+}
+
+.stats-bar {
+  overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.18),
+              0 1px 5px  rgba(0,0,0,0.10);
+}
+
+.menu-card {
+  overflow: hidden;
+  box-shadow: none;
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.18));
+}
+
+.menu-item:not(:last-child)::after {
+  background: #c0ccd8;
+}
+
+/* #endif */
 </style>

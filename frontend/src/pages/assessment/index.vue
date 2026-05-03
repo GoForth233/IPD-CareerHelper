@@ -320,13 +320,13 @@ onShow(() => {
 
 .assessment-card {
   background-color: #ffffff;
-  border: 1px solid var(--border-color);
+  border: 1px solid #b8c8d8;
   border-radius: 20px;
   padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
   transition: transform 0.2s ease;
 }
 
@@ -449,4 +449,35 @@ onShow(() => {
 .is-dark .summary-text,
 .is-dark .flow-desc,
 .is-dark .tag { color: #94a3b8; }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides — HARDCODED values, no CSS vars.
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+.assessment-page,
+.page-wrap {
+  background-color: #eaeff5;
+}
+
+.status-card {
+  overflow: hidden;
+  box-shadow: none;
+  filter: drop-shadow(0 12px 28px rgba(37,99,235,0.38));
+}
+
+.assessment-card {
+  overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22),
+              0 2px 6px  rgba(0,0,0,0.12);
+}
+
+.radar-placeholder {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(255,255,255,0.30);
+}
+
+/* #endif */
 </style>

@@ -509,4 +509,25 @@ const startInterview = async () => {
 .is-dark .btn-disabled .btn-primary-label {
   color: #94a3b8;
 }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to interview/start page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* Sticky CTA: backdrop-filter not supported — use solid background */
+.sticky-cta {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: #f5f5f7;
+}
+
+/* Mode cards and diff cards: overflow:visible for visible shadows */
+.mode-card,
+.diff-card,
+.expect-card {
+  overflow: visible;
+}
+
+/* #endif */
 </style>

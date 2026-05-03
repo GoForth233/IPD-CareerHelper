@@ -171,8 +171,11 @@ const loadResumes = async () => {
   }
   isLoading.value = true;
   try {
-    const resumes = await getUserResumesApi(numericId);
-    resumeList.value = (resumes || []).map((r: Resume) => ({
+    const raw = await getUserResumesApi(numericId);
+    // Guard against the API returning a non-array (e.g. a paginated
+    // wrapper object or a null body) to prevent ".map is not a function".
+    const resumes: Resume[] = Array.isArray(raw) ? raw : [];
+    resumeList.value = resumes.map((r: Resume) => ({
       resumeId: r.resumeId,
       name: r.title || r.fileUrl?.split('/').pop() || 'Untitled.pdf',
       date: formatRelative(r.updatedAt || r.createdAt),
@@ -721,4 +724,26 @@ onShow(() => {
 .is-dark .sheet-option,
 .is-dark .sheet-title-bar,
 .is-dark .sheet-cancel { background: #1e293b; border-color: #334155; }
+
+/* ================================================================
+ *  MP-WEIXIN parity overrides (scoped to resume hub page)
+ * ================================================================ */
+/* #ifdef MP-WEIXIN */
+
+/* Sheet panels already have 96% opacity — just strip the
+   unneeded backdrop-filter call. */
+.sheet-title-bar,
+.sheet-option {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: #ffffff;
+}
+
+/* Resume cards and add cards: overflow:visible for shadow */
+.resume-card,
+.add-card {
+  overflow: visible;
+}
+
+/* #endif */
 </style>

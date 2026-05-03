@@ -6,6 +6,8 @@ import { isLoggedIn, LOGIN_PAGE } from "@/utils/auth";
 const AGREEMENT_VERSION = '1.0';
 const CONSENT_KEY = `consent_v${AGREEMENT_VERSION}`;
 const CONSENT_PAGE = '/pages/consent/index';
+const ONBOARDING_KEY = 'onboarding_v1_seen';
+const ONBOARDING_PAGE = '/pages/onboarding/index';
 
 onLaunch(() => {
   // F2: First-launch consent gate.
@@ -16,6 +18,20 @@ onLaunch(() => {
   if (!hasConsent) {
     uni.reLaunch({ url: CONSENT_PAGE });
     return;
+  }
+
+  // F20: First-run onboarding — show once, only for users who haven't
+  // logged in yet. Existing users (already have a session) skip it so a
+  // deploy doesn't force-redirect everyone who has been using the app.
+  const hasSeenOnboarding = uni.getStorageSync(ONBOARDING_KEY);
+  if (!hasSeenOnboarding && !isLoggedIn()) {
+    uni.reLaunch({ url: ONBOARDING_PAGE });
+    return;
+  }
+  // Mark as seen so the onboarding never shows again, even for guests who
+  // skip past it without explicitly finishing.
+  if (!hasSeenOnboarding) {
+    uni.setStorageSync(ONBOARDING_KEY, '1');
   }
 
   // Cold-start gate: real users *and* guests both keep their session.
@@ -47,8 +63,8 @@ onLaunch(() => {
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --text-tertiary: #8e8e93;
-  --border-color: #cbd5e1;
-  --border-strong: #b6c4d8;
+  --border-color: #b8c8d8;
+  --border-strong: #9aafc5;
   --interactive-label: var(--primary-color);
 
   --surface-1: #ffffff;
@@ -60,10 +76,10 @@ onLaunch(() => {
   --radius-lg: 20px;
   --radius-xl: 24px;
 
-  --shadow-xs: 0 1px 4px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.05);
-  --shadow-card: 0 4px 16px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-xs:   0 1px 3px rgba(0,0,0,0.08),  0 1px 8px  rgba(0,0,0,0.05);
+  --shadow-sm:   0 2px 8px  rgba(0,0,0,0.12),  0 1px 3px  rgba(0,0,0,0.07);
+  --shadow-card: 0 4px 16px rgba(0,0,0,0.14),  0 2px 6px  rgba(0,0,0,0.08);
+  --shadow-lg:   0 8px 24px rgba(0,0,0,0.18),  0 4px 10px rgba(0,0,0,0.10);
 
   --nav-back-width: 64px;
 
@@ -112,6 +128,55 @@ onLaunch(() => {
   }
 }
 /* #endif */
+
+/* ─── F5: 护眼绿主题 ─── */
+.theme-green {
+  background-color: #f0fdf4 !important;
+}
+.theme-green .ui-card,
+.theme-green .card,
+.theme-green .panel,
+.theme-green .section-card,
+.theme-green .app-surface {
+  background: #ffffff;
+  border-color: #bbf7d0;
+  box-shadow: 0 2px 8px rgba(5,150,105,0.08), 0 1px 3px rgba(5,150,105,0.05);
+}
+.theme-green .ui-list-item,
+.theme-green .list-item,
+.theme-green .item {
+  border-color: #bbf7d0;
+}
+.theme-green .ui-btn-primary,
+.theme-green .btn-primary,
+.theme-green .btn-send {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(5,150,105,0.3);
+}
+.theme-green .ui-input,
+.theme-green .input,
+.theme-green textarea.ui-input {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+/* ─── F6: 字号档位 ─── */
+.font-compact {
+  --font-hero:    24px;
+  --font-title:   16px;
+  --font-section: 15px;
+  --font-body:    13px;
+  --font-caption: 11px;
+  --font-micro:   10px;
+}
+.font-large {
+  --font-hero:    32px;
+  --font-title:   20px;
+  --font-section: 19px;
+  --font-body:    17px;
+  --font-caption: 15px;
+  --font-micro:   13px;
+}
 
 /* 全局基础样式 */
 page {
@@ -320,27 +385,22 @@ button {
 /* ============================================================== *
  *  WeChat Mini-Program parity layer
  *  -----------------------------------------------------------------
- *  WeChat's webview renders ~30% lighter box-shadows than Chrome,
- *  its <button> ships an ::after that overrides our radii/borders,
- *  and uniapp wrappers default to overflow:hidden which clips
- *  shadows. The H5 build doesn't suffer any of this, hence the
- *  visual gap. The block below reaches feature-parity for mp-weixin.
+ *  IMPORTANT: CSS custom properties set on :root / page do NOT
+ *  reliably cascade into scoped component <style> blocks in the
+ *  mini-program runtime (the variable is resolved at compile time,
+ *  not inherited from the document root). Therefore we AVOID
+ *  re-declaring variables here and instead directly override the
+ *  concrete CSS properties on known global selectors.
  * ============================================================== */
 /* #ifdef MP-WEIXIN */
 
-/* 1) Boost shadow strength to compensate for the dimmer mp renderer.
-      Re-declare the variables both on :root and page so the cascade
-      lands regardless of which selector the renderer respects. */
-:root,
+/* 1) Global page background: slightly darker blue-gray so white cards
+      have strong contrast and shadows become perceptible. */
 page {
-  --shadow-xs: 0 1px 4px rgba(15, 23, 42, 0.10);
-  --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.12);
-  --shadow-card: 0 6px 18px rgba(15, 23, 42, 0.14);
-  --shadow-lg: 0 10px 28px rgba(15, 23, 42, 0.18);
+  background-color: #eaeff5;
 }
 
-/* 2) Kill WeChat's native <button> decoration so our own
-      border / radius / shadow / background actually show up. */
+/* 2) Kill WeChat's native <button> decoration. */
 button {
   background: transparent;
   padding: 0;
@@ -354,10 +414,8 @@ button::after {
   content: none !important;
 }
 
-/* 3) Containers that own a box-shadow must NOT clip themselves.
-      `border-radius` alone does NOT clip a shadow — only
-      `overflow:hidden` does. uniapp's wrappers sometimes inherit
-      hidden, which is why your shadows "vanish" on the device. */
+/* 3) Global card selectors: hardcode shadow + border directly so the
+      values are NOT dependent on CSS variable resolution. */
 .ui-card,
 .card,
 .panel,
@@ -365,18 +423,50 @@ button::after {
 .app-surface,
 .ui-card-strong {
   overflow: visible;
+  border: 1.5px solid #b0bfd0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22),
+              0 2px 6px  rgba(0,0,0,0.12);
 }
 
-/* 4) Inputs and textareas in mp-weixin do not inherit font-size /
-      color cleanly. Pin them explicitly so the look matches H5. */
+/* 4) Global list items (menu rows, etc.) */
+.ui-list-item,
+.list-item,
+.item {
+  border: 1.5px solid #b0bfd0;
+}
+
+/* 5) Inputs: pin font-size and color.
+      Only apply the stronger border to elements that use the .ui-input
+      / .input utility classes (form inputs). Do NOT add border to bare
+      <input> / <textarea> elements — those are used inside custom
+      wrappers (like the chat bar) that provide their own border. */
 .ui-input,
 .input,
-textarea.ui-input,
+textarea.ui-input {
+  font-size: 14px;
+  color: #0f172a;
+  border: 1.5px solid #b0bfd0;
+}
 input,
 textarea {
   font-size: 14px;
-  color: var(--text-primary);
+  color: #0f172a;
 }
+
+/* 6) backdrop-filter unsupported — replace frosted navbars/footers
+      with solid fallbacks. */
+.chat-nav,
+.sticky-cta,
+.bottom-bar,
+.toolbar,
+.nav-bar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.chat-nav  { background: #ffffff; }
+.sticky-cta,
+.bottom-bar,
+.toolbar   { background: #f5f5f7; }
 
 /* #endif */
 </style>

@@ -134,7 +134,7 @@ import { isLoggedIn, LOGIN_PAGE } from '@/utils/auth';
 import request from '@/utils/request';
 
 /** Bump this when a major policy update requires all users to re-consent. */
-export const AGREEMENT_VERSION = '1.0';
+const AGREEMENT_VERSION = '1.0';
 
 /** localStorage key includes the version so old keys are ignored on upgrade. */
 const CONSENT_KEY = `consent_v${AGREEMENT_VERSION}`;
@@ -182,6 +182,10 @@ const onAgree = () => {
   recordConsentOnServer();
   if (isLoggedIn()) {
     uni.switchTab({ url: '/pages/home/index' });
+  } else if (!uni.getStorageSync('onboarding_v1_seen')) {
+    // F20: First-time users see onboarding after accepting consent,
+    // before they reach the login page.
+    uni.reLaunch({ url: '/pages/onboarding/index' });
   } else {
     uni.reLaunch({ url: LOGIN_PAGE });
   }
