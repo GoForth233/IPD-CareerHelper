@@ -78,6 +78,17 @@ export interface Organization {
   active?: boolean;
 }
 
+export interface UserFeedback {
+  id: number;
+  userId?: number;
+  category: string;
+  content: string;
+  contact?: string;
+  status: string;
+  repliedAt?: string;
+  createdAt?: string;
+}
+
 export const api = {
   // Auth — admin reuses the C-side /auth/login then checks /admin/whoami.
   login: (email: string, password: string) =>
@@ -113,6 +124,12 @@ export const api = {
 
   // Weekly report
   runWeeklyReport: () => http.post<{ delivered: number; skipped: number }>('/api/admin/weekly-report/run'),
+
+  // Feedback (F26)
+  listFeedbacks: (params?: { page?: number; size?: number; status?: string }) =>
+    http.get<{ content: UserFeedback[]; totalElements: number }>('/api/admin/feedback', { params }),
+  updateFeedbackStatus: (id: number, status: string) =>
+    http.post<UserFeedback>(`/api/admin/feedback/${id}/status`, { status }),
 };
 
 export default http;

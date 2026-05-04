@@ -4,11 +4,13 @@ import com.group1.career.model.NotificationTypes;
 import com.group1.career.model.entity.Interview;
 import com.group1.career.model.entity.UsageEvent;
 import com.group1.career.model.entity.User;
+import com.group1.career.repository.AssessmentRecordRepository;
 import com.group1.career.repository.CheckInRepository;
 import com.group1.career.repository.InterviewRepository;
 import com.group1.career.repository.NotificationRepository;
 import com.group1.career.repository.UsageEventRepository;
 import com.group1.career.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.service.AiService;
 import com.group1.career.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 
 /**
  * F14: AI Proactive Outreach Job.
@@ -49,10 +52,12 @@ public class AiProactiveJob {
     private final UserRepository userRepository;
     private final CheckInRepository checkInRepository;
     private final InterviewRepository interviewRepository;
+    private final AssessmentRecordRepository assessmentRecordRepository;
     private final NotificationRepository notificationRepository;
     private final AiService aiService;
     private final NotificationService notificationService;
     private final UsageEventRepository usageEventRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Scheduled(cron = "0 0 19 * * ?")
     public void run() {
@@ -138,6 +143,15 @@ public class AiProactiveJob {
             }
         }
 
+        String weakDimension = findWeakAssessmentDimension(userId, today);
+        if (weakDimension != null) {
+            return new TriggerResult(
+                    "LOW_ASSESSMENT_DIMENSION",
+                    "测评能力提升建议",
+                    "根据你的测评结果，有一个维度还有较大提升空间，来看看如何改进吧 📊",
+                    "/pages/assessment/index");
+        }
+
         if (today.getDayOfWeek() == DayOfWeek.SUNDAY) {
             return new TriggerResult(
                     "WEEKLY_FOCUS",
@@ -158,6 +172,9 @@ public class AiProactiveJob {
             case "LOW_INTERVIEW_SCORE" ->
                     "你是CareerLoop AI助手小职，用户「" + nickname +
                     "」最近模拟面试得分偏低，请写一条鼓励性的复盘提醒（1句话，不超过40字）";
+            case "LOW_ASSESSMENT_DIMENSION" ->
+                    "你是CareerLoop AI助手小职，用户「" + nickname +
+                    "」最近完成了职业性格测评，某个能力维度得分偏低，请写一条积极友好的鼓励语（1句话，不超过40字，鼓励继续探索提升）";
             case "WEEKLY_FOCUS" ->
                     "你是CareerLoop AI助手小职，请给用户「" + nickname +
                     "」写一条周日下周学习聚焦提醒（1句话，不超过40字，积极向上）";
@@ -168,6 +185,46 @@ public class AiProactiveJob {
         } catch (Exception e) {
             log.warn("[F14] AI generation fallback for user={}: {}", user.getUserId(), e.getMessage());
             return trigger.defaultMessage();
+        }
+    }
+
+    /**
+     * Looks at the user's most recent assessment record (within 7 days).
+     * Parses the resultJson dimension map and returns the weakest dimension code
+     * if its score is less than 50% of the highest-scoring dimension.
+     * Returns null if no recent assessment or no clear weak dimension.
+     */
+    private String findWeakAssessmentDimension(Long userId, LocalDate today) {
+        LocalDateTime sevenDaysAgo = today.atStartOfDay().minusDays(7);
+        var records = assessmentRecordRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (records.isEmpty()) return null;
+
+        var recent = records.stream()
+                .filter(r -> r.getCreatedAt() != null && r.getCreatedAt().isAfter(sevenDaysAgo))
+                .findFirst()
+                .orElse(null);
+        if (recent == null || recent.getResultJson() == null) return null;
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> scores = objectMapper.readValue(recent.getResultJson(), Map.class);
+            if (scores.isEmpty()) return null;
+
+            OptionalInt maxScore = scores.values().stream()
+                    .filter(v -> v instanceof Number)
+                    .mapToInt(v -> ((Number) v).intValue())
+                    .max();
+            if (maxScore.isEmpty() || maxScore.getAsInt() == 0) return null;
+
+            return scores.entrySet().stream()
+                    .filter(e -> e.getValue() instanceof Number)
+                    .filter(e -> ((Number) e.getValue()).intValue() < maxScore.getAsInt() * 0.5)
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            log.debug("[F14] Failed to parse assessment resultJson for user={}: {}", userId, e.getMessage());
+            return null;
         }
     }
 
