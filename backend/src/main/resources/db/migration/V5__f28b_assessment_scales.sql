@@ -2,6 +2,10 @@
 -- Uses INSERT IGNORE so re-running is idempotent.
 -- Scale IDs 2-6 (MBTI is scale_id=1 from seed_assessments.sql / manual seed).
 
+-- Give created_at columns a default so strict-mode INSERTs without them work
+ALTER TABLE `assessment_scales`    MODIFY COLUMN `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `assessment_questions` MODIFY COLUMN `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Scales
 -- ─────────────────────────────────────────────────────────────────────────────
