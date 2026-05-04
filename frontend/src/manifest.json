@@ -52,7 +52,7 @@
     "mp-weixin" : {
         "appid" : "wx8bdae792853cc263",
         "setting" : {
-            "urlCheck" : true
+            "urlCheck" : false
         },
         "usingComponents" : true,
         "permission" : {
