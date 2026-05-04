@@ -1,24 +1,14 @@
 <script setup lang="ts">
 import { onLaunch } from "@dcloudio/uni-app";
 import { isLoggedIn, LOGIN_PAGE } from "@/utils/auth";
+import { useTheme } from "@/utils/theme";
 
-/** Must match AGREEMENT_VERSION in pages/consent/index.vue */
-const AGREEMENT_VERSION = '1.0';
-const CONSENT_KEY = `consent_v${AGREEMENT_VERSION}`;
-const CONSENT_PAGE = '/pages/consent/index';
 const ONBOARDING_KEY = 'onboarding_v1_seen';
 const ONBOARDING_PAGE = '/pages/onboarding/index';
+const { refresh: refreshTheme } = useTheme();
 
 onLaunch(() => {
-  // F2: First-launch consent gate.
-  // If the user has never accepted the Privacy Policy + age check, always
-  // show the consent page regardless of login state. The consent page
-  // handles the subsequent routing (login page or home).
-  const hasConsent = uni.getStorageSync(CONSENT_KEY);
-  if (!hasConsent) {
-    uni.reLaunch({ url: CONSENT_PAGE });
-    return;
-  }
+  refreshTheme();
 
   // F20: First-run onboarding — show once, only for users who haven't
   // logged in yet. Existing users (already have a session) skip it so a
@@ -162,20 +152,20 @@ onLaunch(() => {
 
 /* ─── F6: 字号档位 ─── */
 .font-compact {
-  --font-hero:    24px;
-  --font-title:   16px;
-  --font-section: 15px;
-  --font-body:    13px;
-  --font-caption: 11px;
-  --font-micro:   10px;
+  --font-hero:    22px;
+  --font-title:   15px;
+  --font-section: 14px;
+  --font-body:    12px;
+  --font-caption: 10px;
+  --font-micro:   9px;
 }
 .font-large {
-  --font-hero:    32px;
-  --font-title:   20px;
-  --font-section: 19px;
-  --font-body:    17px;
-  --font-caption: 15px;
-  --font-micro:   13px;
+  --font-hero:    36px;
+  --font-title:   23px;
+  --font-section: 21px;
+  --font-body:    19px;
+  --font-caption: 17px;
+  --font-micro:   15px;
 }
 
 /* 全局基础样式 */

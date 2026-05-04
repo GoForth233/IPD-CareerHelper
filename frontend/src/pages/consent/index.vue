@@ -1,7 +1,7 @@
 <template>
   <view class="consent-page">
     <!-- App logo / brand header -->
-    <view class="brand-header">
+    <view class="brand-header" v-if="!readonlyMode">
       <view class="brand-logo-wrap">
         <text class="brand-logo-text">CL</text>
       </view>
@@ -10,7 +10,7 @@
     </view>
 
     <!-- Main consent card -->
-    <view class="consent-card">
+    <view class="consent-card" v-if="!readonlyMode">
       <text class="consent-title">Welcome to Career Loop</text>
       <text class="consent-desc">
         Before you start, please read our service agreements. We take your privacy seriously and will process your data in accordance with applicable laws.
@@ -72,56 +72,73 @@
     </view>
 
     <!-- Document viewer modal -->
-    <view class="doc-modal-mask" v-if="showDoc" @tap="showDoc = false">
+    <view class="doc-modal-mask" v-if="showDoc" @tap="closeDoc">
       <view class="doc-modal" @tap.stop>
         <view class="doc-modal-header">
           <text class="doc-modal-title">{{ docType === 'terms' ? 'Terms of Service' : 'Privacy Policy' }}</text>
-          <view class="doc-close-btn" @click="showDoc = false"><text class="doc-close-icon">✕</text></view>
+          <view class="doc-close-btn" @click="closeDoc"><text class="doc-close-icon">✕</text></view>
         </view>
         <scroll-view scroll-y class="doc-scroll">
           <!-- Privacy Policy content -->
           <view v-if="docType === 'privacy'">
             <text class="doc-section">1. Information We Collect</text>
             <text class="doc-body">We collect information you provide: nickname, email, profile details (school, major, graduation year), resume files, and interaction data with AI features. WeChat login collects your OpenID.</text>
+            <text class="doc-body">我们会收集你主动提供的信息：昵称、邮箱、个人资料（学校、专业、毕业年份）、简历文件，以及你使用 AI 功能时产生的交互数据。微信登录会收集你的 OpenID。</text>
             <text class="doc-section">2. How We Use Your Information</text>
             <text class="doc-body">We use your data to provide career guidance, personalize your experience, analyze resumes with AI, send verification codes, and improve our services.</text>
+            <text class="doc-body">我们使用这些信息为你提供职业指导、个性化体验、AI 简历分析、验证码发送以及服务改进。</text>
             <text class="doc-section">3. Data Storage &amp; Security</text>
             <text class="doc-body">Your data is stored on servers in mainland China. Resume files are encrypted via Aliyun OSS. Passwords are hashed with BCrypt and never stored in plain text.</text>
+            <text class="doc-body">你的数据存储在中国大陆服务器。简历文件通过阿里云 OSS 加密传输与存储。密码使用 BCrypt 哈希处理，不会明文保存。</text>
             <text class="doc-section">4. Data Sharing</text>
             <text class="doc-body">We do not sell your data. We share data only with trusted providers (Aliyun storage, AI model providers) necessary to operate the service, under confidentiality obligations.</text>
+            <text class="doc-body">我们不会出售你的个人数据。仅在服务运行必要时，与受信任的服务商（如阿里云存储、AI 模型服务商）共享必要数据，并要求其承担保密义务。</text>
             <text class="doc-section">5. Children's Privacy</text>
             <text class="doc-body">Career Loop is not intended for users under 14 years of age. By registering you confirm you are at least 14 years old. If we learn a user is under 14 we will delete their data promptly.</text>
+            <text class="doc-body">Career Loop 不面向 14 周岁以下用户。注册或登录即表示你确认已满 14 周岁。如发现未满 14 周岁用户，我们将及时删除相关数据。</text>
             <text class="doc-section">6. Data Retention &amp; Deletion</text>
             <text class="doc-body">Your data is retained while your account is active. You may request account deletion in Profile → Settings → Delete Account. Personal data is fully removed within 30 days of your request.</text>
+            <text class="doc-body">账号存续期间我们会保留必要数据。你可以在 Profile → 注销账号 提交删除申请，个人数据将在申请后 30 天内完成删除。</text>
             <text class="doc-section">7. Your Rights</text>
             <text class="doc-body">You have the right to access, correct, export, or delete your personal data. Contact support@careerloop.top to exercise these rights.</text>
+            <text class="doc-body">你有权访问、更正、导出或删除个人数据。可通过 support@careerloop.top 联系我们行使相关权利。</text>
             <text class="doc-section">8. Updates to this Policy</text>
             <text class="doc-body">We may update this policy and will notify you via in-app notification. Continued use after updates constitutes acceptance.</text>
+            <text class="doc-body">我们可能更新本政策，并通过站内通知等方式提示。更新后继续使用即表示你接受更新后的政策。</text>
           </view>
           <!-- Terms of Service content -->
           <view v-else>
             <text class="doc-section">1. Acceptance of Terms</text>
             <text class="doc-body">By using Career Loop you agree to these Terms of Service. If you do not agree, please do not use the application.</text>
+            <text class="doc-body">使用 Career Loop 即表示你同意本用户协议。如不同意，请不要使用本应用。</text>
             <text class="doc-section">2. Age Requirement</text>
             <text class="doc-body">You must be at least 14 years of age to register and use Career Loop. By creating an account you confirm you meet this requirement.</text>
+            <text class="doc-body">你必须年满 14 周岁才可注册和使用 Career Loop。创建账号即表示你确认符合该年龄要求。</text>
             <text class="doc-section">3. Use of Service</text>
             <text class="doc-body">Career Loop provides AI-powered career guidance, resume analysis, interview practice, and related tools. You agree to use the service only for lawful, personal purposes.</text>
+            <text class="doc-body">Career Loop 提供 AI 职业指导、简历分析、模拟面试等工具。你同意仅为合法、个人目的使用本服务。</text>
             <text class="doc-section">4. Account Responsibility</text>
             <text class="doc-body">You are responsible for maintaining the confidentiality of your credentials. Notify us immediately of any unauthorized use at support@careerloop.top.</text>
+            <text class="doc-body">你应妥善保管账号凭证。如发现未经授权使用，请立即通过 support@careerloop.top 联系我们。</text>
             <text class="doc-section">5. User Content</text>
             <text class="doc-body">You retain ownership of content you submit (e.g. resumes). By submitting content, you grant Career Loop a limited license to process it solely for providing the service to you.</text>
+            <text class="doc-body">你保留所提交内容（如简历）的所有权。提交内容即表示你授权 Career Loop 仅为向你提供服务而进行必要处理。</text>
             <text class="doc-section">6. Prohibited Conduct</text>
             <text class="doc-body">You may not: violate any laws, infringe intellectual property rights, transmit harmful content, circumvent security measures, or access another user's account.</text>
+            <text class="doc-body">你不得违反法律法规、侵犯知识产权、传播有害内容、绕过安全机制或访问他人账号。</text>
             <text class="doc-section">7. AI Disclaimer</text>
             <text class="doc-body">AI-generated career advice is for reference only and does not constitute professional career counseling. We make no guarantees about employment outcomes.</text>
+            <text class="doc-body">AI 生成的职业建议仅供参考，不构成专业职业咨询。我们不对求职或就业结果作出保证。</text>
             <text class="doc-section">8. Modifications</text>
             <text class="doc-body">We may modify these terms at any time. Continued use after changes constitutes acceptance of the revised terms.</text>
+            <text class="doc-body">我们可能随时修改本协议。修改后继续使用即表示你接受更新后的条款。</text>
             <text class="doc-section">9. Contact</text>
             <text class="doc-body">For questions: support@careerloop.top</text>
+            <text class="doc-body">如有问题，请联系：support@careerloop.top</text>
           </view>
         </scroll-view>
         <view class="doc-modal-footer">
-          <view class="doc-btn-close" @click="showDoc = false"><text class="doc-btn-close-text">I have read this</text></view>
+          <view class="doc-btn-close" @click="closeDoc"><text class="doc-btn-close-text">I have read this / 我已阅读</text></view>
         </view>
       </view>
     </view>
@@ -143,6 +160,7 @@ const ageChecked = ref(false);
 const termsChecked = ref(false);
 const showDoc = ref(false);
 const docType = ref<'privacy' | 'terms'>('privacy');
+const readonlyMode = ref(false);
 
 const canAgree = computed(() => ageChecked.value && termsChecked.value);
 
@@ -155,10 +173,18 @@ onMounted(() => {
   const pages = getCurrentPages();
   const current = pages[pages.length - 1];
   const viewParam = (current as any)?.options?.view as string | undefined;
+  readonlyMode.value = (current as any)?.options?.readonly === '1';
   if (viewParam === 'privacy' || viewParam === 'terms') {
     openDoc(viewParam);
   }
 });
+
+const closeDoc = () => {
+  showDoc.value = false;
+  if (readonlyMode.value) {
+    uni.navigateBack();
+  }
+};
 
 /** Fire-and-forget: persist consent to server after login. */
 const recordConsentOnServer = () => {
