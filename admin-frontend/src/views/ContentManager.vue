@@ -50,7 +50,7 @@
           </el-table-column>
           <el-table-column prop="category" label="分类" width="90" />
           <el-table-column prop="publishedAt" label="发布时间" width="160" />
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="togglePin(row)"  :type="row.pinned ? 'warning' : ''">{{ row.pinned ? '取消置顶' : '置顶' }}</el-button>
               <el-button size="small" @click="toggleHide(row)" :type="row.hidden ? '' : 'info'">{{ row.hidden ? '取消隐藏' : '隐藏' }}</el-button>
