@@ -16,6 +16,7 @@ const routes = [
       { path: 'broadcast', name: 'broadcast', component: () => import('@/views/Broadcast.vue') },
       { path: 'analytics', name: 'analytics', component: () => import('@/views/Analytics.vue') },
       { path: 'audit-log', name: 'audit-log', component: () => import('@/views/AuditLog.vue') },
+      { path: 'feedback', name: 'feedback', component: () => import('@/views/Feedback.vue') },
     ],
   },
 ];

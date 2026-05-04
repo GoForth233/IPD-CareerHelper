@@ -353,28 +353,44 @@ const openConsent = (type: 'privacy' | 'terms') => {
 
 const handleDeleteAccount = () => {
   uni.showModal({
-    title: '⚠️ Delete Account',
-    content: 'Your account will be scheduled for deletion. You have 30 days to cancel by signing back in. After 30 days all your data will be permanently erased.',
-    confirmText: 'Delete',
-    cancelText: 'Cancel',
+    title: '⚠️ 注销账号',
+    content: '注销后账号将进入 30 天冷静期，期间可重新登录恢复。期满后所有数据将被永久删除且不可恢复。',
+    confirmText: '继续',
+    cancelText: '取消',
     confirmColor: '#ef4444',
-    success: async (res) => {
+    success: (res) => {
       if (!res.confirm) return;
-      try {
-        uni.showLoading({ title: 'Processing...', mask: true });
-        await requestDeletionApi();
-        uni.hideLoading();
-        clearAuthState();
-        uni.showModal({
-          title: 'Deletion Scheduled',
-          content: 'Your account is scheduled for deletion in 30 days. To cancel, sign in again within 30 days.',
-          showCancel: false,
-          success: () => { uni.reLaunch({ url: LOGIN_PAGE }); }
-        });
-      } catch (e: any) {
-        uni.hideLoading();
-        uni.showToast({ title: e?.message || 'Failed, please try again', icon: 'none' });
-      }
+      uni.showModal({
+        title: '请输入确认信息',
+        content: '在下方输入"确认注销"以继续',
+        editable: true,
+        placeholderText: '确认注销',
+        confirmText: '确认注销',
+        cancelText: '取消',
+        confirmColor: '#ef4444',
+        success: async (res2) => {
+          if (!res2.confirm) return;
+          if ((res2 as any).content?.trim() !== '确认注销') {
+            uni.showToast({ title: '输入内容不正确，注销已取消', icon: 'none', duration: 2500 });
+            return;
+          }
+          try {
+            uni.showLoading({ title: '处理中…', mask: true });
+            await requestDeletionApi();
+            uni.hideLoading();
+            clearAuthState();
+            uni.showModal({
+              title: '注销申请已提交',
+              content: '账号已进入 30 天冷静期。如需恢复，请在 30 天内重新登录。',
+              showCancel: false,
+              success: () => { uni.reLaunch({ url: LOGIN_PAGE }); }
+            });
+          } catch (e: any) {
+            uni.hideLoading();
+            uni.showToast({ title: e?.message || '操作失败，请重试', icon: 'none' });
+          }
+        }
+      });
     }
   });
 };

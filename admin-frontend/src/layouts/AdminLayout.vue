@@ -12,6 +12,7 @@
         <el-menu-item index="broadcast" :route="{ name: 'broadcast' }">Broadcast</el-menu-item>
         <el-menu-item index="analytics" :route="{ name: 'analytics' }">Analytics</el-menu-item>
         <el-menu-item index="audit-log" :route="{ name: 'audit-log' }">Audit Log</el-menu-item>
+        <el-menu-item index="feedback" :route="{ name: 'feedback' }">Feedback</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -44,6 +45,7 @@ const headerTitle = computed(() => {
     broadcast: 'Broadcast',
     analytics: 'Analytics',
     'audit-log': 'Audit Log',
+    'feedback': 'User Feedback',
   };
   return map[route.name as string] || 'Admin';
 });
