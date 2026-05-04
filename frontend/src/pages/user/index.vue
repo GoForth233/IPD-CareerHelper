@@ -3,8 +3,8 @@
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
-      <text class="page-title">{{ $t('profile.title') }}</text>
-      <text class="page-subtitle">{{ $t('profile.subtitle') }}</text>
+      <text class="page-title">{{ t('profile.title') }}</text>
+      <text class="page-subtitle">{{ t('profile.subtitle') }}</text>
     </view>
 
     <!-- Header card: logged in -->
@@ -28,55 +28,55 @@
 
     <!-- Header card: not logged in -->
     <view class="header-card header-guest" v-else>
-      <text class="guest-title">{{ $t('profile.notSignedIn') }}</text>
-      <text class="guest-desc">{{ $t('profile.notSignedInDesc') }}</text>
-      <button class="btn-login" @click="goLogin">{{ $t('profile.signIn') }}</button>
+      <text class="guest-title">{{ t('profile.notSignedIn') }}</text>
+      <text class="guest-desc">{{ t('profile.notSignedInDesc') }}</text>
+      <button class="btn-login" @click="goLogin">{{ t('profile.signIn') }}</button>
     </view>
 
     <!-- Stats bar -->
     <view class="stats-bar" v-if="isLoggedIn">
       <view class="stat-item">
         <text class="stat-val">{{ statsInterviews }}</text>
-        <text class="stat-label">{{ $t('profile.interviews') }}</text>
+        <text class="stat-label">{{ t('profile.interviews') }}</text>
       </view>
       <view class="stat-divider"></view>
       <view class="stat-item">
         <text class="stat-val">{{ statsResumes }}</text>
-        <text class="stat-label">{{ $t('profile.resumes') }}</text>
+        <text class="stat-label">{{ t('profile.resumes') }}</text>
       </view>
     </view>
 
     <!-- Menu group 1: My Assets -->
-    <text class="group-label">{{ $t('profile.assets') }}</text>
+    <text class="group-label">{{ t('profile.assets') }}</text>
     <view class="menu-card">
       <view class="menu-item" @click="goResumes">
         <text class="menu-icon">📄</text>
-        <text class="menu-text">{{ $t('profile.resumeHub') }}</text>
+        <text class="menu-text">{{ t('profile.resumeHub') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="navTo('/pages/assessment/index')">
         <text class="menu-icon">📝</text>
-        <text class="menu-text">{{ $t('profile.myAssessments') }}</text>
+        <text class="menu-text">{{ t('profile.myAssessments') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="navTo('/pages/interview/history')">
         <text class="menu-icon">💼</text>
-        <text class="menu-text">{{ $t('profile.interviewRecords') }}</text>
+        <text class="menu-text">{{ t('profile.interviewRecords') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" v-if="isLoggedIn" @click="navTo('/pages/user/memory')">
         <text class="menu-icon">🧠</text>
-        <text class="menu-text">{{ $t('profile.aiMemory') }}</text>
+        <text class="menu-text">{{ t('profile.aiMemory') }}</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
 
     <!-- Menu group 2: Appearance & Accessibility -->
-    <text class="group-label">{{ $t('profile.appearance') }}</text>
+    <text class="group-label">{{ t('profile.appearance') }}</text>
     <view class="menu-card">
       <view class="menu-item">
-        <text class="menu-icon">�</text>
-        <text class="menu-text">{{ $t('profile.theme') }}</text>
+        <text class="menu-icon">🎨</text>
+        <text class="menu-text">{{ t('profile.theme') }}</text>
         <view class="theme-pills">
           <view class="pill" :class="{ 'pill-active': theme === 'light' }" @click="applyTheme('light')">
             <text>☀️</text>
@@ -91,28 +91,28 @@
       </view>
       <view class="menu-item">
         <text class="menu-icon">🔤</text>
-        <text class="menu-text">{{ $t('profile.fontSize') }}</text>
+        <text class="menu-text">{{ t('profile.fontSize') }}</text>
         <view class="font-pills">
           <view
             class="pill"
             :class="{ 'pill-active': font === 'compact' }"
             @click="applyFont('compact')"
-          ><text>{{ $t('profile.fontSmall') }}</text></view>
+          ><text>{{ t('profile.fontSmall') }}</text></view>
           <view
             class="pill"
             :class="{ 'pill-active': font === 'standard' }"
             @click="applyFont('standard')"
-          ><text>{{ $t('profile.fontMedium') }}</text></view>
+          ><text>{{ t('profile.fontMedium') }}</text></view>
           <view
             class="pill"
             :class="{ 'pill-active': font === 'large' }"
             @click="applyFont('large')"
-          ><text>{{ $t('profile.fontLarge') }}</text></view>
+          ><text>{{ t('profile.fontLarge') }}</text></view>
         </view>
       </view>
       <view class="menu-item">
         <text class="menu-icon">🌐</text>
-        <text class="menu-text">{{ $t('profile.language') }}</text>
+        <text class="menu-text">{{ t('profile.language') }}</text>
         <view class="font-pills">
           <view
             class="pill"
@@ -129,26 +129,26 @@
     </view>
 
     <!-- Menu group 3: Legal & Support -->
-    <text class="group-label">{{ $t('profile.legalAndSupport') }}</text>
+    <text class="group-label">{{ t('profile.legalAndSupport') }}</text>
     <view class="menu-card">
       <view class="menu-item" @click="navTo('/pages/user/feedback')">
         <text class="menu-icon">💬</text>
-        <text class="menu-text">{{ $t('profile.feedback') }}</text>
+        <text class="menu-text">{{ t('profile.feedback') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="openConsent('privacy')">
         <text class="menu-icon">🔒</text>
-        <text class="menu-text">{{ $t('profile.privacyPolicy') }}</text>
+        <text class="menu-text">{{ t('profile.privacyPolicy') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="openConsent('terms')">
         <text class="menu-icon">📋</text>
-        <text class="menu-text">{{ $t('profile.termsOfService') }}</text>
+        <text class="menu-text">{{ t('profile.termsOfService') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item menu-item-danger" v-if="isLoggedIn" @click="handleDeleteAccount">
         <text class="menu-icon">🗑️</text>
-        <text class="menu-text menu-text-danger">{{ $t('profile.deleteAccount') }}</text>
+        <text class="menu-text menu-text-danger">{{ t('profile.deleteAccount') }}</text>
         <text class="menu-arrow menu-arrow-danger">›</text>
       </view>
     </view>
@@ -158,7 +158,7 @@
 
     <view class="bottom-section">
       <!-- Logout -->
-      <button class="btn-logout" v-if="isLoggedIn" @click="handleLogout">{{ $t('profile.signOut') }}</button>
+      <button class="btn-logout" v-if="isLoggedIn" @click="handleLogout">{{ t('profile.signOut') }}</button>
       <view class="bottom-safe"></view>
     </view>
 
