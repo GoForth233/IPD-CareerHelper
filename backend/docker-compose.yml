@@ -76,6 +76,7 @@ services:
       BODY_LANG_SIDECAR_URL: ${BODY_LANG_SIDECAR_URL:-http://body-lang:8001}
       MYSQL_HOST: mysql
       REDIS_HOST: redis
+      SPRING_FLYWAY_OUT_OF_ORDER: "true"
     depends_on:
       mysql:
         condition: service_healthy
