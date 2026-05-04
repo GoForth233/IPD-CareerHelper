@@ -206,6 +206,13 @@
       <button class="btn-clear" @click="clearSearch">Clear Search</button>
     </view>
 
+    <view class="empty-state"
+          v-if="!searchQuery && homeError">
+      <text class="empty-icon">⚠️</text>
+      <text class="empty-text">{{ homeError }}</text>
+      <button class="btn-clear" @click="loadHomeContent">Retry</button>
+    </view>
+
     <view class="bottom-safe"></view>
   </view>
 </template>
@@ -253,6 +260,7 @@ const videos = ref<BiliVideoCard[]>([]);
 const articles = ref<HomeArticle[]>([]);
 const consultations = ref<HomeConsultation[]>([]);
 const careerCards = ref<CareerCard[]>([]);
+const homeError = ref('');
 const checkin = ref<CheckInStatus | null>(null);
 const checkinPercent = computed(() => {
   if (!checkin.value || !checkin.value.todayTotal) return 0;
@@ -324,6 +332,7 @@ const openArticle = (a: HomeArticle) => {
 };
 
 const loadHomeContent = async () => {
+  homeError.value = '';
   try {
     const userId = uni.getStorageSync('userId');
     const numericUserId = Number(userId);
@@ -335,11 +344,12 @@ const loadHomeContent = async () => {
     articles.value = data?.articles || [];
     consultations.value = data?.consultations || [];
     careerCards.value = data?.careerCards || [];
-  } catch {
+  } catch (e: any) {
     videos.value = [];
     articles.value = [];
     consultations.value = [];
     careerCards.value = [];
+    homeError.value = e?.message || '首页内容加载失败，请检查网络或后端服务';
   }
 };
 

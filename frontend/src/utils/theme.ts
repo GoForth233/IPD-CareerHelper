@@ -45,6 +45,7 @@ export function useTheme() {
     _theme.value = t;
     uni.setStorageSync(THEME_KEY, t);
     uni.setStorageSync(DARK_KEY, t === 'dark' ? '1' : '0');
+    _applyTabBarStyle(t);
   }
 
   function setFont(f: FontKey) {
@@ -55,6 +56,7 @@ export function useTheme() {
   function refresh() {
     _theme.value = _readTheme();
     _font.value  = _readFont();
+    _applyTabBarStyle(_theme.value);
   }
 
   return {
@@ -83,4 +85,33 @@ function _readFont(): FontKey {
     if (stored === 'compact' || stored === 'large') return stored;
   } catch { /* ignore */ }
   return 'standard';
+}
+
+function _applyTabBarStyle(t: ThemeKey) {
+  try {
+    if (t === 'dark') {
+      uni.setTabBarStyle({
+        color: '#94a3b8',
+        selectedColor: '#60a5fa',
+        backgroundColor: '#0f172a',
+        borderStyle: 'black',
+      });
+      return;
+    }
+    if (t === 'green') {
+      uni.setTabBarStyle({
+        color: '#64748b',
+        selectedColor: '#059669',
+        backgroundColor: '#f0fdf4',
+        borderStyle: 'white',
+      });
+      return;
+    }
+    uni.setTabBarStyle({
+      color: '#94a3b8',
+      selectedColor: '#2563eb',
+      backgroundColor: '#ffffff',
+      borderStyle: 'white',
+    });
+  } catch { /* ignore unsupported runtimes */ }
 }

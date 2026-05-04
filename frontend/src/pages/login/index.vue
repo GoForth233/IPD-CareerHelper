@@ -91,6 +91,14 @@
 
       <!-- Agreement -->
       <view class="agreement-row">
+        <view class="checkbox" :class="{ 'checked': ageConfirmed }" @click="ageConfirmed = !ageConfirmed">
+          <text v-if="ageConfirmed" class="check-mark">✓</text>
+        </view>
+        <view class="agreement-copy">
+          <text class="agreement-text">I confirm that I am 14 years of age or older / 我确认本人已满 14 周岁</text>
+        </view>
+      </view>
+      <view class="agreement-row">
         <view class="checkbox" :class="{ 'checked': agreed }" @click="agreed = !agreed">
           <text v-if="agreed" class="check-mark">✓</text>
         </view>
@@ -253,6 +261,7 @@ const account = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const verifyCode = ref('');
+const ageConfirmed = ref(false);
 const agreed = ref(false);
 const loading = ref(false);
 const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
@@ -342,7 +351,7 @@ const resetConfirmPwd = ref('');
 const resetting = ref(false);
 
 const canSubmit = computed(() => {
-  if (loading.value || !agreed.value || !account.value || !password.value) return false;
+  if (loading.value || !ageConfirmed.value || !agreed.value || !account.value || !password.value) return false;
   if (mode.value === 'register') return !!nickname.value && !!confirmPassword.value && !!verifyCode.value;
   return true;
 });
@@ -360,6 +369,7 @@ const switchMode = (m: 'login' | 'register') => {
 
 const sendRegisterCode = async () => {
   if (codeCooldown.value > 0 || sendingCode.value) return;
+  if (!ageConfirmed.value) { showSnack('Please confirm that you are at least 14 years old', 'error'); return; }
   if (!agreed.value) { showSnack('Please agree to the Terms of Service first', 'error'); return; }
   if (!account.value || !emailRegex.test(account.value)) { showSnack('Please enter a valid email first', 'error'); return; }
   if (emailExists.value) { showSnack('This email is already registered', 'error'); return; }
@@ -422,6 +432,7 @@ const agreementType = ref<'terms' | 'privacy'>('terms');
 const openAgreement = (type: 'terms' | 'privacy') => { agreementType.value = type; showAgreementModal.value = true; };
 
 const handleSubmit = async () => {
+  if (!ageConfirmed.value) { showSnack('Please confirm that you are at least 14 years old', 'error'); return; }
   if (!agreed.value) { showSnack('Please agree to the Terms of Service first', 'error'); return; }
   if (!account.value || !emailRegex.test(account.value)) { showSnack('Please enter a valid email address', 'error'); return; }
   if (!password.value) { showSnack('Please enter your password', 'error'); return; }
@@ -440,12 +451,14 @@ const handleSubmit = async () => {
       uni.setStorageSync('token', loginRes.token);
       uni.setStorageSync('userId', loginRes.user.userId);
       uni.setStorageSync('userInfo', loginRes.user);
+      uni.setStorageSync('consent_v1.0', '1');
       showSnack('Account created! Welcome 🎉', 'success');
     } else {
       const res = await loginApi({ identityType: 'EMAIL_PASSWORD', identifier: account.value, credential: password.value });
       uni.setStorageSync('token', res.token);
       uni.setStorageSync('userId', res.user.userId);
       uni.setStorageSync('userInfo', res.user);
+      uni.setStorageSync('consent_v1.0', '1');
       showSnack('Signed in successfully', 'success');
     }
     setTimeout(() => { uni.switchTab({ url: '/pages/home/index' }); }, 1000);
@@ -467,6 +480,7 @@ const handleSubmit = async () => {
  * want to gate first-run behind an extra modal.
  */
 const wxLogin = () => {
+  if (!ageConfirmed.value) { showSnack('Please confirm that you are at least 14 years old', 'error'); return; }
   if (!agreed.value) { showSnack('Please agree to the Terms of Service first', 'error'); return; }
   uni.showLoading({ title: 'Signing in...' });
   uni.login({
@@ -482,6 +496,7 @@ const wxLogin = () => {
         uni.setStorageSync('token', res.token);
         uni.setStorageSync('userId', res.user.userId);
         uni.setStorageSync('userInfo', res.user);
+        uni.setStorageSync('consent_v1.0', '1');
         uni.hideLoading();
         showSnack('Signed in successfully', 'success');
         setTimeout(() => { uni.switchTab({ url: '/pages/home/index' }); }, 1000);
@@ -497,7 +512,9 @@ const wxLogin = () => {
 };
 
 const guestLogin = () => {
+  if (!ageConfirmed.value) { showSnack('Please confirm that you are at least 14 years old', 'error'); return; }
   if (!agreed.value) { showSnack('Please agree to the Terms of Service first', 'error'); return; }
+  uni.setStorageSync('consent_v1.0', '1');
   // Guest mode now stores a sentinel userId (-1) plus an `isGuest` flag so
   // the App.vue cold-start gate doesn't treat the guest as "no session" and
   // kick them back here every relaunch.

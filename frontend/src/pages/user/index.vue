@@ -166,8 +166,12 @@
     <view class="modal-overlay" v-if="showProfileEdit" @click="showProfileEdit = false">
       <view class="modal-content bottom-sheet" @click.stop>
         <view class="sheet-handle"></view>
-        <text class="modal-title">Complete Profile</text>
+        <text class="modal-title">Edit Profile</text>
         
+        <view class="form-group">
+          <text class="field-label">Nickname</text>
+          <input class="field-input" v-model="editForm.nickname" placeholder="E.g. Kira" maxlength="64" />
+        </view>
         <view class="form-group">
           <text class="field-label">School / University</text>
           <input class="field-input" v-model="editForm.school" placeholder="E.g. Stanford University" />
@@ -252,7 +256,7 @@ const statsInterviews = ref(0);
 const statsResumes = ref(0);
 
 const showProfileEdit = ref(false);
-const editForm = ref({ school: '', major: '', gradYear: '' });
+const editForm = ref({ nickname: '', school: '', major: '', gradYear: '' });
 
 const isLoggedIn = computed(() => !!userId.value);
 
@@ -264,6 +268,7 @@ const openProfileEdit = () => {
   // Pre-populate the form with whatever we already know so the user is
   // editing, not retyping. (HCI: recognition over recall.)
   editForm.value = {
+    nickname: userInfo.value.nickname || '',
     school: userInfo.value.school || '',
     major: userInfo.value.major || '',
     gradYear: userInfo.value.gradYear || '',
@@ -280,6 +285,7 @@ const navTo = (url: string) => {
 };
 
 const saveProfile = async () => {
+  userInfo.value.nickname = editForm.value.nickname.trim() || userInfo.value.nickname;
   userInfo.value.school = editForm.value.school;
   userInfo.value.major = editForm.value.major;
   userInfo.value.gradYear = editForm.value.gradYear;
@@ -294,6 +300,7 @@ const saveProfile = async () => {
     try {
       const gradYearNum = editForm.value.gradYear ? Number(editForm.value.gradYear) : undefined;
       const updated = await updateUserApi(numericId, {
+        nickname: editForm.value.nickname.trim() || undefined,
         school: editForm.value.school || undefined,
         major: editForm.value.major || undefined,
         graduationYear: gradYearNum && !isNaN(gradYearNum) ? gradYearNum : undefined,
@@ -348,7 +355,7 @@ const handleAvatarClick = () => {
 };
 
 const openConsent = (type: 'privacy' | 'terms') => {
-  uni.navigateTo({ url: `/pages/consent/index?view=${type}` });
+  uni.navigateTo({ url: `/pages/consent/index?view=${type}&readonly=1` });
 };
 
 const handleDeleteAccount = () => {
@@ -446,6 +453,7 @@ onMounted(() => {
   if (info) {
     userInfo.value = { ...userInfo.value, ...info };
     editForm.value.school = userInfo.value.school || '';
+    editForm.value.nickname = userInfo.value.nickname || '';
     editForm.value.major = userInfo.value.major || '';
     editForm.value.gradYear = userInfo.value.gradYear || '';
   }
@@ -484,7 +492,7 @@ onMounted(() => {
 
 .page-title {
   display: block;
-  font-size: 28px;
+  font-size: var(--font-hero);
   font-weight: 800;
   color: var(--text-primary);
 }
@@ -492,7 +500,7 @@ onMounted(() => {
 .page-subtitle {
   display: block;
   margin-top: 8px;
-  font-size: 14px;
+  font-size: var(--font-body);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -534,21 +542,30 @@ onMounted(() => {
   padding: 0 20px; height: 36px; line-height: 36px;
 }
 
-.header-avatar { flex-shrink: 0; }
+.header-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.18);
+}
 
 .avatar-img {
-  width: 56px; height: 56px; border-radius: 28px;
+  display: block;
+  width: 56px; height: 56px; border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.4);
+  box-sizing: border-box;
 }
 
 .header-info { flex: 1; }
 
 .header-name {
-  font-size: 20px; font-weight: 700; color: #ffffff;
+  font-size: var(--font-title); font-weight: 700; color: #ffffff;
   display: block; margin-bottom: 4px;
 }
 
-.header-school { font-size: 13px; color: rgba(255, 255, 255, 0.9); }
+.header-school { font-size: var(--font-caption); color: rgba(255, 255, 255, 0.9); }
 
 .edit-btn { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 8px; display: inline-block; margin-top: 4px; }
 
@@ -566,9 +583,9 @@ onMounted(() => {
   align-items: center; gap: 4px;
 }
 
-.stat-val { font-size: 20px; font-weight: 800; color: #0f172a; }
+.stat-val { font-size: var(--font-title); font-weight: 800; color: #0f172a; }
 
-.stat-label { font-size: 11px; color: #94a3b8; font-weight: 500; }
+.stat-label { font-size: var(--font-micro); color: #94a3b8; font-weight: 500; }
 
 .stat-divider { width: 1px; height: 24px; background: var(--border-color); }
 
@@ -606,7 +623,7 @@ onMounted(() => {
 
 .menu-text {
   flex: 1;
-  font-size: 15px;
+  font-size: var(--font-body);
   color: #1e293b;
   font-weight: 500;
   min-width: 0;
@@ -627,7 +644,7 @@ onMounted(() => {
 .pill {
   min-width: 44px; min-height: 44px;
   padding: 6px 14px; border-radius: 10px;
-  font-size: 13px; font-weight: 600; color: #64748b;
+  font-size: var(--font-caption); font-weight: 600; color: #64748b;
   background: #f1f5f9;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s;
@@ -638,7 +655,7 @@ onMounted(() => {
 /* Logout */
 .btn-logout {
   width: 100%; height: 48px; background: #ffffff;
-  color: #ef4444; font-size: 15px; font-weight: 600;
+  color: #ef4444; font-size: var(--font-body); font-weight: 600;
   border-radius: 16px; line-height: 48px; border: 1px solid var(--border-color);
   box-shadow: var(--shadow-xs);
 }
@@ -669,11 +686,11 @@ onMounted(() => {
   margin: 0 auto 16px;
 }
 
-.modal-title { font-size: 18px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 24px; text-align: center; }
+.modal-title { font-size: var(--font-title); font-weight: 700; color: #0f172a; display: block; margin-bottom: 24px; text-align: center; }
 
 .form-group { margin-bottom: 16px; }
-.field-label { font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 8px; display: block; }
-.field-input { width: 100%; height: 48px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 16px; font-size: 15px; box-sizing: border-box; background: #f8fafc; }
+.field-label { font-size: var(--font-caption); font-weight: 600; color: #334155; margin-bottom: 8px; display: block; }
+.field-input { width: 100%; height: 48px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 16px; font-size: var(--font-body); box-sizing: border-box; background: #f8fafc; }
 
 .modal-actions { display: flex; gap: 12px; margin-top: 32px; }
 .btn-secondary { flex: 1; height: 48px; background: #f1f5f9; color: #475569; font-weight: 600; border-radius: 12px; border: none; line-height: 48px; }
@@ -741,6 +758,23 @@ onMounted(() => {
 
 .menu-item:not(:last-child)::after {
   background: #c0ccd8;
+}
+
+.is-dark.user-page {
+  background-color: #0f172a;
+}
+
+.is-dark .stats-bar,
+.is-dark .menu-card,
+.is-dark .btn-logout,
+.is-dark .modal-content.bottom-sheet {
+  background: #1e293b;
+  border-color: #334155;
+  filter: none;
+}
+
+.is-dark .menu-item:not(:last-child)::after {
+  background: #334155;
 }
 
 /* #endif */

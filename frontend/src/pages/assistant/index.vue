@@ -170,10 +170,12 @@ const scrollTop = ref(0);
 const topSafeHeight = ref(88);
 const isSending = ref(false);
 const chatTimeLabel = ref('');
+const sessionId = ref<number | null>(null);
 
 const switchPersona = (key: PersonaKey) => {
   if (persona.value === key) return;
   persona.value = key;
+  sessionId.value = null;
   // Clear history for fresh start with new persona
   apiHistory.value = [];
   messages.value = [
@@ -206,6 +208,7 @@ const sendMessage = async () => {
   scrollToBottom();
 
   try {
+    const sid = await ensureSession();
     const res = await request<{ reply: string }>({
       url: '/api/chat/send',
       method: 'POST',
@@ -213,6 +216,7 @@ const sendMessage = async () => {
         message: text,
         history: apiHistory.value,
         persona: persona.value,
+        sessionId: sid,
       },
     });
     const reply = (res as any)?.reply ?? res ?? '';
@@ -221,6 +225,9 @@ const sendMessage = async () => {
       { role: 'user', content: text },
       { role: 'assistant', content: String(reply) },
     );
+    if (sid) {
+      await appendMessage(sid, text, String(reply || ''));
+    }
   } catch (err: any) {
     const errMsg = err?.message || String(err) || 'Unknown error';
     messages.value[typingIdx] = {
@@ -231,6 +238,31 @@ const sendMessage = async () => {
     isSending.value = false;
     scrollToBottom();
   }
+};
+
+const ensureSession = async () => {
+  if (sessionId.value) return sessionId.value;
+  try {
+    const session = await request<{ sessionId: number }>({
+      url: '/api/chat/history/create',
+      method: 'POST',
+      data: { title: 'New Conversation' },
+    });
+    sessionId.value = session.sessionId;
+    return sessionId.value;
+  } catch {
+    return null;
+  }
+};
+
+const appendMessage = async (sid: number, userMessage: string, assistantReply: string) => {
+  try {
+    await request({
+      url: `/api/chat/history/session/${sid}/append`,
+      method: 'POST',
+      data: { userMessage, assistantReply, persona: persona.value },
+    });
+  } catch { }
 };
 
 onMounted(() => {
@@ -657,6 +689,29 @@ onMounted(() => {
   overflow: visible;
   border: 1px solid #b8c8d8;
   box-shadow: 0 4px 14px rgba(0,0,0,0.14);
+}
+
+.is-dark .chat-nav,
+.is-dark .input-bar {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.is-dark .welcome-card,
+.is-dark .bubble-ai,
+.is-dark .bot-avatar,
+.is-dark .input-row {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.is-dark .persona-chip {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.is-dark .persona-label {
+  color: #cbd5e1;
 }
 
 /* #endif */

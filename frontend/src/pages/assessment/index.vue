@@ -79,8 +79,9 @@
 
     <view class="empty-state" v-else>
       <text class="empty-icon">📝</text>
-      <text class="empty-text">No assessments available yet</text>
-      <text class="empty-desc">The administrator hasn't published any quiz banks. Check back later.</text>
+      <text class="empty-text">{{ loadError ? 'Assessments failed to load' : 'No assessments available yet' }}</text>
+      <text class="empty-desc">{{ loadError || "The administrator hasn't published any quiz banks. Check back later." }}</text>
+      <button class="btn-retry" v-if="loadError" @click="loadAll">Retry</button>
     </view>
   </view>
 </template>
@@ -100,6 +101,7 @@ const topSafeHeight = ref(52);
 const loading = ref(true);
 const scales = ref<AssessmentScale[]>([]);
 const completedScales = ref<Set<number>>(new Set());
+const loadError = ref('');
 
 const totalCount = computed(() => scales.value.length);
 const completedCount = computed(() => completedScales.value.size);
@@ -129,6 +131,7 @@ const goBack = () => {
 
 const loadAll = async () => {
   loading.value = true;
+  loadError.value = '';
   try {
     const [scaleList, records] = await Promise.all([
       getAssessmentScalesApi(),
@@ -140,7 +143,8 @@ const loadAll = async () => {
     const safeRecords = Array.isArray(records) ? records : [];
     completedScales.value = new Set(safeRecords.map((r) => r.scaleId));
   } catch (e: any) {
-    uni.showToast({ title: e?.message || 'Failed to load', icon: 'none' });
+    loadError.value = e?.message || 'Failed to load';
+    uni.showToast({ title: loadError.value, icon: 'none' });
     scales.value = [];
   } finally {
     loading.value = false;
@@ -435,6 +439,7 @@ onShow(() => {
 .empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
 .empty-text { font-size: 16px; font-weight: 700; color: #475569; display: block; margin-bottom: 8px; }
 .empty-desc { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+.btn-retry { margin-top: 18px; background: #2563eb; color: #fff; font-size: 14px; font-weight: 600; border-radius: 12px; height: 40px; line-height: 40px; border: none; width: 120px; }
 
 .is-dark { background-color: #0f172a; }
 
