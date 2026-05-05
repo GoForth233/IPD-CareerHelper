@@ -196,7 +196,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/locales';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getUserInterviewsApi } from '@/api/interview';

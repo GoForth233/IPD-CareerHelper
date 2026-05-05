@@ -8,7 +8,7 @@
  *
  * Supported locales: zh-CN, en-US
  */
-import { createI18n } from 'vue-i18n';
+import { createI18n, useI18n as _useI18n } from 'vue-i18n';
 import zhCN from './zh-CN';
 import enUS from './en-US';
 
@@ -34,6 +34,23 @@ export const i18n = createI18n({
     'en-US': enUS,
   },
 });
+
+/**
+ * Patched useI18n — wraps t() to manually replace {key} placeholders.
+ * vue-i18n named interpolation is unreliable in UniApp mini-program runtime.
+ */
+export function useI18n() {
+  const { t: _t, ...rest } = _useI18n();
+  function t(key: string, params?: Record<string, unknown>): string {
+    const raw = _t(key) as string;
+    if (!params || typeof raw !== 'string') return raw;
+    return Object.entries(params).reduce(
+      (s, [k, v]) => s.split(`{${k}}`).join(String(v ?? '')),
+      raw,
+    );
+  }
+  return { t, ...(rest as ReturnType<typeof _useI18n>) };
+}
 
 export function setLocale(lang: LangCode) {
   uni.setStorageSync(LANG_KEY, lang);
