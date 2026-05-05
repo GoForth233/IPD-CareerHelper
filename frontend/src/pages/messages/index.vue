@@ -1,5 +1,5 @@
 <template>
-  <view class="msg-page" :class="{ 'is-dark': darkPref }">
+  <view class="msg-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
@@ -63,6 +63,9 @@
         <text class="empty-text">No notifications yet</text>
         <text class="empty-sub">Complete an interview or assessment and it'll show up here.</text>
       </view>
+
+      <!-- Reserve space above tab bar to prevent last row from being covered. -->
+      <view class="bottom-safe"></view>
     </scroll-view>
 
   </view>
@@ -78,9 +81,10 @@ import {
   markAllReadApi,
   type Notification,
 } from '@/api/notification';
+import { useTheme } from '@/utils/theme';
 
 const topSafeHeight = ref(88);
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 // ─── F9: Category tabs ───────────────────────────────────────────────────────
 const TABS = [
@@ -250,7 +254,7 @@ const handleSystemClick = async (item: SystemMessageView) => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
 });
 
@@ -258,6 +262,7 @@ onMounted(() => {
 // arrive while the user is on another page (e.g. they just finished an
 // interview / quiz).
 onShow(() => {
+  refreshTheme();
   loadSystemNotifications();
 });
 </script>
@@ -370,7 +375,7 @@ onShow(() => {
   flex: 1;
   height: 0;
   min-height: 0;
-  padding-bottom: calc(24px + var(--tab-bar-height, 50px) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
@@ -379,6 +384,10 @@ onShow(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.bottom-safe {
+  height: calc(var(--tab-bar-height, 50px) + 20px);
 }
 
 .msg-card {
@@ -567,12 +576,29 @@ onShow(() => {
   color: #94a3b8;
 }
 
+.is-dark .segment-bar { background: #1e293b; border-color: #334155; }
+.is-dark .seg-item { color: #94a3b8; }
+.is-dark .seg-active { background: #334155; color: #f8fafc; }
+.is-dark .clear-btn { background: rgba(37, 99, 235, 0.15); border-color: rgba(37, 99, 235, 0.3); }
+.is-dark .clear-btn-text { color: #60a5fa; }
+.is-dark .msg-unread { background: linear-gradient(0deg, rgba(37, 99, 235, 0.15), rgba(37, 99, 235, 0.15)), #1e293b; border-color: rgba(37, 99, 235, 0.35); }
+.is-dark .tag-progress { background: rgba(37, 99, 235, 0.15); }
+.is-dark .tag-progress .tag-text { color: #60a5fa; }
+.is-dark .tag-sent { background: rgba(16, 185, 129, 0.15); }
+.is-dark .tag-sent .tag-text { color: #34d399; }
+.is-dark .tag-pass { background: rgba(245, 158, 11, 0.15); }
+.is-dark .tag-pass .tag-text { color: #fbbf24; }
+.is-dark .empty-text { color: #94a3b8; }
+.is-dark .empty-sub { color: #64748b; }
+.is-dark .status-av { background: linear-gradient(135deg, #1e3a5f, #1e40af); }
+.is-dark .unread-dot { border-color: #1e293b; }
+
 /* ================================================================
  *  MP-WEIXIN parity overrides — HARDCODED values, no CSS vars.
  * ================================================================ */
 /* #ifdef MP-WEIXIN */
 
-.messages-page {
+.msg-page {
   background-color: #eaeff5;
 }
 
@@ -593,6 +619,52 @@ onShow(() => {
   background: #dbeafe;
   color: #2563eb;
   box-shadow: 0 2px 8px rgba(37,99,235,0.22);
+}
+
+/* Dark theme on MP: the block above is light-first; pin dark styles with
+   higher specificity so the segment bar never stays a white slab. */
+.msg-page.is-dark {
+  background-color: #0f172a;
+}
+
+.msg-page.is-dark .segment-bar {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.msg-page.is-dark .seg-item {
+  color: #94a3b8;
+}
+
+.msg-page.is-dark .seg-active {
+  background: #334155;
+  color: #f8fafc;
+  box-shadow: none;
+}
+
+.msg-page.is-dark .msg-card {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.msg-page.is-dark .msg-name {
+  color: #f8fafc;
+}
+
+.msg-page.is-dark .msg-preview,
+.msg-page.is-dark .msg-time {
+  color: #94a3b8;
+}
+
+.msg-page.is-dark .clear-btn {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.msg-page.is-dark .clear-btn-text {
+  color: #60a5fa;
 }
 
 /* #endif */

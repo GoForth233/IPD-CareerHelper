@@ -1,6 +1,7 @@
 package com.group1.career.controller;
 
 import com.group1.career.interceptor.AuthInterceptor;
+import com.group1.career.model.dto.HomeConsultationFeedDto;
 import com.group1.career.model.entity.CareerPath;
 import com.group1.career.model.entity.HomeArticle;
 import com.group1.career.model.entity.HomeConsultation;
@@ -11,6 +12,8 @@ import com.group1.career.repository.HomeVideoRepository;
 import com.group1.career.repository.InterviewRepository;
 import com.group1.career.repository.UserRepository;
 import com.group1.career.service.CareerService;
+import com.group1.career.service.HomeContentRefreshJob;
+import com.group1.career.service.HomeFieldTipsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,15 +21,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,6 +70,15 @@ public class HomepageControllerTest {
     private HomeConsultationRepository homeConsultationRepository;
 
     @MockitoBean
+    private HomeContentRefreshJob homeContentRefreshJob;
+
+    @MockitoBean
+    private HomeFieldTipsService homeFieldTipsService;
+
+    @MockitoBean
+    private StringRedisTemplate redisTemplate;
+
+    @MockitoBean
     private AuthInterceptor authInterceptor;
 
     @BeforeEach
@@ -67,15 +86,79 @@ public class HomepageControllerTest {
         when(authInterceptor.preHandle(any(), any(), any())).thenReturn(true);
         when(userRepository.count()).thenReturn(1280L);
         when(interviewRepository.count()).thenReturn(356L);
+
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> redisOps = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(redisOps);
+        when(redisOps.increment(anyString())).thenReturn(1L);
+
         // The home-feed repos default to empty lists; specific tests can
         // override when they want to assert content shape.
         when(homeVideoRepository.sampleByRand(anyLong(), anyInt())).thenReturn(Collections.emptyList());
         when(homeVideoRepository.findAllByOrderBySortScoreDesc(any(Pageable.class)))
                 .thenReturn(Collections.emptyList());
-        when(homeArticleRepository.findAllByOrderByPublishedAtDescIdDesc(any(Pageable.class)))
+        when(homeArticleRepository.findAllByHiddenFalseOrderByPinnedDescPublishedAtDescIdDesc(any(Pageable.class)))
                 .thenReturn(Collections.emptyList());
         when(homeConsultationRepository.findAllByOrderByPublishedAtDescIdDesc(any(Pageable.class)))
                 .thenReturn(Collections.emptyList());
+
+        when(homeFieldTipsService.buildConsultationFeed(any(), anyLong(), anyInt(), any(), any()))
+                .thenAnswer(invocation -> {
+                    long seed = invocation.getArgument(1);
+                    int limit = invocation.getArgument(2);
+                    @SuppressWarnings("unchecked")
+                    List<HomeConsultation> cPool = invocation.getArgument(3);
+                    @SuppressWarnings("unchecked")
+                    List<HomeArticle> aPool = invocation.getArgument(4);
+                    List<HomeConsultationFeedDto> out = new ArrayList<>();
+                    if (cPool != null && !cPool.isEmpty()) {
+                        int offset = (int) Math.floorMod(seed, cPool.size());
+                        int cap = Math.min(limit, cPool.size());
+                        for (int i = 0; i < cap; i++) {
+                            HomeConsultation c = cPool.get((offset + i) % cPool.size());
+                            out.add(HomeConsultationFeedDto.builder()
+                                    .id(c.getId())
+                                    .title(c.getTitle())
+                                    .body(c.getBodyMd())
+                                    .author(c.getAuthor())
+                                    .sourceUrl(c.getSourceUrl())
+                                    .imageUrl(c.getImageUrl())
+                                    .build());
+                        }
+                    }
+                    if (out.size() < limit && aPool != null && !aPool.isEmpty()) {
+                        Set<String> used = new HashSet<>();
+                        for (HomeConsultationFeedDto c : out) {
+                            if (c.getSourceUrl() != null && !c.getSourceUrl().isBlank()) {
+                                used.add(c.getSourceUrl());
+                            }
+                        }
+                        int articleOffset = (int) Math.floorMod(seed / 7, aPool.size());
+                        for (int i = 0; i < aPool.size() && out.size() < limit; i++) {
+                            HomeArticle a = aPool.get((articleOffset + i) % aPool.size());
+                            if (a.getSourceUrl() != null && used.contains(a.getSourceUrl())) {
+                                continue;
+                            }
+                            out.add(HomeConsultationFeedDto.builder()
+                                    .id(a.getId() == null ? -(1000L + i) : -a.getId())
+                                    .title(a.getTitle() == null || a.getTitle().isBlank() ? "精选导读" : a.getTitle())
+                                    .body(a.getSummary() == null || a.getSummary().isBlank()
+                                            ? "点击阅读全文，把其中一点落实到今天。"
+                                            : a.getSummary())
+                                    .author("精选文章")
+                                    .sourceUrl(a.getSourceUrl())
+                                    .imageUrl(a.getImageUrl())
+                                    .build());
+                            if (a.getSourceUrl() != null && !a.getSourceUrl().isBlank()) {
+                                used.add(a.getSourceUrl());
+                            }
+                        }
+                    }
+                    if (out.size() > limit) {
+                        return new ArrayList<>(out.subList(0, limit));
+                    }
+                    return out;
+                });
     }
 
     @Test
@@ -91,7 +174,7 @@ public class HomepageControllerTest {
                 HomeVideo.builder().id(1L).bvid("BV1xx411c7mu").title("面试问题怎么答").coverUrl("https://x/y.jpg")
                         .upName("UP主").durationSec(720).viewCount(123456L).keyword("面试").build()
         ));
-        when(homeArticleRepository.findAllByOrderByPublishedAtDescIdDesc(any(Pageable.class)))
+        when(homeArticleRepository.findAllByHiddenFalseOrderByPinnedDescPublishedAtDescIdDesc(any(Pageable.class)))
                 .thenReturn(List.of(
                         HomeArticle.builder().id(1L).title("STAR 模型答题")
                                 .summary("一份 HR 觉得「真诚而不暴露短板」的回答模板").imageUrl("/x").sourceUrl("/pages/x").category("interview").build()
@@ -114,7 +197,10 @@ public class HomepageControllerTest {
                 .andExpect(jsonPath("$.data.articles").isArray())
                 .andExpect(jsonPath("$.data.articles.length()").value(1))
                 .andExpect(jsonPath("$.data.consultations").isArray())
-                .andExpect(jsonPath("$.data.consultations.length()").value(1))
+                // HR row + article top-up (limit 3, sparse consultation table).
+                .andExpect(jsonPath("$.data.consultations.length()").value(2))
+                .andExpect(jsonPath("$.data.consultations[0].title").value("HR 视角"))
+                .andExpect(jsonPath("$.data.consultations[1].title").value("STAR 模型答题"))
                 .andExpect(jsonPath("$.data.stats.totalCareerPaths").value(2))
                 .andExpect(jsonPath("$.data.stats.totalUsers").value(1280))
                 .andExpect(jsonPath("$.data.stats.totalInterviews").value(356));

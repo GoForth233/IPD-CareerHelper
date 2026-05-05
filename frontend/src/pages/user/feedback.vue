@@ -1,5 +1,5 @@
 <template>
-  <view class="fb-page" :class="{ 'is-dark': darkPref }">
+  <view class="fb-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <!-- Nav bar -->
@@ -67,10 +67,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { submitFeedbackApi, type FeedbackCategory } from '@/api/feedback';
+import { useTheme } from '@/utils/theme';
 
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(44);
 const submitting = ref(false);
 
@@ -112,8 +114,12 @@ const doSubmit = async () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
+});
+
+onShow(() => {
+  refreshTheme();
 });
 </script>
 

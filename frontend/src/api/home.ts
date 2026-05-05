@@ -30,6 +30,7 @@ export interface HomeArticle {
   summary?: string;
   imageUrl?: string;
   url?: string;
+  sourceUrl?: string;
   category?: string;
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <view class="assessment-container" :class="{ 'is-dark': darkPref }">
+  <view class="assessment-container" :class="[themeClass, fontClass]">
     <view class="status-bar-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
@@ -90,13 +90,14 @@
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
+import { useTheme } from '@/utils/theme';
 import {
   getAssessmentScalesApi,
   getMyAssessmentRecordsApi,
   type AssessmentScale,
 } from '@/api/assessment';
 
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 const loading = ref(true);
 const scales = ref<AssessmentScale[]>([]);
@@ -152,12 +153,13 @@ const loadAll = async () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
 });
 
 // Re-fetch on focus so a freshly completed quiz shows its "Done" pill.
 onShow(() => {
+  refreshTheme();
   loadAll();
 });
 </script>
@@ -461,8 +463,7 @@ onShow(() => {
  * ================================================================ */
 /* #ifdef MP-WEIXIN */
 
-.assessment-page,
-.page-wrap {
+.assessment-container {
   background-color: #eaeff5;
 }
 
@@ -483,6 +484,56 @@ onShow(() => {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   background: rgba(255,255,255,0.30);
+}
+
+/* MP + dark: overrides above are light-first */
+.assessment-container.is-dark {
+  background-color: #0f172a;
+}
+
+.assessment-container.is-dark .assessment-card {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.assessment-container.is-dark .skel-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.assessment-container.is-dark .skel-square,
+.assessment-container.is-dark .skel-line {
+  background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+  background-size: 200% 100%;
+}
+
+.assessment-container.is-dark .empty-state {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.assessment-container.is-dark .btn-start {
+  background-color: rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.35);
+  color: #93c5fd;
+}
+
+.assessment-container.is-dark .tag {
+  background-color: rgba(51, 65, 85, 0.8);
+  color: #cbd5e1;
+}
+
+.assessment-container.is-dark .tag-blue {
+  background-color: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+}
+
+.assessment-container.is-dark .mbti-icon {
+  background-color: rgba(168, 85, 247, 0.2);
+}
+
+.assessment-container.is-dark .holland-icon {
+  background-color: rgba(99, 102, 241, 0.2);
 }
 
 /* #endif */

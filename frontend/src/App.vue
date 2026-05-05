@@ -168,6 +168,126 @@ onLaunch(() => {
   --font-micro:   15px;
 }
 
+.font-compact text,
+.font-compact input,
+.font-compact textarea,
+.font-compact button {
+  font-size: 12px !important;
+}
+.font-compact .page-title,
+.font-compact .greeting-title,
+.font-compact .hero-title,
+.font-compact .title,
+.font-compact .summary-title {
+  font-size: 24px !important;
+}
+.font-compact .section-title,
+.font-compact .card-title,
+.font-compact .nav-title {
+  font-size: 16px !important;
+}
+.font-large text,
+.font-large input,
+.font-large textarea,
+.font-large button {
+  font-size: 17px !important;
+}
+.font-large .page-title,
+.font-large .greeting-title,
+.font-large .hero-title,
+.font-large .title,
+.font-large .summary-title {
+  font-size: 34px !important;
+}
+.font-large .section-title,
+.font-large .card-title,
+.font-large .nav-title {
+  font-size: 22px !important;
+}
+
+.is-dark,
+.is-dark.app-shell,
+.is-dark[class*="-page"],
+.is-dark[class*="-container"] {
+  background: #0f172a !important;
+  color: #e2e8f0;
+}
+.is-dark text {
+  color: #e2e8f0 !important;
+}
+.is-dark .app-surface,
+.is-dark .ui-card,
+.is-dark .card,
+.is-dark .panel,
+.is-dark .section-card,
+.is-dark .menu-card,
+.is-dark .stats-bar,
+.is-dark .empty-state,
+.is-dark .modal-content,
+.is-dark .form-sheet,
+.is-dark .facts-card,
+.is-dark .welcome-card,
+.is-dark .quick-chip,
+.is-dark .persona-chip,
+.is-dark .search-bar,
+.is-dark .field-input,
+.is-dark .ui-input,
+.is-dark .input {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+.is-dark .surface-muted,
+.is-dark .skeleton-card,
+.is-dark .tag,
+.is-dark .pill,
+.is-dark .chip,
+.is-dark .picker-box,
+.is-dark .fact-delete-btn {
+  background: #334155 !important;
+  border-color: #475569 !important;
+}
+.is-dark .app-page-title,
+.is-dark .page-title,
+.is-dark .title,
+.is-dark .hero-title,
+.is-dark .summary-title,
+.is-dark .section-title,
+.is-dark .card-title,
+.is-dark .nav-title,
+.is-dark .menu-text,
+.is-dark .field-label,
+.is-dark .empty-title {
+  color: #f8fafc !important;
+}
+.is-dark .app-page-subtitle,
+.is-dark .page-subtitle,
+.is-dark .subtitle,
+.is-dark .hero-subtitle,
+.is-dark .summary-text,
+.is-dark .section-meta,
+.is-dark .empty-desc,
+.is-dark .field-hint,
+.is-dark .desc {
+  color: #94a3b8 !important;
+}
+.is-dark input,
+.is-dark textarea {
+  color: #f8fafc !important;
+}
+.is-dark .ph,
+.is-dark .search-ph,
+.is-dark .input-ph {
+  color: #64748b !important;
+}
+.is-dark .btn-primary,
+.is-dark .btn-send,
+.is-dark .send-active,
+.is-dark .pill-active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
 /* 全局基础样式 */
 page {
   height: 100%;

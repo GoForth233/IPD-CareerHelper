@@ -37,11 +37,38 @@ public class UserProfileSnapshotServiceImpl implements UserProfileSnapshotServic
 
     @Override
     public String renderForPrompt(Long userId) {
-        UserProfileSnapshot snap = read(userId);
-        if (snap == null || isEmpty(snap)) return "";
+        if (userId == null) return "";
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) return "";
+
+        User user = userOpt.get();
+        UserProfileSnapshot snap = parse(user.getProfileSnapshot());
+        boolean hasBasicProfile = hasText(user.getNickname())
+                || hasText(user.getSchool())
+                || hasText(user.getMajor())
+                || user.getGraduationYear() != null;
+        if ((snap == null || isEmpty(snap)) && !hasBasicProfile) return "";
 
         List<String> lines = new ArrayList<>();
         lines.add("Known about this user (from prior tool usage — be specific, never claim ignorance of these):");
+
+        if (hasBasicProfile) {
+            StringBuilder sb = new StringBuilder("- Basic profile: ");
+            if (hasText(user.getNickname())) sb.append("nickname ").append(user.getNickname());
+            if (hasText(user.getSchool())) {
+                if (sb.length() > "- Basic profile: ".length()) sb.append("; ");
+                sb.append("school ").append(user.getSchool());
+            }
+            if (hasText(user.getMajor())) {
+                if (sb.length() > "- Basic profile: ".length()) sb.append("; ");
+                sb.append("major ").append(user.getMajor());
+            }
+            if (user.getGraduationYear() != null) {
+                if (sb.length() > "- Basic profile: ".length()) sb.append("; ");
+                sb.append("graduation year ").append(user.getGraduationYear());
+            }
+            lines.add(sb.toString());
+        }
 
         if (snap.getAssessment() != null) {
             UserProfileSnapshot.AssessmentBlock a = snap.getAssessment();
@@ -188,5 +215,9 @@ public class UserProfileSnapshotServiceImpl implements UserProfileSnapshotServic
                 && s.getResume() == null
                 && s.getInterview() == null
                 && s.getPreferences() == null;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

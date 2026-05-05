@@ -24,6 +24,13 @@
 			}
 		},
 		{
+			"path": "pages/assistant/history",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/resume/index",
 			"style": {
 				"navigationBarTitleText": "",
@@ -56,6 +63,20 @@
 			"style": {
 				"navigationBarTitleText": "Results",
 				"navigationBarBackgroundColor": "#f5f5f7"
+			}
+		},
+		{
+			"path": "pages/agent/index",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/agent/profile",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
 			}
 		},
 		{

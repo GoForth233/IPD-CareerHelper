@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group1.career.common.Result;
 import com.group1.career.repository.AssistantSessionRepository;
+import com.group1.career.service.AgentProfileService;
 import com.group1.career.service.AiService;
 import com.group1.career.service.ConversationSummaryService;
 import com.group1.career.service.UserFactService;
@@ -34,6 +35,7 @@ public class ChatController {
     private final AiService aiService;
     private final FunctionCallingService functionCallingService;
     private final UserProfileSnapshotService snapshotService;
+    private final AgentProfileService agentProfileService;
     private final ConversationSummaryService summaryService;
     private final UserFactService userFactService;
     private final AssistantSessionRepository sessionRepository;
@@ -130,7 +132,10 @@ public class ChatController {
 
         StringBuilder sb = new StringBuilder(AiPersonas.systemPromptFor(persona));
 
-        String snapshot = snapshotService.renderForPrompt(uid);
+        String snapshot = agentProfileService.renderForPrompt(uid);
+        if (snapshot == null || snapshot.isBlank()) {
+            snapshot = snapshotService.renderForPrompt(uid);
+        }
         if (snapshot != null && !snapshot.isBlank()) {
             sb.append("\n\n").append(snapshot);
         }

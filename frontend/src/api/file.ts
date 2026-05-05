@@ -1,5 +1,18 @@
 import request from '@/utils/request';
 
+const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Keep uploadFile aligned with request.ts fallback during ICP/domain interception.
+const BASE_URL = /api\.careerloop\.top/i.test(RAW_BASE_URL)
+  ? 'http://43.138.240.228'
+  : RAW_BASE_URL;
+
+const isBlockedHtmlResponse = (payload: unknown): boolean => {
+  if (typeof payload !== 'string') return false;
+  const s = payload.toLowerCase();
+  return (s.includes('<html') || s.includes('<!doctype html'))
+    && (s.includes('dnspod.qcloud.com/static/webblock.html') || s.includes('webblock'));
+};
+
 /**
  * Upload a file to OSS via the backend.
  *
@@ -15,7 +28,6 @@ import request from '@/utils/request';
  */
 export const uploadFileApi = (filePath: string, folder: string = 'resumes'): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
     const token = uni.getStorageSync('token');
 
     uni.uploadFile({
@@ -30,22 +42,30 @@ export const uploadFileApi = (filePath: string, folder: string = 'resumes'): Pro
         'ngrok-skip-browser-warning': '1',
       },
       success: (res) => {
+        console.log('Upload response:', res.statusCode, res.data);
+        if (isBlockedHtmlResponse(res.data)) {
+          reject(new Error('接口被拦截（疑似备案/域名拦截），请切换 IP 地址测试'));
+          return;
+        }
         if (res.statusCode === 200) {
           try {
             const body = JSON.parse(res.data);
             if (body.code === 200) {
               resolve(body.data);
             } else {
-              reject(new Error(body.message || 'Upload failed'));
+              reject(new Error(body.message || `Upload failed (code: ${body.code})`));
             }
-          } catch {
-            reject(new Error('Invalid upload response'));
+          } catch (e) {
+            reject(new Error(`Invalid upload response: ${res.data}`));
           }
         } else {
-          reject(new Error('Upload failed'));
+          reject(new Error(`Upload failed (status: ${res.statusCode})`));
         }
       },
-      fail: (err) => reject(err),
+      fail: (err) => {
+        console.error('Upload error:', err);
+        reject(err);
+      },
     });
   });
 };

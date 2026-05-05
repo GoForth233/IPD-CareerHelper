@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :class="{ 'is-dark': darkPref }">
+  <view class="page" :class="[themeClass, fontClass]">
     <view class="status-bar" :style="{ height: topSafe + 'px' }"></view>
 
     <!-- Header -->
@@ -133,10 +133,12 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { generateResumeFromTemplateApi } from '@/api/resume';
+import { useTheme } from '@/utils/theme';
 
-const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafe = ref(getTopSafeHeight());
 const submitting = ref(false);
 const currentStep = ref(1);
@@ -149,6 +151,11 @@ const form = ref({
 });
 
 const progressPct = computed(() => (currentStep.value / 3) * 100);
+refreshTheme();
+
+onShow(() => {
+  refreshTheme();
+});
 
 const stepValid = computed(() => {
   if (currentStep.value === 1) return !!form.value.name.trim() && !!form.value.targetRole.trim();

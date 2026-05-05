@@ -1,5 +1,5 @@
 <template>
-  <view class="history-page" :class="{ 'is-dark': darkPref }">
+  <view class="history-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
     <view class="nav-row">
       <view class="back-btn" @click="goBack">
@@ -73,10 +73,11 @@ import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getUserInterviewsApi, type Interview } from '@/api/interview';
+import { useTheme } from '@/utils/theme';
 
 const interviews = ref<Interview[]>([]);
 const loading = ref(true);
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 
 const goBack = () => uni.navigateBack({ delta: 1 });
@@ -100,7 +101,7 @@ const loadInterviews = async () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
 });
 
@@ -108,6 +109,7 @@ onMounted(() => {
 // user finishes an interview and pops back to history, the new entry
 // should appear without a manual reload.
 onShow(() => {
+  refreshTheme();
   loadInterviews();
 });
 
@@ -337,4 +339,47 @@ const groupedInterviews = computed(() => {
 .is-dark .interview-card { background: #1e293b; box-shadow: none; }
 
 .is-dark .info-val { color: #e2e8f0; }
+
+/* Status pills: light-mode pastels + saturated text; dark mode needs its own pair */
+.is-dark .status-pill.completed {
+  background: rgba(16, 185, 129, 0.22);
+}
+
+.is-dark .status-pill.completed .pill-text {
+  color: #34d399;
+}
+
+.is-dark .status-pill.ongoing {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.is-dark .status-pill.ongoing .pill-text {
+  color: #fbbf24;
+}
+
+.is-dark .skel-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.is-dark .skel-line {
+  background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+  background-size: 200% 100%;
+}
+
+.is-dark .group-label {
+  color: #64748b;
+}
+
+.is-dark .nav-title {
+  color: #f8fafc;
+}
+
+.is-dark .back-btn {
+  color: #93c5fd;
+}
+
+.is-dark .nav-new-text {
+  color: #93c5fd;
+}
 </style>

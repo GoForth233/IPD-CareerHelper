@@ -1,5 +1,5 @@
 <template>
-  <view class="resume-ai-container" :class="{ 'is-dark': darkPref }">
+  <view class="resume-ai-container" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="top-bar">
@@ -94,6 +94,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import {
   getUserResumesApi,
@@ -103,12 +104,13 @@ import {
   type DiagnosisResult,
 } from '@/api/resume';
 import { getProfileSnapshotApi } from '@/api/user';
+import { useTheme } from '@/utils/theme';
 
 const selectedResume = ref('');
 const selectedResumeId = ref<number | null>(null);
 const userResumes = ref<Resume[]>([]);
 const jdText = ref('');
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(44);
 const analyzing = ref(false);
 const tailoring = ref(false);
@@ -299,10 +301,14 @@ const generateTailored = async () => {
 };
 
 onMounted(async () => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
   await loadResumes();
   await applyPrefill();
+});
+
+onShow(() => {
+  refreshTheme();
 });
 </script>
 
@@ -596,4 +602,27 @@ onMounted(async () => {
 
 .is-dark .back-text,
 .is-dark .back-icon { color: #60a5fa; }
+
+.is-dark .score-ring { background-color: #1e293b; }
+.is-dark .score-ring.ring-good { border-color: #10b981; background: #022c22; }
+.is-dark .score-ring.ring-good .score-val { color: #34d399; }
+.is-dark .score-ring.ring-warn { border-color: #f59e0b; background: #451a03; }
+.is-dark .score-ring.ring-warn .score-val { color: #fbbf24; }
+.is-dark .score-ring.ring-bad { border-color: #ef4444; background: #450a0a; }
+.is-dark .score-ring.ring-bad .score-val { color: #f87171; }
+.is-dark .point-block { border-left-color: #475569; }
+.is-dark .point-block.strengths { border-left-color: #10b981; }
+.is-dark .point-block.strengths .point-title { color: #34d399; }
+.is-dark .point-block.weaknesses { border-left-color: #ef4444; }
+.is-dark .point-block.weaknesses .point-title { color: #f87171; }
+.is-dark .point-block.suggestions { border-left-color: #6366f1; }
+.is-dark .point-block.suggestions .point-title { color: #818cf8; }
+.is-dark .point-title { color: #94a3b8; }
+.is-dark .point-text { color: #cbd5e1; }
+.is-dark .btn-secondary { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
+.is-dark .btn-secondary:active { background: rgba(37, 99, 235, 0.25); }
+.is-dark .s-chevron { color: #64748b; }
+.is-dark .select-box.has-value .s-text { color: #f8fafc; }
+.is-dark .jd-input { color: #f8fafc; }
+.is-dark .progress-bar-container { background-color: #334155; }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <view class="result-container" :class="{ 'is-dark': darkPref }">
+  <view class="result-container" :class="[themeClass, fontClass]">
     <!-- Loading + error states -->
     <view class="loading-state" v-if="loading">
       <view class="spinner"></view>
@@ -75,13 +75,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import {
   getAssessmentRecordApi,
   type AssessmentRecord,
 } from '@/api/assessment';
 import { updatePreferencesApi } from '@/api/user';
+import { useTheme } from '@/utils/theme';
 
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const loading = ref(true);
 const errorMsg = ref('');
 const recordId = ref<number>(0);
@@ -317,11 +319,15 @@ const goBack = () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   const pages = getCurrentPages();
   const opts = (pages[pages.length - 1] as any).options || {};
   recordId.value = parseInt(opts.recordId || '0');
   loadResult();
+});
+
+onShow(() => {
+  refreshTheme();
 });
 </script>
 

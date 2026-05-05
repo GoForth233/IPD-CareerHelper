@@ -59,6 +59,107 @@
       </view>
     </view>
 
+    <view v-if="agentToday" class="agent-card">
+      <view class="agent-card-head">
+        <view class="agent-icon-wrap">
+          <text class="agent-icon">🤖</text>
+        </view>
+        <view class="agent-head-copy">
+          <text class="agent-kicker">AI Career Agent</text>
+          <text class="agent-title">{{ agentToday.headline }}</text>
+        </view>
+        <view class="risk-pill" :class="'risk-' + agentToday.riskLevel.toLowerCase()">
+          <text class="risk-text">{{ agentToday.riskLevel }}</text>
+        </view>
+      </view>
+      <view v-if="agentProfile" class="agent-pct-row" @click="navTo('/pages/agent/profile')">
+        <view class="agent-pct-bar-wrap">
+          <view class="agent-pct-bar-fill" :style="{ width: agentProfile.completenessScore + '%' }" :class="'agent-pct-' + agentProfile.personalizationLevel.toLowerCase()"></view>
+        </view>
+        <text class="agent-pct-label">{{ agentProfile.personalizationLevel === 'HIGH' ? 'Highly personalised' : agentProfile.personalizationLevel === 'MEDIUM' ? 'Getting to know you' : 'Just getting started' }} · {{ agentProfile.completenessScore }}%</text>
+        <text class="agent-pct-arrow">›</text>
+      </view>
+      <view v-if="agentProfile && agentProfile.missingSignals?.length" class="agent-missing-row">
+        <text class="agent-missing-label">Help me know you better:</text>
+        <view class="agent-missing-chips">
+          <view v-for="sig in agentProfile.missingSignals.slice(0, 2)" :key="sig.key" class="agent-missing-chip" @click="navTo('/pages/agent/profile')">
+            <text class="agent-missing-chip-text">+ {{ sig.label }}</text>
+          </view>
+        </view>
+      </view>
+      <view class="agent-progress">
+        <view class="agent-progress-bar">
+          <view class="agent-progress-fill" :style="{ width: agentToday.progressPercent + '%' }"></view>
+        </view>
+        <text class="agent-progress-text">{{ agentToday.progressPercent }}% readiness</text>
+      </view>
+      <text class="agent-focus">Today: {{ agentToday.todayFocus }}</text>
+      <text class="agent-reason">{{ agentToday.reason }}</text>
+      <view v-if="agentRisk" class="risk-watch-card">
+        <view class="risk-watch-head">
+          <text class="risk-watch-kicker">Risk Watch</text>
+          <view class="risk-watch-badges">
+            <text class="risk-watch-level" :class="'risk-watch-' + agentRisk.overallLevel.toLowerCase()">{{ agentRisk.overallLevel }}</text>
+            <text class="risk-watch-trend">{{ primaryRiskTrend }}</text>
+          </view>
+        </view>
+        <text class="risk-watch-title">{{ agentRisk.primaryRiskTitle }}</text>
+        <text class="risk-watch-summary">{{ agentRisk.summary }}</text>
+        <text v-if="primaryRiskRecommendation" class="risk-watch-next">Next: {{ primaryRiskRecommendation }}</text>
+      </view>
+      <view v-if="agentPlan" class="agent-plan-card">
+        <view class="agent-plan-head">
+          <text class="agent-plan-kicker">Long-term Plan</text>
+          <text class="agent-plan-health" :class="'agent-plan-' + agentPlan.planHealth.toLowerCase()">{{ planHealthLabel }}</text>
+        </view>
+        <text class="agent-plan-title">{{ agentPlan.hasPlan ? (agentPlan.targetRole || 'Career target') : 'No plan yet' }}</text>
+        <text v-if="agentPlan.nextMilestoneTitle" class="agent-plan-milestone">{{ agentPlan.nextMilestoneHorizon }} · {{ agentPlan.nextMilestoneTitle }}</text>
+        <view v-if="agentPlan.weeklyFocus?.length" class="agent-plan-focus-list">
+          <text v-for="focus in agentPlan.weeklyFocus.slice(0, 2)" :key="focus" class="agent-plan-focus">• {{ focus }}</text>
+        </view>
+        <text v-if="agentPlan.adjustmentReason" class="agent-plan-reason">{{ agentPlan.adjustmentReason }}</text>
+        <view v-if="!agentPlan.hasPlan || agentPlan.planHealth === 'NEEDS_REFRESH'" class="agent-plan-action" @click="ensureAgentPlan">
+          <text class="agent-plan-action-text">{{ agentPlan.hasPlan ? 'Refresh plan' : 'Generate plan' }}</text>
+        </view>
+      </view>
+      <view v-if="agentToday.riskReasons?.length" class="agent-risks">
+        <text v-for="risk in agentToday.riskReasons.slice(0, 2)" :key="risk" class="agent-risk-item">• {{ risk }}</text>
+      </view>
+      <view v-if="agentToday.actions?.length" class="agent-actions">
+        <view
+          v-for="action in agentToday.actions.slice(0, 2)"
+          :key="action.label"
+          class="agent-action"
+          :class="{ 'agent-action-primary': action.priority === 'HIGH' }"
+          @click="navTo(action.target)"
+        >
+          <text class="agent-action-text">{{ action.label }}</text>
+        </view>
+      </view>
+      <view v-if="agentTasks.length" class="agent-task-list">
+        <view v-for="task in agentTasks" :key="task.taskId" class="agent-task-row" :class="{ 'agent-task-done': task.status === 'DONE' }">
+          <view class="agent-task-main" @click="task.target ? navTo(task.target) : undefined">
+            <view class="agent-task-title-row">
+              <text class="agent-task-title">{{ task.title }}</text>
+              <text v-if="task.source === 'PLAN_WEEKLY'" class="agent-task-source">Plan</text>
+            </view>
+            <text class="agent-task-desc">{{ task.description || 'Agent-generated action for today' }}</text>
+          </view>
+          <view class="agent-task-actions">
+            <view v-if="task.status !== 'DONE'" class="agent-task-btn agent-task-complete" @click.stop="completeAgentTask(task.taskId)">
+              <text class="agent-task-btn-text">Done</text>
+            </view>
+            <view v-if="task.status === 'TODO'" class="agent-task-btn" @click.stop="dismissAgentTask(task.taskId)">
+              <text class="agent-task-btn-text">Skip</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="agent-hub-entry" @click="navTo('/pages/agent/index')">
+        <text class="agent-hub-entry-text">进入 Agent Hub →</text>
+      </view>
+    </view>
+
     <!-- 7-day check-in chip — short, glanceable, taps through to the calendar -->
     <view v-if="checkin" class="checkin-card" @click="navTo('/pages/checkin/index')">
       <view class="checkin-left">
@@ -132,7 +233,12 @@
           @click="openArticle(a)"
         >
           <view class="article-cover" :class="'cover-tone-' + (idx % 4)">
-            <image v-if="a.imageUrl" class="article-cover-img" :src="a.imageUrl" mode="aspectFill" />
+            <image
+              class="article-cover-img"
+              :src="articleImageSrc(a, idx)"
+              mode="aspectFill"
+              @error="onArticleImageError(a.id)"
+            />
           </view>
           <view class="article-body">
             <text class="article-title">{{ a.title }}</text>
@@ -150,7 +256,7 @@
       <view class="section-header">
         <view class="section-titles">
           <text class="section-title">From the Field</text>
-          <text class="section-meta">Short tips from HRs and senior engineers</text>
+          <text class="section-meta">Today's next step for you — plus curated notes</text>
         </view>
       </view>
 
@@ -159,7 +265,7 @@
           class="consult-card"
           v-for="c in filteredConsultations"
           :key="c.id"
-          @click="c.sourceUrl ? openLink(c.sourceUrl, c.title) : undefined"
+          @click="c.sourceUrl ? openConsultation(c.sourceUrl, c.title) : undefined"
           :style="c.sourceUrl ? 'cursor:pointer' : ''"
         >
           <view class="consult-head">
@@ -167,7 +273,7 @@
             <text v-if="c.author" class="consult-author">{{ c.author }}</text>
           </view>
           <text v-if="c.body" class="consult-body">{{ c.body }}</text>
-          <text v-if="c.sourceUrl" class="consult-link-hint">阅读全文 ›</text>
+          <text v-if="c.sourceUrl" class="consult-link-hint">{{ consultLinkHint(c.sourceUrl) }}</text>
         </view>
       </view>
     </view>
@@ -231,10 +337,29 @@ import {
   type CareerCard,
 } from '@/api/home';
 import { getCheckInStatusApi, type CheckInStatus } from '@/api/checkin';
+import {
+  completeAgentTaskApi,
+  dismissAgentTaskApi,
+  ensureCareerAgentPlanApi,
+  getAgentProfileApi,
+  getCareerAgentPlanSummaryApi,
+  getCareerAgentRiskWatchApi,
+  getCareerAgentTodayApi,
+  getTodayAgentTasksApi,
+  type AgentTask,
+  type AgentUserProfile,
+  type CareerAgentPlanSummary,
+  type CareerAgentRiskWatch,
+  type CareerAgentToday,
+} from '@/api/agent';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 import { useTheme } from '@/utils/theme';
 
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
+const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = /api\.careerloop\.top/i.test(RAW_BASE_URL)
+  ? 'http://43.138.240.228'
+  : RAW_BASE_URL;
 
 const userInfo = ref<{
   nickname: string;
@@ -262,9 +387,29 @@ const consultations = ref<HomeConsultation[]>([]);
 const careerCards = ref<CareerCard[]>([]);
 const homeError = ref('');
 const checkin = ref<CheckInStatus | null>(null);
+const agentToday = ref<CareerAgentToday | null>(null);
+const agentTasks = ref<AgentTask[]>([]);
+const agentRisk = ref<CareerAgentRiskWatch | null>(null);
+const agentPlan = ref<CareerAgentPlanSummary | null>(null);
+const agentPlanLoading = ref(false);
+const agentProfile = ref<AgentUserProfile | null>(null);
 const checkinPercent = computed(() => {
   if (!checkin.value || !checkin.value.todayTotal) return 0;
   return Math.round((checkin.value.todayCompleted / checkin.value.todayTotal) * 100);
+});
+const primaryRisk = computed(() => agentRisk.value?.risks?.[0] || null);
+const primaryRiskTrend = computed(() => {
+  const trend = primaryRisk.value?.trend || 'STABLE';
+  if (trend === 'RISING') return 'Rising';
+  if (trend === 'DECREASING') return 'Improving';
+  return 'Stable';
+});
+const primaryRiskRecommendation = computed(() => primaryRisk.value?.recommendation || '');
+const planHealthLabel = computed(() => {
+  const health = agentPlan.value?.planHealth || 'MISSING';
+  if (health === 'ON_TRACK') return 'On track';
+  if (health === 'NEEDS_REFRESH') return 'Needs refresh';
+  return 'Missing';
 });
 
 // Search filters every section so the home page works as a quick triage tool.
@@ -282,6 +427,33 @@ const filteredArticles = computed(() => {
   const q = searchQuery.value.toLowerCase();
   return articles.value.filter(a => matches(a.title, q) || matches(a.summary, q) || matches(a.category, q));
 });
+
+/**
+ * Local fallback covers guarantee that article cards always have an image,
+ * even when remote URLs expire (e.g. seeded 3rd-party links returning 404).
+ */
+const ARTICLE_FALLBACK_COVERS = [
+  '/static/tabbar/home-active.png',
+  '/static/tabbar/resume-active.png',
+  '/static/tabbar/map-active.png',
+  '/static/tabbar/assistant-active.png',
+];
+const articleBrokenMap = ref<Record<number, boolean>>({});
+
+const fallbackByIndex = (idx: number) =>
+  ARTICLE_FALLBACK_COVERS[Math.abs(idx) % ARTICLE_FALLBACK_COVERS.length];
+
+const articleImageSrc = (a: HomeArticle, idx: number): string => {
+  if (articleBrokenMap.value[a.id]) return fallbackByIndex(idx);
+  // Route through backend proxy so WeChat can display third-party covers
+  // (no business-domain whitelist pain on arbitrary article hosts).
+  if (a.sourceUrl) return `${API_BASE_URL}/api/homepage/articles/${a.id}/cover`;
+  return a.imageUrl || fallbackByIndex(idx);
+};
+
+const onArticleImageError = (id: number) => {
+  articleBrokenMap.value[id] = true;
+};
 
 const filteredConsultations = computed(() => {
   if (!searchQuery.value) return consultations.value;
@@ -367,6 +539,73 @@ const loadCheckin = async () => {
   }
 };
 
+const loadAgentToday = async () => {
+  const uid = Number(uni.getStorageSync('userId'));
+  if (!uid || uid <= 0) {
+    agentToday.value = null;
+    agentTasks.value = [];
+    agentRisk.value = null;
+    agentPlan.value = null;
+    agentProfile.value = null;
+    return;
+  }
+  try {
+    const [today, tasks, risk, plan, profile] = await Promise.all([
+      getCareerAgentTodayApi(),
+      getTodayAgentTasksApi(),
+      getCareerAgentRiskWatchApi(),
+      getCareerAgentPlanSummaryApi(),
+      getAgentProfileApi(),
+    ]);
+    agentToday.value = today;
+    agentTasks.value = tasks || [];
+    agentRisk.value = risk;
+    agentPlan.value = plan;
+    agentProfile.value = profile;
+  } catch {
+    agentToday.value = null;
+    agentTasks.value = [];
+    agentRisk.value = null;
+    agentPlan.value = null;
+    agentProfile.value = null;
+  }
+};
+
+const ensureAgentPlan = async () => {
+  if (agentPlanLoading.value) return;
+  agentPlanLoading.value = true;
+  try {
+    agentPlan.value = await ensureCareerAgentPlanApi();
+    uni.showToast({ title: 'Plan ready', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed to generate plan', icon: 'none' });
+  } finally {
+    agentPlanLoading.value = false;
+  }
+};
+
+const completeAgentTask = async (taskId: number) => {
+  try {
+    const updated = await completeAgentTaskApi(taskId);
+    agentTasks.value = agentTasks.value.map((task) => task.taskId === taskId ? updated : task);
+    getCareerAgentRiskWatchApi().then((risk) => { agentRisk.value = risk; }).catch(() => undefined);
+    uni.showToast({ title: 'Task completed', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed', icon: 'none' });
+  }
+};
+
+const dismissAgentTask = async (taskId: number) => {
+  try {
+    await dismissAgentTaskApi(taskId);
+    agentTasks.value = agentTasks.value.filter((task) => task.taskId !== taskId);
+    getCareerAgentRiskWatchApi().then((risk) => { agentRisk.value = risk; }).catch(() => undefined);
+    uni.showToast({ title: 'Skipped', icon: 'none' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed', icon: 'none' });
+  }
+};
+
 const syncUserFromStorage = () => {
   const info = uni.getStorageSync('userInfo');
   userInfo.value = info
@@ -380,13 +619,16 @@ onMounted(() => {
   topSafeHeight.value = getTopSafeHeight();
   loadHomeContent();
   loadCheckin();
+  loadAgentToday();
 });
 
 onShow(() => {
   syncUserFromStorage();
+  refreshTheme();
   // Refresh streak on tab return so finishing an interview/assessment
   // immediately bumps the chip without requiring a pull-to-refresh.
   loadCheckin();
+  loadAgentToday();
 });
 
 onPullDownRefresh(async () => {
@@ -398,7 +640,7 @@ onPullDownRefresh(async () => {
     // We deliberately do NOT await this — a 429 rate-limit or network
     // hiccup must never prevent the local content from reloading.
     refreshHomeContentApi(uid).catch(() => {/* rate-limited or offline, ignore */});
-    await Promise.all([loadHomeContent(), loadCheckin()]);
+    await Promise.all([loadHomeContent(), loadCheckin(), loadAgentToday()]);
     uni.showToast({ title: '已刷新', icon: 'success' });
   } catch {
     uni.showToast({ title: '刷新失败', icon: 'none' });
@@ -408,7 +650,43 @@ onPullDownRefresh(async () => {
 });
 
 const navTo = (url: string) => {
+  const base = url.split('?')[0];
+  if (SWITCH_TAB_PATHS.has(base)) {
+    uni.switchTab({ url: base });
+    return;
+  }
   uni.navigateTo({ url });
+};
+
+/** Tab roots from pages.json — use switchTab so MP doesn’t open a webview. */
+const SWITCH_TAB_PATHS = new Set([
+  '/pages/home/index',
+  '/pages/messages/index',
+  '/pages/assistant/index',
+  '/pages/resume/index',
+  '/pages/user/index',
+]);
+
+const consultLinkHint = (raw: string) => {
+  const base = (raw || '').split('?')[0];
+  const n = base.startsWith('/') ? base : `/${base}`;
+  if (n.startsWith('/pages/')) return '去试试 ›';
+  return '阅读全文 ›';
+};
+
+const openConsultation = (raw: string, title?: string) => {
+  if (!raw) return;
+  const base = raw.split('?')[0];
+  const normalizedBase = base.startsWith('/') ? base : `/${base}`;
+  if (SWITCH_TAB_PATHS.has(normalizedBase)) {
+    uni.switchTab({ url: normalizedBase });
+    return;
+  }
+  if (normalizedBase.startsWith('/pages/')) {
+    uni.navigateTo({ url: raw.startsWith('/') ? raw : `/${raw}` });
+    return;
+  }
+  openLink(raw, title);
 };
 
 const handleAvatarClick = () => {
@@ -456,8 +734,8 @@ const handleAvatarClick = () => {
 }
 .search-icon-wrap { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; margin-right: 6px; }
 .search-icon-svg { font-size: 14px; }
-.search-input { flex: 1; font-size: 14px; color: #0f172a; height: 38px; }
-.search-ph { color: #94a3b8; font-size: 14px; }
+.search-input { flex: 1; font-size: var(--font-body); color: #0f172a; height: 38px; }
+.search-ph { color: #94a3b8; font-size: var(--font-body); }
 .search-clear { padding: 4px; }
 .clear-icon { font-size: 18px; color: #94a3b8; line-height: 1; }
 .user-avatar { width: 36px; height: 36px; border-radius: 18px; background: #e2e8f0; flex-shrink: 0; }
@@ -469,8 +747,8 @@ const handleAvatarClick = () => {
   color: var(--primary-color); letter-spacing: 0.08em;
   text-transform: uppercase; margin-bottom: 6px;
 }
-.greeting-title { display: block; font-size: 30px; line-height: 1.12; font-weight: 800; color: var(--text-primary); }
-.greeting-text { display: block; margin-top: 8px; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+.greeting-title { display: block; font-size: var(--font-hero); line-height: 1.12; font-weight: 800; color: var(--text-primary); }
+.greeting-text { display: block; margin-top: 8px; font-size: var(--font-body); line-height: 1.5; color: var(--text-secondary); }
 
 /* ---- Feature grid ---- */
 .feature-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px 20px 8px; }
@@ -495,7 +773,171 @@ const handleAvatarClick = () => {
 .icon-map      { background: linear-gradient(145deg, #c0ccff, #96a8f0); box-shadow: 0 4px 12px rgba(99,102,241,0.22); }
 .icon-ai       { background: linear-gradient(145deg, #e8c4ff, #cc80f0); box-shadow: 0 4px 12px rgba(168,85,247,0.22); }
 .icon-interview{ background: linear-gradient(145deg, #ffc89a, #ffaa5a); box-shadow: 0 4px 12px rgba(249,115,22,0.22); }
-.feature-label { font-size: 14px; font-weight: 700; color: #1e293b; line-height: 1.25; min-height: 36px; }
+.feature-label { font-size: var(--font-body); font-weight: 700; color: #1e293b; line-height: 1.25; min-height: 36px; }
+
+.agent-card {
+  margin: 16px 20px 0;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #172554, #2563eb 58%, #38bdf8);
+  box-shadow: 0 8px 22px rgba(37,99,235,0.28), 0 2px 8px rgba(15,23,42,0.16);
+  box-sizing: border-box;
+}
+.agent-card-head { display: flex; align-items: center; gap: 10px; }
+.agent-icon-wrap {
+  width: 42px; height: 42px; border-radius: 15px;
+  background: rgba(255,255,255,0.16);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.agent-icon { font-size: 21px; }
+.agent-head-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.agent-kicker { font-size: 10px; font-weight: 800; color: #bfdbfe; letter-spacing: 0.08em; text-transform: uppercase; }
+.agent-title { font-size: 17px; line-height: 1.25; font-weight: 900; color: #ffffff; }
+.risk-pill { border-radius: 999px; padding: 5px 8px; background: rgba(255,255,255,0.18); flex-shrink: 0; }
+.risk-high { background: rgba(254,202,202,0.28); }
+.risk-medium { background: rgba(254,240,138,0.24); }
+.risk-low { background: rgba(187,247,208,0.22); }
+.risk-text { font-size: 10px; font-weight: 900; color: #ffffff; }
+.agent-progress { margin-top: 14px; display: flex; align-items: center; gap: 10px; }
+.agent-progress-bar {
+  flex: 1; height: 7px; border-radius: 999px;
+  background: rgba(255,255,255,0.22); overflow: hidden;
+}
+.agent-progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f8fafc, #bae6fd); }
+.agent-progress-text { font-size: 11px; font-weight: 700; color: #dbeafe; }
+.agent-focus { display: block; margin-top: 12px; font-size: 14px; line-height: 1.45; font-weight: 800; color: #ffffff; }
+.agent-reason { display: block; margin-top: 6px; font-size: 12px; line-height: 1.55; color: #dbeafe; }
+.risk-watch-card {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15,23,42,0.26);
+  border: 1px solid rgba(255,255,255,0.16);
+}
+.risk-watch-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.risk-watch-kicker { font-size: 10px; font-weight: 900; color: #bfdbfe; letter-spacing: 0.08em; text-transform: uppercase; }
+.risk-watch-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.risk-watch-level,
+.risk-watch-trend {
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffffff;
+  background: rgba(255,255,255,0.14);
+}
+.risk-watch-high { background: rgba(248,113,113,0.35); }
+.risk-watch-medium { background: rgba(250,204,21,0.28); }
+.risk-watch-low { background: rgba(34,197,94,0.28); }
+.risk-watch-title { display: block; margin-top: 8px; font-size: 14px; font-weight: 900; color: #ffffff; line-height: 1.35; }
+.risk-watch-summary { display: block; margin-top: 5px; font-size: 11.5px; color: #dbeafe; line-height: 1.45; }
+.risk-watch-next { display: block; margin-top: 7px; font-size: 11.5px; color: #e0f2fe; line-height: 1.45; font-weight: 700; }
+.agent-plan-card {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.16);
+}
+.agent-plan-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.agent-plan-kicker { font-size: 10px; font-weight: 900; color: #bfdbfe; letter-spacing: 0.08em; text-transform: uppercase; }
+.agent-plan-health {
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffffff;
+  background: rgba(255,255,255,0.14);
+}
+.agent-plan-on_track { background: rgba(34,197,94,0.28); }
+.agent-plan-needs_refresh { background: rgba(250,204,21,0.28); }
+.agent-plan-missing { background: rgba(248,113,113,0.32); }
+.agent-plan-title { display: block; margin-top: 8px; font-size: 14px; line-height: 1.35; font-weight: 900; color: #ffffff; }
+.agent-plan-milestone { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; color: #e0f2fe; font-weight: 700; }
+.agent-plan-focus-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.agent-plan-focus { font-size: 11.5px; line-height: 1.4; color: #dbeafe; }
+.agent-plan-reason { display: block; margin-top: 7px; font-size: 11px; line-height: 1.45; color: #bfdbfe; }
+.agent-plan-action {
+  align-self: flex-start;
+  margin-top: 10px;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #ffffff;
+}
+.agent-plan-action-text { font-size: 12px; font-weight: 900; color: #1d4ed8; }
+.agent-pct-row {
+  display: flex; align-items: center; gap: 8px; margin: 8px 0 4px;
+}
+.agent-pct-bar-wrap {
+  flex: 1; height: 5px; background: rgba(255,255,255,.22); border-radius: 3px; overflow: hidden;
+}
+.agent-pct-bar-fill {
+  height: 100%; border-radius: 3px; transition: width .4s ease;
+}
+.agent-pct-low   { background: #94a3b8; }
+.agent-pct-medium { background: #38bdf8; }
+.agent-pct-high  { background: #34d399; }
+.agent-pct-label { font-size: 10.5px; color: rgba(255,255,255,.72); white-space: nowrap; flex: 1; }
+.agent-pct-arrow { font-size: 14px; color: rgba(255,255,255,.55); margin-left: 2px; }
+.agent-missing-row { margin: 6px 0 2px; }
+.agent-missing-label { font-size: 10.5px; color: rgba(255,255,255,.60); margin-bottom: 5px; display: block; }
+.agent-missing-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.agent-missing-chip {
+  background: rgba(255,255,255,.14); border-radius: 12px; padding: 3px 10px;
+}
+.agent-missing-chip-text { font-size: 11px; color: #bfdbfe; font-weight: 600; }
+.agent-risks { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.agent-risk-item { font-size: 11.5px; line-height: 1.4; color: #e0f2fe; }
+.agent-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.agent-action {
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.22);
+}
+.agent-action-primary { background: #ffffff; border-color: #ffffff; }
+.agent-action-text { font-size: 12px; font-weight: 800; color: #e0f2fe; }
+.agent-action-primary .agent-action-text { color: #1d4ed8; }
+.agent-task-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.agent-task-row {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 14px;
+  padding: 10px;
+}
+.agent-task-done { opacity: 0.68; }
+.agent-task-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.agent-task-title-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.agent-task-title { font-size: 13px; font-weight: 900; color: #ffffff; line-height: 1.35; }
+.agent-task-source {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.18);
+  font-size: 9px;
+  font-weight: 900;
+  color: #e0f2fe;
+}
+.agent-task-desc { font-size: 11px; line-height: 1.4; color: #dbeafe; }
+.agent-task-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.agent-task-btn {
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(255,255,255,0.14);
+}
+.agent-task-complete { background: #ffffff; }
+.agent-task-btn-text { font-size: 11px; font-weight: 900; color: #e0f2fe; }
+.agent-task-complete .agent-task-btn-text { color: #1d4ed8; }
+
+.agent-hub-entry {
+  margin-top: 14px;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  border-radius: 999px; padding: 10px 0; text-align: center;
+  background: rgba(255,255,255,0.12);
+}
+.agent-hub-entry-text { font-size: 13px; font-weight: 700; color: #fff; }
 
 /* ---- Daily check-in chip ---- */
 .checkin-card {
@@ -540,7 +982,7 @@ const handleAvatarClick = () => {
 }
 .section-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .section-title { font-size: var(--font-title); font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
-.section-meta { font-size: 12px; color: var(--text-tertiary); }
+.section-meta { font-size: var(--font-caption); color: var(--text-tertiary); }
 .section-more { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 6px; }
 .section-more-text { font-size: 13px; color: #2563eb; font-weight: 600; }
 .section-more-arrow { font-size: 16px; color: #2563eb; line-height: 1; }
@@ -580,7 +1022,7 @@ const handleAvatarClick = () => {
 .play-icon { font-size: 14px; color: #fff; margin-left: 2px; }
 .video-body { padding: 10px 14px 14px; white-space: normal; }
 .video-title {
-  font-size: 14px; font-weight: 600; color: #1e293b; line-height: 1.4;
+  font-size: var(--font-body); font-weight: 600; color: #1e293b; line-height: 1.4;
   margin-bottom: 6px; display: -webkit-box;
   line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; height: 38px;
@@ -606,12 +1048,12 @@ const handleAvatarClick = () => {
 .article-cover-img { width: 100%; height: 100%; display: block; }
 .article-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .article-title {
-  font-size: 15px; font-weight: 700; color: #0f172a;
+  font-size: var(--font-body); font-weight: 700; color: #0f172a;
   display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35;
 }
 .article-summary {
-  font-size: 12.5px; color: #64748b; line-height: 1.45;
+  font-size: var(--font-caption); color: #64748b; line-height: 1.45;
   display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden;
 }
@@ -630,9 +1072,9 @@ const handleAvatarClick = () => {
   display: flex; flex-direction: column; gap: 6px;
 }
 .consult-head { display: flex; flex-direction: column; gap: 4px; }
-.consult-title { font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; }
+.consult-title { font-size: var(--font-body); font-weight: 700; color: #0f172a; line-height: 1.3; }
 .consult-author { font-size: 11px; color: #94a3b8; font-weight: 500; }
-.consult-body { font-size: 13px; color: #475569; line-height: 1.55; white-space: pre-line; }
+.consult-body { font-size: var(--font-caption); color: #475569; line-height: 1.55; white-space: pre-line; }
 .consult-link-hint { font-size: 12px; color: #2563eb; margin-top: 6px; font-weight: 500; }
 
 /* ---- Career path spotlight ---- */
@@ -645,9 +1087,9 @@ const handleAvatarClick = () => {
   border: 1px solid #b8c8d8;
   box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
 }
-.path-name { font-size: 15px; font-weight: 700; color: #0f172a; }
+.path-name { font-size: var(--font-body); font-weight: 700; color: #0f172a; }
 .path-desc {
-  font-size: 12px; color: #475569; line-height: 1.45;
+  font-size: var(--font-caption); color: #475569; line-height: 1.45;
   display: -webkit-box; line-clamp: 3; -webkit-line-clamp: 3;
   -webkit-box-orient: vertical; overflow: hidden;
 }
@@ -678,6 +1120,13 @@ const handleAvatarClick = () => {
 .is-dark .checkin-title { color: #f0f9ff; }
 .is-dark .checkin-sub { color: #bae6fd; }
 .is-dark .checkin-cta { color: #67e8f9; }
+.is-dark .checkin-tip-text { color: #94a3b8; }
+.is-dark .article-tag { background: #172554; }
+.is-dark .article-tag-text,
+.is-dark .section-more-text,
+.is-dark .section-more-arrow,
+.is-dark .video-up,
+.is-dark .consult-link-hint { color: #93c5fd; }
 .is-dark .video-title,
 .is-dark .article-title,
 .is-dark .consult-title,
@@ -697,6 +1146,10 @@ const handleAvatarClick = () => {
 /* ---- Page background: slightly more contrast vs. white cards ---- */
 .home-page {
   background-color: #eaeff5;
+}
+
+.is-dark.home-page {
+  background-color: #0f172a;
 }
 
 /* ---- Feature grid cards ---- */
@@ -764,6 +1217,42 @@ const handleAvatarClick = () => {
   overflow: hidden;
   box-shadow: none;
   filter: drop-shadow(0 3px 12px rgba(0,0,0,0.22));
+}
+
+.home-page.is-dark .feature-item {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.home-page.is-dark .search-bar {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.home-page.is-dark .checkin-card {
+  background: linear-gradient(135deg, #082f49, #0c4a6e);
+  border-color: #0e7490;
+  box-shadow: none;
+}
+
+.home-page.is-dark .checkin-kicker { color: #67e8f9; }
+.home-page.is-dark .checkin-title { color: #f0f9ff; }
+.home-page.is-dark .checkin-sub { color: #bae6fd; }
+.home-page.is-dark .checkin-cta { color: #67e8f9; }
+
+.home-page.is-dark .article-card,
+.home-page.is-dark .consult-card,
+.home-page.is-dark .path-card {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.home-page.is-dark .video-card {
+  background: #1e293b;
+  border-color: #334155;
 }
 
 /* #endif */

@@ -7,6 +7,8 @@ import com.group1.career.model.entity.AssistantMessage;
 import com.group1.career.model.entity.AssistantSession;
 import com.group1.career.repository.AssistantMessageRepository;
 import com.group1.career.repository.AssistantSessionRepository;
+import com.group1.career.service.ConversationSummaryService;
+import com.group1.career.service.UserFactService;
 import com.group1.career.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +27,8 @@ public class ChatHistoryController {
 
     private final AssistantSessionRepository sessionRepository;
     private final AssistantMessageRepository messageRepository;
+    private final ConversationSummaryService summaryService;
+    private final UserFactService userFactService;
 
     @Operation(summary = "Get all chat sessions for the current user (sorted by latest)")
     @GetMapping("/{userId}")
@@ -55,6 +59,7 @@ public class ChatHistoryController {
         AssistantSession session = AssistantSession.builder()
                 .userId(uid)
                 .title(request.getTitle() != null ? request.getTitle() : "New Conversation")
+                .persona(request.getPersona() != null ? request.getPersona() : "MENTOR")
                 .build();
         return Result.success(sessionRepository.save(session));
     }
@@ -89,6 +94,10 @@ public class ChatHistoryController {
             }
         }
 
+        String persona = request.getPersona() != null ? request.getPersona() : "MENTOR";
+        summaryService.triggerRollupIfNeeded(uid, persona, sessionId);
+        userFactService.extractAndSaveAsync(uid, sessionId);
+
         return Result.success(session);
     }
 
@@ -115,11 +124,13 @@ public class ChatHistoryController {
     @Data
     public static class CreateSessionDto {
         private String title;
+        private String persona;
     }
 
     @Data
     public static class AppendMessageDto {
         private String userMessage;
         private String assistantReply;
+        private String persona;
     }
 }
