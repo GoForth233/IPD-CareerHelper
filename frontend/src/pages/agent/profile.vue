@@ -158,7 +158,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/locales';
 import { getAgentProfileApi, saveProfileInputsApi, type AgentUserProfile, type ProfileInputsRequest } from '@/api/agent';
 
 const { t } = useI18n();

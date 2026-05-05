@@ -130,7 +130,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/locales';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { listMarketApi, likeQuestionApi, contributeQuestionApi, type MarketQuestion } from '@/api/market';

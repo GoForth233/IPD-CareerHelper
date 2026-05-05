@@ -129,7 +129,7 @@ import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import request from '@/utils/request';
 import { useTheme } from '@/utils/theme';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/locales';
 
 const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();

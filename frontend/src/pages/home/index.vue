@@ -59,6 +59,24 @@
       </view>
     </view>
 
+    <!-- 7-day check-in chip — short, glanceable, taps through to the calendar -->
+    <view v-if="checkin" class="checkin-card" @click="navTo('/pages/checkin/index')">
+      <view class="checkin-left">
+        <text class="checkin-kicker">{{ t('checkin.title') }}</text>
+        <text class="checkin-title">{{ t('checkin.streak', { n: checkin.streakDays || 0 }) }}</text>
+        <text class="checkin-sub">{{ checkin.todayCompleted }}/{{ checkin.todayTotal }} {{ t('checkin.todayDone') }} · {{ checkin.weeklyDays }}/7 {{ t('checkin.weeklyDays') }}</text>
+      </view>
+      <view class="checkin-right">
+        <view class="checkin-bar">
+          <view class="checkin-bar-fill" :style="{ width: checkinPercent + '%' }"></view>
+        </view>
+        <text class="checkin-cta">{{ t('checkin.viewCalendar') }}</text>
+      </view>
+    </view>
+    <view v-if="checkin && (!checkin.streakDays || !checkin.todayCompleted)" class="checkin-tip">
+      <text class="checkin-tip-text">{{ t('checkin.keepStreak') }}</text>
+    </view>
+
     <view v-if="agentToday" class="agent-card">
       <view class="agent-card-head">
         <view class="agent-icon-wrap">
@@ -131,24 +149,6 @@
       <view class="agent-hub-entry" @click="navTo('/pages/agent/index')">
         <text class="agent-hub-entry-text">{{ t('home.agentHubEntry') }}</text>
       </view>
-    </view>
-
-    <!-- 7-day check-in chip — short, glanceable, taps through to the calendar -->
-    <view v-if="checkin" class="checkin-card" @click="navTo('/pages/checkin/index')">
-      <view class="checkin-left">
-        <text class="checkin-kicker">{{ t('checkin.title') }}</text>
-        <text class="checkin-title">{{ t('checkin.streak', { n: checkin.streakDays || 0 }) }}</text>
-        <text class="checkin-sub">{{ checkin.todayCompleted }}/{{ checkin.todayTotal }} {{ t('checkin.todayDone') }} · {{ checkin.weeklyDays }}/7 {{ t('checkin.weeklyDays') }}</text>
-      </view>
-      <view class="checkin-right">
-        <view class="checkin-bar">
-          <view class="checkin-bar-fill" :style="{ width: checkinPercent + '%' }"></view>
-        </view>
-        <text class="checkin-cta">{{ t('checkin.viewCalendar') }}</text>
-      </view>
-    </view>
-    <view v-if="checkin && (!checkin.streakDays || !checkin.todayCompleted)" class="checkin-tip">
-      <text class="checkin-tip-text">{{ t('checkin.keepStreak') }}</text>
     </view>
 
     <!-- Section 1 — Career Videos (Bilibili) -->
@@ -298,7 +298,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/locales';
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import { openLink } from '@/utils/openLink';
 import { refreshHomeContentApi } from '@/api/home';

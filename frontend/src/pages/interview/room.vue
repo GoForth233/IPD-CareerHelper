@@ -140,7 +140,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/locales';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import {
   endInterviewApi,
