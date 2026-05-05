@@ -3,7 +3,7 @@
     <!-- header -->
     <view class="hub-header">
       <view class="hub-back" @click="goBack"><text class="hub-back-icon">←</text></view>
-      <text class="hub-title">Career Agent Hub</text>
+      <text class="hub-title">{{ t('agent.hub.title') }}</text>
       <view class="hub-refresh" @click="loadAll"><text class="hub-refresh-icon">↻</text></view>
     </view>
 
@@ -12,7 +12,7 @@
       <!-- ① Profile completeness -->
       <view class="hub-section" @click="navTo('/pages/agent/profile')">
         <view class="hub-section-head">
-          <text class="hub-section-title">Agent 对你的了解</text>
+          <text class="hub-section-title">{{ t('agent.hub.profileSection') }}</text>
           <text class="hub-section-arrow">›</text>
         </view>
         <view v-if="agentProfile" class="hub-pct-wrap">
@@ -40,7 +40,7 @@
       <!-- ② Today -->
       <view v-if="agentToday" class="hub-section">
         <view class="hub-section-head">
-          <text class="hub-section-title">今日 Agent</text>
+          <text class="hub-section-title">{{ t('agent.hub.todaySection') }}</text>
           <view class="hub-stage-pill"><text class="hub-stage-text">{{ stageLabel }}</text></view>
         </view>
         <text class="hub-headline">{{ agentToday.headline }}</text>
@@ -48,7 +48,7 @@
         <view class="hub-progress-bar">
           <view class="hub-progress-fill" :style="{ width: agentToday.progressPercent + '%' }" />
         </view>
-        <text class="hub-progress-text">{{ agentToday.progressPercent }}% 就绪度</text>
+        <text class="hub-progress-text">{{ t('agent.hub.readiness', { n: agentToday.progressPercent }) }}</text>
         <view v-if="agentToday.actions?.length" class="hub-actions">
           <view
             v-for="action in agentToday.actions.slice(0, 3)"
@@ -65,11 +65,11 @@
       <!-- ③ Tasks -->
       <view class="hub-section">
         <view class="hub-section-head">
-          <text class="hub-section-title">任务列表</text>
-          <text class="hub-task-count">{{ openTasks.length }} 个进行中</text>
+          <text class="hub-section-title">{{ t('agent.hub.tasksSection') }}</text>
+          <text class="hub-task-count">{{ t('agent.hub.tasksOpen', { n: openTasks.length }) }}</text>
         </view>
         <view v-if="openTasks.length === 0" class="hub-empty">
-          <text class="hub-empty-text">暂无待办任务，今日表现不错 🎉</text>
+          <text class="hub-empty-text">{{ t('agent.hub.tasksEmpty') }}</text>
         </view>
         <view v-for="task in openTasks" :key="task.taskId" class="hub-task">
           <view class="hub-task-header" @click="toggleTask(task.taskId)">
@@ -88,21 +88,21 @@
             <view class="hub-task-right">
               <view class="hub-task-actions">
                 <view class="hub-task-btn hub-task-done" @click.stop="completeTask(task.taskId)">
-                  <text class="hub-task-btn-text">Done</text>
+                  <text class="hub-task-btn-text">{{ t('agent.hub.taskDone') }}</text>
                 </view>
                 <view class="hub-task-btn" @click.stop="dismissTask(task.taskId)">
-                  <text class="hub-task-btn-text">Skip</text>
+                  <text class="hub-task-btn-text">{{ t('agent.hub.taskSkip') }}</text>
                 </view>
               </view>
               <view class="hub-expand-btn" @click.stop="expandTask(task)">
-                <text class="hub-expand-text">{{ expandedTasks.has(task.taskId) ? '收起' : '拆解' }}</text>
+                <text class="hub-expand-text">{{ expandedTasks.has(task.taskId) ? t('agent.hub.taskCollapse') : t('agent.hub.taskDecompose') }}</text>
               </view>
             </view>
           </view>
           <!-- subtasks -->
           <view v-if="expandedTasks.has(task.taskId)" class="hub-subtasks">
             <view v-if="subtaskLoading.has(task.taskId)" class="hub-subtask-loading">
-              <text class="hub-subtask-loading-text">正在生成子任务…</text>
+              <text class="hub-subtask-loading-text">{{ t('agent.hub.taskGenerating') }}</text>
             </view>
             <view
               v-for="sub in subtaskMap.get(task.taskId) || []"
@@ -130,7 +130,7 @@
       <!-- ④ Risk Watch -->
       <view v-if="agentRisk" class="hub-section">
         <view class="hub-section-head">
-          <text class="hub-section-title">风险监控</text>
+          <text class="hub-section-title">{{ t('agent.hub.riskSection') }}</text>
           <view class="hub-risk-pill" :class="'risk-' + agentRisk.overallLevel.toLowerCase()">
             <text class="hub-risk-pill-text">{{ agentRisk.overallLevel }}</text>
           </view>
@@ -154,12 +154,12 @@
       <!-- ⑤ Plan -->
       <view v-if="agentPlan" class="hub-section">
         <view class="hub-section-head">
-          <text class="hub-section-title">长期计划</text>
+          <text class="hub-section-title">{{ t('agent.hub.planSection') }}</text>
           <text class="hub-plan-health" :class="'health-' + (agentPlan.planHealth || 'missing').toLowerCase()">
             {{ planHealthLabel }}
           </text>
         </view>
-        <text class="hub-plan-role">{{ agentPlan.targetRole || '目标岗位未设置' }}</text>
+        <text class="hub-plan-role">{{ agentPlan.targetRole || t('agent.hub.planRoleEmpty') }}</text>
         <text v-if="agentPlan.nextMilestoneTitle" class="hub-plan-milestone">
           {{ agentPlan.nextMilestoneHorizon }} · {{ agentPlan.nextMilestoneTitle }}
         </text>
@@ -178,21 +178,21 @@
       <!-- ⑥ Weekly Review -->
       <view v-if="weeklyReview" class="hub-section">
         <view class="hub-section-head">
-          <text class="hub-section-title">上次周复盘</text>
+          <text class="hub-section-title">{{ t('agent.hub.reviewSection') }}</text>
           <text class="hub-review-date">{{ weeklyReviewDate }}</text>
         </view>
         <view class="hub-review-stats">
           <view class="hub-stat">
             <text class="hub-stat-val">{{ Math.round((reviewPayload?.completionRate7d || 0) * 100) }}%</text>
-            <text class="hub-stat-label">任务完成率</text>
+            <text class="hub-stat-label">{{ t('agent.hub.reviewCompletionRate') }}</text>
           </view>
           <view class="hub-stat">
             <text class="hub-stat-val">{{ reviewPayload?.currentStage || '-' }}</text>
-            <text class="hub-stat-label">当时阶段</text>
+            <text class="hub-stat-label">{{ t('agent.hub.reviewStage') }}</text>
           </view>
           <view class="hub-stat">
             <text class="hub-stat-val">{{ reviewPayload?.preferredDifficulty || '-' }}</text>
-            <text class="hub-stat-label">偏好难度</text>
+            <text class="hub-stat-label">{{ t('agent.hub.reviewDifficulty') }}</text>
           </view>
         </view>
         <view v-if="reviewPayload?.highlights?.length" class="hub-review-highlights">
@@ -202,19 +202,38 @@
 
       <!-- ⑦ Agent State stats -->
       <view v-if="agentState" class="hub-section hub-state-section">
-        <text class="hub-section-title">本周数据</text>
+        <text class="hub-section-title">{{ t('agent.hub.stateSection') }}</text>
         <view class="hub-state-stats">
           <view class="hub-stat">
             <text class="hub-stat-val">{{ Math.round((agentState.taskCompletionRate7d || 0) * 100) }}%</text>
-            <text class="hub-stat-label">7日完成率</text>
+            <text class="hub-stat-label">{{ t('agent.hub.stateCompletion7d') }}</text>
           </view>
           <view class="hub-stat">
             <text class="hub-stat-val">{{ Math.round((agentState.taskDismissRate7d || 0) * 100) }}%</text>
-            <text class="hub-stat-label">7日跳过率</text>
+            <text class="hub-stat-label">{{ t('agent.hub.stateDismiss7d') }}</text>
           </view>
           <view class="hub-stat">
             <text class="hub-stat-val">{{ agentState.preferredTaskDifficulty }}</text>
-            <text class="hub-stat-label">偏好难度</text>
+            <text class="hub-stat-label">{{ t('agent.hub.stateDifficulty') }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- ⑧ Recent Activity (Events Timeline) -->
+      <view class="hub-section hub-state-section">
+        <view class="hub-section-head">
+          <text class="hub-section-title">{{ t('agent.hub.activitySection') }}</text>
+        </view>
+        <view v-if="recentEvents.length === 0" class="hub-empty">
+          <text class="hub-empty-text">{{ t('agent.hub.activityEmpty') }}</text>
+        </view>
+        <view v-for="ev in recentEvents" :key="ev.eventId" class="hub-event-row">
+          <view class="hub-event-icon-wrap" :class="'ev-' + eventColorClass(ev.eventType)">
+            <text class="hub-event-icon">{{ eventIcon(ev.eventType) }}</text>
+          </view>
+          <view class="hub-event-body">
+            <text class="hub-event-label">{{ eventLabel(ev.eventType) }}</text>
+            <text class="hub-event-time">{{ formatEventTime(ev.createdAt) }}</text>
           </view>
         </view>
       </view>
@@ -226,11 +245,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   completeAgentTaskApi,
   decomposeTaskApi,
   dismissAgentTaskApi,
   ensureCareerAgentPlanApi,
+  getAgentEventsApi,
   getAgentProfileApi,
   getAgentStateApi,
   getCareerAgentPlanSummaryApi,
@@ -247,6 +268,8 @@ import {
   type CareerAgentToday,
 } from '@/api/agent';
 
+const { t } = useI18n();
+
 const agentProfile = ref<AgentUserProfile | null>(null);
 const agentToday = ref<CareerAgentToday | null>(null);
 const agentRisk = ref<CareerAgentRiskWatch | null>(null);
@@ -254,6 +277,7 @@ const agentPlan = ref<CareerAgentPlanSummary | null>(null);
 const agentState = ref<AgentState | null>(null);
 const weeklyReview = ref<AgentEvent | null>(null);
 const openTasks = ref<AgentTask[]>([]);
+const recentEvents = ref<AgentEvent[]>([]);
 
 const expandedTasks = reactive(new Set<number>());
 const subtaskMap = reactive(new Map<number, AgentTask[]>());
@@ -261,35 +285,35 @@ const subtaskLoading = reactive(new Set<number>());
 
 const levelLabel = computed(() => {
   const lvl = agentProfile.value?.personalizationLevel || 'LOW';
-  if (lvl === 'HIGH') return '非常了解你';
-  if (lvl === 'MEDIUM') return '正在了解你';
-  return '刚刚开始';
+  if (lvl === 'HIGH') return t('agent.hub.profileLevelHigh');
+  if (lvl === 'MEDIUM') return t('agent.hub.profileLevelMedium');
+  return t('agent.hub.profileLevelLow');
 });
 
 const stageLabel = computed(() => {
-  const s = agentToday.value?.stage || '';
-  const map: Record<string, string> = {
-    DIRECTION_DISCOVERY: '探索方向',
-    TARGET_ROLE_SELECTION: '选定岗位',
-    RESUME_BOOTSTRAP: '简历建档',
-    RESUME_IMPROVEMENT: '简历优化',
-    INTERVIEW_BOOTSTRAP: '面试启动',
-    INTERVIEW_IMPROVEMENT: '面试提升',
-    EXECUTION_RHYTHM: '执行节奏',
-    CAREER_MOMENTUM: '持续冲刺',
+  const s = (agentToday.value?.stage || '') as keyof typeof stageMap;
+  const stageMap = {
+    DIRECTION_DISCOVERY: t('agent.stage.DIRECTION_DISCOVERY'),
+    TARGET_ROLE_SELECTION: t('agent.stage.TARGET_ROLE_SELECTION'),
+    RESUME_BOOTSTRAP: t('agent.stage.RESUME_BOOTSTRAP'),
+    RESUME_IMPROVEMENT: t('agent.stage.RESUME_IMPROVEMENT'),
+    INTERVIEW_BOOTSTRAP: t('agent.stage.INTERVIEW_BOOTSTRAP'),
+    INTERVIEW_IMPROVEMENT: t('agent.stage.INTERVIEW_IMPROVEMENT'),
+    EXECUTION_RHYTHM: t('agent.stage.EXECUTION_RHYTHM'),
+    CAREER_MOMENTUM: t('agent.stage.CAREER_MOMENTUM'),
   };
-  return map[s] || s;
+  return stageMap[s] || s;
 });
 
 const planHealthLabel = computed(() => {
   const h = agentPlan.value?.planHealth || 'MISSING';
-  if (h === 'ON_TRACK') return '进行中';
-  if (h === 'NEEDS_REFRESH') return '需更新';
-  return '未生成';
+  if (h === 'ON_TRACK') return t('agent.hub.planHealthOnTrack');
+  if (h === 'NEEDS_REFRESH') return t('agent.hub.planHealthNeedsRefresh');
+  return t('agent.hub.planHealthMissing');
 });
 
 const planBtnLabel = computed(() =>
-  agentPlan.value?.hasPlan ? '刷新计划' : '生成计划'
+  agentPlan.value?.hasPlan ? t('agent.hub.planRefresh') : t('agent.hub.planGenerate')
 );
 
 const weeklyReviewDate = computed(() => {
@@ -305,8 +329,38 @@ const reviewPayload = computed(() => {
   } catch { return null; }
 });
 
+const EVENT_ICONS: Record<string, string> = {
+  TASK_COMPLETED: '✓',
+  TASK_DISMISSED: '–',
+  RISK_CHANGED: '⚠',
+  PLAN_GENERATED: '📋',
+  RESUME_SCORE_CHANGED: '📄',
+  INTERVIEW_SCORE_CHANGED: '🎤',
+  WEEKLY_REVIEW_COMPLETED: '📊',
+};
+const EVENT_COLORS: Record<string, string> = {
+  TASK_COMPLETED: 'green',
+  TASK_DISMISSED: 'gray',
+  RISK_CHANGED: 'orange',
+  PLAN_GENERATED: 'blue',
+  RESUME_SCORE_CHANGED: 'blue',
+  INTERVIEW_SCORE_CHANGED: 'blue',
+  WEEKLY_REVIEW_COMPLETED: 'purple',
+};
+
+const eventIcon = (type: string) => EVENT_ICONS[type] || '·';
+const eventColorClass = (type: string) => EVENT_COLORS[type] || 'gray';
+const eventLabel = (type: string) => {
+  const key = `agent.event.${type}` as Parameters<typeof t>[0];
+  return t(key, type);
+};
+const formatEventTime = (raw?: string) => {
+  if (!raw) return '';
+  return raw.substring(0, 16).replace('T', ' ');
+};
+
 const loadAll = async () => {
-  const [profile, today, risk, plan, state, review, tasks] = await Promise.allSettled([
+  const [profile, today, risk, plan, state, review, tasks, events] = await Promise.allSettled([
     getAgentProfileApi(),
     getCareerAgentTodayApi(),
     getCareerAgentRiskWatchApi(),
@@ -314,6 +368,7 @@ const loadAll = async () => {
     getAgentStateApi(),
     getWeeklyReviewLatestApi(),
     getTodayAgentTasksApi(),
+    getAgentEventsApi(10),
   ]);
 
   if (profile.status === 'fulfilled') agentProfile.value = profile.value;
@@ -323,6 +378,7 @@ const loadAll = async () => {
   if (state.status === 'fulfilled') agentState.value = state.value;
   if (review.status === 'fulfilled') weeklyReview.value = review.value;
   if (tasks.status === 'fulfilled') openTasks.value = tasks.value || [];
+  if (events.status === 'fulfilled') recentEvents.value = events.value || [];
 };
 
 const completeTask = async (taskId: number) => {
@@ -331,9 +387,9 @@ const completeTask = async (taskId: number) => {
     openTasks.value = openTasks.value.filter(t => t.taskId !== taskId);
     subtaskMap.delete(taskId);
     expandedTasks.delete(taskId);
-    uni.showToast({ title: '已完成', icon: 'success' });
+    uni.showToast({ title: t('agent.hub.completeSuccess'), icon: 'success' });
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '操作失败', icon: 'none' });
+    uni.showToast({ title: e?.message || t('agent.hub.completeError'), icon: 'none' });
   }
 };
 
@@ -372,9 +428,9 @@ const toggleTask = (taskId: number) => {
 const ensurePlan = async () => {
   try {
     agentPlan.value = await ensureCareerAgentPlanApi();
-    uni.showToast({ title: '计划已更新', icon: 'success' });
+    uni.showToast({ title: t('agent.hub.planUpdated'), icon: 'success' });
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '生成失败', icon: 'none' });
+    uni.showToast({ title: e?.message || t('agent.hub.planFailed'), icon: 'none' });
   }
 };
 
@@ -539,4 +595,25 @@ onMounted(loadAll);
 .hub-stat-label { font-size: 11px; color: #9ca3af; display: block; margin-top: 4rpx; }
 .hub-review-highlights { display: flex; flex-direction: column; gap: 6rpx; }
 .hub-review-highlight { font-size: 12px; color: #4b5563; }
+
+/* events timeline */
+.hub-event-row {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 12rpx 0; border-bottom: 1rpx solid #f3f4f6;
+}
+.hub-event-row:last-child { border-bottom: none; }
+.hub-event-icon-wrap {
+  width: 48rpx; height: 48rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ev-green  { background: #d1fae5; }
+.ev-gray   { background: #f1f5f9; }
+.ev-orange { background: #fef3c7; }
+.ev-blue   { background: #dbeafe; }
+.ev-purple { background: #ede9fe; }
+.hub-event-icon { font-size: 14px; }
+.hub-event-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2rpx; }
+.hub-event-label { font-size: 12.5px; color: #374151; font-weight: 600; }
+.hub-event-time { font-size: 11px; color: #9ca3af; }
 </style>
