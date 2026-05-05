@@ -12,18 +12,18 @@
 
 -- F25: account soft-delete  |  F16: user ban support
 ALTER TABLE `users`
-  ADD COLUMN IF NOT EXISTS `deleted_at`    DATETIME     NULL COMMENT 'soft-delete timestamp; non-null = scheduled for deletion (F25)',
-  ADD COLUMN IF NOT EXISTS `banned_reason` VARCHAR(255) NULL COMMENT 'reason for ban when status indicates BANNED (F16)';
+  ADD COLUMN `deleted_at`    DATETIME     NULL COMMENT 'soft-delete timestamp; non-null = scheduled for deletion (F25)',
+  ADD COLUMN `banned_reason` VARCHAR(255) NULL COMMENT 'reason for ban when status indicates BANNED (F16)';
 
 -- F28a: question bank three-tier architecture (OFFICIAL / USER / AI_GENERATED)
 ALTER TABLE `interview_questions`
-  ADD COLUMN IF NOT EXISTS `source`        VARCHAR(20) NOT NULL DEFAULT 'USER'      COMMENT 'OFFICIAL | USER | AI_GENERATED',
-  ADD COLUMN IF NOT EXISTS `review_status` VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED' COMMENT 'PUBLISHED | PENDING_REVIEW | REJECTED',
-  ADD COLUMN IF NOT EXISTS `answer`        TEXT        NULL     COMMENT 'reference answer in Markdown (OFFICIAL / AI_GENERATED only)';
+  ADD COLUMN `source`        VARCHAR(20) NOT NULL DEFAULT 'USER'      COMMENT 'OFFICIAL | USER | AI_GENERATED',
+  ADD COLUMN `review_status` VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED' COMMENT 'PUBLISHED | PENDING_REVIEW | REJECTED',
+  ADD COLUMN `answer`        TEXT        NULL     COMMENT 'reference answer in Markdown (OFFICIAL / AI_GENERATED only)';
 
 -- F15: multi-persona chat history separation
 ALTER TABLE `assistant_sessions`
-  ADD COLUMN IF NOT EXISTS `persona` VARCHAR(20) NOT NULL DEFAULT 'MENTOR' COMMENT 'MENTOR | CHALLENGER';
+  ADD COLUMN `persona` VARCHAR(20) NOT NULL DEFAULT 'MENTOR' COMMENT 'MENTOR | CHALLENGER';
 
 -- ─────────────────────────────────────────────
 -- F11: AI long-term session memory (rolling summaries)
