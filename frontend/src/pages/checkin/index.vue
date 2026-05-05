@@ -1,5 +1,5 @@
 <template>
-  <view class="checkin-page" :class="{ 'is-dark': darkPref }">
+  <view class="checkin-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="nav-row">
@@ -76,8 +76,9 @@ import { computed, onMounted, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getCheckInStatusApi, getCheckInCalendarApi, type CheckInStatus, type CheckInDay } from '@/api/checkin';
+import { useTheme } from '@/utils/theme';
 
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 
 const status = ref<CheckInStatus | null>(null);
@@ -187,11 +188,12 @@ const load = async () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
 });
 
 onShow(() => {
+  refreshTheme();
   load();
 });
 </script>

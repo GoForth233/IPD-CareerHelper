@@ -1,5 +1,5 @@
 <template>
-  <view class="chat-container" :class="{ 'is-dark': darkPref }">
+  <view class="chat-container" :class="[themeClass, fontClass]">
     <view class="interview-info" v-if="interview">
       <view class="session-copy">
         <text class="position">{{ interview.positionName }}</text>
@@ -14,6 +14,7 @@
     </view>
 
     <scroll-view scroll-y class="chat-area" :scroll-top="99999" :scroll-with-animation="true">
+      <view class="chat-area-surface">
       <view v-for="(msg, index) in messages" :key="index" :class="['message', msg.role.toLowerCase()]">
         <view class="msg-content">
           <text>{{ msg.content }}</text>
@@ -28,6 +29,7 @@
           </view>
           <text v-if="typingElapsed > 2" class="typing-timer">{{ typingElapsed }}s</text>
         </view>
+      </view>
       </view>
     </scroll-view>
 
@@ -52,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import {
   getInterviewByIdApi,
   getInterviewMessagesApi,
@@ -60,6 +63,7 @@ import {
   generateGreetingApi,
 } from '@/api/interview';
 import type { Interview, InterviewMessage } from '@/api/interview';
+import { useTheme } from '@/utils/theme';
 
 const interviewId = ref<number>(0);
 const interview = ref<Interview | null>(null);
@@ -68,6 +72,7 @@ const inputText = ref('');
 const aiTyping = ref(false);
 const typingElapsed = ref(0);
 let typingTimer: any = null;
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const startTypingTimer = () => {
   typingElapsed.value = 0;
@@ -84,9 +89,8 @@ const stopTypingTimer = () => {
   }
   typingElapsed.value = 0;
 };
-const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
-
 onMounted(async () => {
+  refreshTheme();
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1] as any;
   interviewId.value = parseInt(currentPage.options?.interviewId || '0');
@@ -117,6 +121,10 @@ onMounted(async () => {
       uni.showToast({ title: error?.message || 'Failed to load interview', icon: 'none' });
     }
   }
+});
+
+onShow(() => {
+  refreshTheme();
 });
 
 const sendMessage = async () => {
@@ -226,8 +234,17 @@ const endInterview = () => {
 }
 
 .chat-area {
-  flex: 1; padding: 16px;
+  flex: 1;
+  min-height: 0;
   max-height: calc(100vh - 200px);
+  background-color: #f5f5f7;
+}
+
+.chat-area-surface {
+  min-height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: #f5f5f7;
 }
 
 .message { margin-bottom: 16px; display: flex; }
@@ -316,4 +333,14 @@ const endInterview = () => {
 .is-dark .input-area { background: rgba(15, 23, 42, 0.92); border-color: #334155; }
 
 .is-dark .chat-input { background: #1e293b; border-color: #334155; color: #f8fafc; }
+
+.is-dark .chat-area,
+.is-dark .chat-area-surface {
+  background-color: #0f172a;
+}
+
+.theme-green .chat-area,
+.theme-green .chat-area-surface {
+  background-color: #f0fdf4;
+}
 </style>

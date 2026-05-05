@@ -1,5 +1,5 @@
 <template>
-  <view class="resume-page" :class="{ 'is-dark': darkPref }">
+  <view class="resume-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
@@ -122,6 +122,7 @@ import {
   uploadResumeFile,
   type Resume,
 } from '@/api/resume';
+import { useTheme } from '@/utils/theme';
 
 interface ResumeItem {
   resumeId?: number;
@@ -204,7 +205,7 @@ const loadResumes = async () => {
 
 const showSheet = ref(false);
 const topSafeHeight = ref(88);
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const handleUploadClick = () => {
   showSheet.value = true;
@@ -396,13 +397,14 @@ const handleMore = (idx: number) => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
 });
 
 // Tab pages are kept alive across navigation; onShow re-fires every time
 // the page becomes visible (including after login -> switchTab back).
 onShow(() => {
+  refreshTheme();
   loadResumes();
 });
 </script>
@@ -677,9 +679,7 @@ onShow(() => {
   -webkit-backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px;
+  padding: 16px 20px;
   border-bottom: 0.5px solid rgba(60, 60, 67, 0.1);
 }
 
@@ -689,13 +689,13 @@ onShow(() => {
   border-bottom: none;
 }
 
-.sheet-option-icon { font-size: 18px; }
+.sheet-option-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
 
 .sheet-option-text { font-size: 17px; color: #007aff; }
 
 .sheet-option-col { display: flex; flex-direction: column; gap: 4px; }
 .sheet-option-row { display: flex; align-items: center; gap: 10px; }
-.sheet-option-hint { font-size: 11px; color: #8e8e93; padding-left: 28px; line-height: 1.4; }
+.sheet-option-hint { font-size: 11px; color: #8e8e93; padding-left: 32px; line-height: 1.4; }
 
 .sheet-cancel {
   background: #ffffff;
@@ -725,6 +725,23 @@ onShow(() => {
 .is-dark .sheet-title-bar,
 .is-dark .sheet-cancel { background: #1e293b; border-color: #334155; }
 
+.is-dark .skel-card { background: #1e293b; }
+.is-dark .skel-line { background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%); background-size: 200% 100%; }
+.is-dark .skel-square { background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%); background-size: 200% 100%; }
+.is-dark .section-action { background: rgba(37, 99, 235, 0.15); border-color: rgba(37, 99, 235, 0.3); }
+.is-dark .section-action-text { color: #60a5fa; }
+.is-dark .badge-recent { background: rgba(37, 99, 235, 0.15); }
+.is-dark .badge-recent .rc-badge-text { color: #60a5fa; }
+.is-dark .badge-normal { background: rgba(79, 70, 229, 0.15); }
+.is-dark .badge-normal .rc-badge-text { color: #818cf8; }
+.is-dark .rc-action-btn { background: rgba(37, 99, 235, 0.15); }
+.is-dark .rc-action-btn:active { background: rgba(37, 99, 235, 0.25); }
+.is-dark .rc-action-text { color: #60a5fa; }
+.is-dark .add-card:active { background: rgba(37, 99, 235, 0.08); border-color: rgba(37, 99, 235, 0.3); }
+.is-dark .add-icon { background: rgba(37, 99, 235, 0.15); }
+.is-dark .add-plus { color: #60a5fa; }
+.is-dark .rc-more-dots { color: #64748b; }
+
 /* ================================================================
  *  MP-WEIXIN parity overrides (scoped to resume hub page)
  * ================================================================ */
@@ -743,6 +760,101 @@ onShow(() => {
 .resume-card,
 .add-card {
   overflow: visible;
+}
+
+/* Dark on MP: sheet rows above force #fff — re-apply dark surfaces with
+   page-scoped specificity so action sheets match the theme. */
+.resume-page.is-dark .sheet-title-bar,
+.resume-page.is-dark .sheet-option {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.resume-page.is-dark .sheet-title {
+  color: #94a3b8;
+}
+
+.resume-page.is-dark .sheet-option-text {
+  color: #93c5fd;
+}
+
+.resume-page.is-dark .sheet-option-hint {
+  color: #64748b;
+}
+
+.resume-page.is-dark .sheet-cancel {
+  background: #1e293b;
+}
+
+.resume-page.is-dark .sheet-cancel-text {
+  color: #93c5fd;
+}
+
+.resume-page.is-dark .section-action {
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+}
+
+.resume-page.is-dark .section-action-text {
+  color: #93c5fd;
+}
+
+.resume-page.is-dark .rc-action-btn {
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+}
+
+.resume-page.is-dark .rc-action-text {
+  color: #93c5fd;
+}
+
+.resume-page.is-dark .rc-icon-0 {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(37, 99, 235, 0.2));
+}
+
+.resume-page.is-dark .rc-icon-1 {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(79, 70, 229, 0.2));
+}
+
+.resume-page.is-dark .rc-icon-text {
+  color: #bfdbfe;
+}
+
+.resume-page.is-dark .badge-recent {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.resume-page.is-dark .badge-recent .rc-badge-text {
+  color: #93c5fd;
+}
+
+.resume-page.is-dark .badge-normal {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.resume-page.is-dark .badge-normal .rc-badge-text {
+  color: #c4b5fd;
+}
+
+.resume-page.is-dark .add-card {
+  border-color: rgba(147, 197, 253, 0.35);
+  background: #1e293b;
+}
+
+.resume-page.is-dark .add-card:active {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.resume-page.is-dark .add-icon {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.resume-page.is-dark .add-plus {
+  color: #93c5fd;
+}
+
+.resume-page.is-dark .add-title {
+  color: #f8fafc;
 }
 
 /* #endif */

@@ -1,5 +1,5 @@
 <template>
-  <view class="market-page" :class="{ 'is-dark': darkPref }">
+  <view class="market-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="nav-row">
@@ -133,8 +133,9 @@ import { onMounted, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { listMarketApi, likeQuestionApi, contributeQuestionApi, type MarketQuestion } from '@/api/market';
+import { useTheme } from '@/utils/theme';
 
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 
 const positionFilter = ref('');
@@ -269,7 +270,7 @@ const submitContribution = async () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
   // Pre-fill filters / contribute form when launched from /pages/interview/report.
   const pages = getCurrentPages();
@@ -283,6 +284,7 @@ onMounted(() => {
 });
 
 onShow(() => {
+  refreshTheme();
   load();
 });
 </script>
@@ -422,8 +424,8 @@ onShow(() => {
 
 .is-dark .source-tab { background: #1e293b; }
 .is-dark .source-tab-text { color: #94a3b8; }
-.is-dark .source-tab-on { background: #f8fafc; }
-.is-dark .source-tab-on .source-tab-text { color: #0f172a; }
+.is-dark .source-tab-on { background: #334155; }
+.is-dark .source-tab-on .source-tab-text { color: #f8fafc; }
 .is-dark .q-answer { background: #1e293b; }
 .is-dark .q-answer-text { color: #cbd5e1; }
 .is-dark .answer-btn { background: rgba(37,99,235,0.18); }

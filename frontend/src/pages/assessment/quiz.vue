@@ -1,5 +1,5 @@
 <template>
-  <view class="quiz-container" :class="{ 'is-dark': darkPref }">
+  <view class="quiz-container" :class="[themeClass, fontClass]">
     <view class="header-bar">
       <view class="header-top">
         <view class="back-btn" @click="goBack">
@@ -63,14 +63,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import {
   getScaleQuestionsApi,
   submitAssessmentApi,
   type QuizQuestion,
 } from '@/api/assessment';
+import { useTheme } from '@/utils/theme';
 
 const currentIndex = ref(0);
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const loading = ref(true);
 const submitting = ref(false);
 const errorMsg = ref('');
@@ -178,7 +180,7 @@ const goBack = () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   // Pull scaleId + title from query params (set by assessment/index.vue).
   const pages = getCurrentPages();
   const opts = (pages[pages.length - 1] as any).options || {};
@@ -188,6 +190,10 @@ onMounted(() => {
     uni.setNavigationBarTitle({ title: scaleTitle.value });
   }
   loadQuestions();
+});
+
+onShow(() => {
+  refreshTheme();
 });
 </script>
 

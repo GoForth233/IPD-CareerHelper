@@ -1,5 +1,5 @@
 <template>
-  <view class="consent-page">
+  <view class="consent-page" :class="[themeClass, fontClass]">
     <!-- App logo / brand header -->
     <view class="brand-header" v-if="!readonlyMode">
       <view class="brand-logo-wrap">
@@ -149,6 +149,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { isLoggedIn, LOGIN_PAGE } from '@/utils/auth';
 import request from '@/utils/request';
+import { useTheme } from '@/utils/theme';
 
 /** Bump this when a major policy update requires all users to re-consent. */
 const AGREEMENT_VERSION = '1.0';
@@ -161,6 +162,7 @@ const termsChecked = ref(false);
 const showDoc = ref(false);
 const docType = ref<'privacy' | 'terms'>('privacy');
 const readonlyMode = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const canAgree = computed(() => ageChecked.value && termsChecked.value);
 

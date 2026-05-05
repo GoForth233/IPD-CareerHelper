@@ -1,5 +1,5 @@
 <template>
-  <view class="report-container" :class="{ 'is-dark': darkPref }">
+  <view class="report-container" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
     <view class="nav-row">
       <view class="back-btn" @click="goBack">
@@ -118,11 +118,13 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getInterviewReportApi, type InterviewReport } from '@/api/interview';
 import { contributeQuestionApi } from '@/api/market';
+import { useTheme } from '@/utils/theme';
 
-const darkPref = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 const loading = ref(true);
 const errorMsg = ref('');
@@ -224,12 +226,16 @@ const submitContribution = async () => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   topSafeHeight.value = getTopSafeHeight();
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1] as any;
   interviewId.value = parseInt(currentPage.options?.interviewId || '0');
   loadReport();
+});
+
+onShow(() => {
+  refreshTheme();
 });
 </script>
 

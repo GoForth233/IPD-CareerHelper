@@ -29,6 +29,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/auth/login", "/auth/register", "/auth/wechat-login",
                         "/auth/send-code", "/auth/reset-password", "/auth/check-email",
                         "/api/homepage/**",
+                        "/api/assessments/scales",
+                        "/api/assessments/scales/*/questions",
                         "/api/careers/**",
                         // Liveness/readiness probes used by Docker, nginx, uptime
                         // monitors -- and us, when proving the ngrok tunnel reaches

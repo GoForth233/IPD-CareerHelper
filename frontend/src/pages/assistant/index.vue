@@ -14,6 +14,9 @@
             <text class="nav-status">{{ currentPersona.tagline }}</text>
           </view>
         </view>
+        <view class="nav-action" @click="openHistory">
+          <text class="nav-action-text">History</text>
+        </view>
       </view>
       <!-- F15: Persona switcher -->
       <view class="persona-bar">
@@ -37,11 +40,21 @@
       :scroll-top="scrollTop"
       scroll-with-animation
     >
+      <!-- Full-bleed surface so MP scroll-view never shows a light strip
+           below long threads (scroll-view default vs page theme). -->
+      <view class="chat-list-surface">
       <!-- Welcome card -->
       <view class="welcome-card">
         <view class="welcome-icon">{{ currentPersona.emoji }}</view>
         <text class="welcome-title">{{ currentPersona.name }}</text>
         <text class="welcome-desc">{{ currentPersona.intro }}</text>
+        <view class="agent-scope">
+          <text class="agent-scope-label">Best for</text>
+          <text class="agent-scope-text">{{ currentPersona.bestFor }}</text>
+        </view>
+        <view class="agent-note">
+          <text class="agent-note-text">{{ currentPersona.note }}</text>
+        </view>
         <view class="quick-actions">
           <view
             v-for="chip in currentPersona.chips"
@@ -84,6 +97,7 @@
       </view>
 
       <view class="scroll-pad"></view>
+      </view>
     </scroll-view>
 
     <!-- Input area -->
@@ -111,6 +125,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import request from '@/utils/request';
 import { useTheme } from '@/utils/theme';
@@ -123,39 +138,53 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
+interface AssistantMessage {
+  msgId: number;
+  sessionId: number;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt?: string;
+}
+
 type PersonaKey = 'MENTOR' | 'CHALLENGER' | 'INTERVIEWER';
 
 // F15: persona definitions
-const PERSONAS: { key: PersonaKey; emoji: string; label: string; name: string; tagline: string; intro: string; gradient: string; chips: string[] }[] = [
+const PERSONAS: { key: PersonaKey; emoji: string; label: string; name: string; tagline: string; intro: string; bestFor: string; note: string; gradient: string; chips: string[] }[] = [
   {
     key: 'MENTOR',
-    emoji: '🤝',
+    emoji: '🧭',
     label: '小职',
-    name: '小职 · Career Mentor',
-    tagline: 'Online · Warm & encouraging',
-    intro: 'I\'m your warm career mentor! I can help with resume tips, interview prep, and career planning. What\'s on your mind?',
+    name: '小职 · Career Planning Agent',
+    tagline: 'Plan · Goals · Weekly focus',
+    intro: 'I help you turn your profile, assessment, resume, and conversations into a practical career direction and next-step plan.',
+    bestFor: 'long-term career direction, target role selection, personalised weekly focus, and plan reviews',
+    note: 'Uses your profile, career portrait, chat memories, and cloud history when available.',
     gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)',
-    chips: ['Help me optimize my resume', 'Interview techniques?', 'Salary for frontend devs?'],
+    chips: ['Create my career plan', 'What should I focus on this week?', 'Review my target role'],
   },
   {
     key: 'CHALLENGER',
     emoji: '💪',
     label: '小严',
-    name: '小严 · Tough Coach',
-    tagline: 'Online · Strict & direct',
-    intro: 'No sugarcoating here. Tell me your plan and I\'ll tell you exactly what\'s wrong with it.',
+    name: '小严 · Strict Review Agent',
+    tagline: 'Risks · Gaps · Hard feedback',
+    intro: 'I challenge weak plans, vague goals, and shallow preparation. Send me your plan, resume idea, or interview answer and I will pressure-test it.',
+    bestFor: 'finding weaknesses, exposing unrealistic goals, prioritising hard improvements, and converting criticism into tasks',
+    note: 'Best used after 小职 gives a plan or after you upload resume/interview results.',
     gradient: 'linear-gradient(135deg, #dc2626, #f97316)',
-    chips: ['Review my career plan', 'Challenge my resume', 'Why am I not getting interviews?'],
+    chips: ['Attack my career plan', 'Find the biggest risk in my resume', 'Why am I not improving?'],
   },
   {
     key: 'INTERVIEWER',
     emoji: '🎙️',
     label: '小面',
-    name: '小面 · Mock Interviewer',
-    tagline: 'Online · Realistic interview practice',
-    intro: 'Let\'s practice! Tell me what role and interview type you want to prepare for (behavioral / technical / HR).',
+    name: '小面 · Mock Interview Agent',
+    tagline: 'Practice · Score · Improve',
+    intro: 'I run structured interview practice: choose a role and interview type, answer one question at a time, then get targeted feedback.',
+    bestFor: 'HR, behavioural, technical, and role-specific mock interview practice with follow-up feedback',
+    note: 'For full scoring and reports, use the Interview module; this agent is for quick practice inside chat.',
     gradient: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
-    chips: ['Practice behavioral interview', 'Technical interview for frontend', 'HR round for product manager'],
+    chips: ['Start a frontend technical interview', 'Practice HR self-introduction', 'Ask me one behavioral question'],
   },
 ];
 
@@ -171,6 +200,43 @@ const topSafeHeight = ref(88);
 const isSending = ref(false);
 const chatTimeLabel = ref('');
 const sessionId = ref<number | null>(null);
+
+const openHistory = () => {
+  uni.navigateTo({ url: '/pages/assistant/history' });
+};
+
+const isPersonaKey = (value: string): value is PersonaKey =>
+  value === 'MENTOR' || value === 'CHALLENGER' || value === 'INTERVIEWER';
+
+const loadSessionMessages = async (sid: number, selectedPersona?: string) => {
+  const nextPersona = selectedPersona && isPersonaKey(selectedPersona) ? selectedPersona : persona.value;
+  persona.value = nextPersona;
+  sessionId.value = sid;
+  try {
+    const res = await request<AssistantMessage[]>({
+      url: `/api/chat/history/session/${sid}`,
+      method: 'GET',
+    });
+    const rows = Array.isArray(res) ? res.filter((m) => m.role !== 'system') : [];
+    messages.value = rows.length > 0
+      ? rows.map((m) => ({ role: m.role === 'user' ? 'user' : 'ai', content: m.content }))
+      : [{ role: 'ai', content: currentPersona.value.intro }];
+    apiHistory.value = rows.map((m) => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content,
+    }));
+    scrollToBottom();
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || 'Failed to open history', icon: 'none' });
+  }
+};
+
+const openPendingSessionIfAny = () => {
+  const pending = uni.getStorageSync('assistantOpenSession');
+  if (!pending?.sessionId) return;
+  uni.removeStorageSync('assistantOpenSession');
+  loadSessionMessages(Number(pending.sessionId), pending.persona);
+};
 
 const switchPersona = (key: PersonaKey) => {
   if (persona.value === key) return;
@@ -246,7 +312,7 @@ const ensureSession = async () => {
     const session = await request<{ sessionId: number }>({
       url: '/api/chat/history/create',
       method: 'POST',
-      data: { title: 'New Conversation' },
+      data: { title: 'New Conversation', persona: persona.value },
     });
     sessionId.value = session.sessionId;
     return sessionId.value;
@@ -272,6 +338,12 @@ onMounted(() => {
   chatTimeLabel.value = `Today ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   // Initialise with persona greeting
   messages.value = [{ role: 'ai', content: currentPersona.value.intro }];
+  openPendingSessionIfAny();
+});
+
+onShow(() => {
+  refreshTheme();
+  openPendingSessionIfAny();
 });
 </script>
 
@@ -323,6 +395,8 @@ onMounted(() => {
 .nav-meta {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .nav-name {
@@ -350,6 +424,23 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.35;
+}
+
+.nav-action {
+  flex-shrink: 0;
+  background: #eff6ff;
+  border-radius: 999px;
+  padding: 7px 12px;
+}
+
+.nav-action:active {
+  background: #dbeafe;
+}
+
+.nav-action-text {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2563eb;
 }
 
 /* ---- Persona bar ---- */
@@ -380,8 +471,16 @@ onMounted(() => {
 /* ---- Chat list ---- */
 .chat-list {
   flex: 1;
+  min-height: 0;
+  height: 0;
+  box-sizing: border-box;
+}
+
+.chat-list-surface {
+  min-height: 100%;
   padding: 16px 16px 0;
   box-sizing: border-box;
+  background-color: #f5f5f7;
 }
 
 .scroll-pad {
@@ -418,7 +517,51 @@ onMounted(() => {
   font-size: 13px;
   color: #64748b;
   line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+.agent-scope {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.agent-scope-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.agent-scope-text {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.agent-note {
+  width: 100%;
+  background: #eff6ff;
+  border-radius: 12px;
+  padding: 9px 12px;
+  box-sizing: border-box;
   margin-bottom: 18px;
+  text-align: left;
+}
+
+.agent-note-text {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #1d4ed8;
 }
 
 .quick-actions {
@@ -629,8 +772,22 @@ onMounted(() => {
 }
 
 .is-dark .welcome-desc,
-.is-dark .nav-status {
+.is-dark .nav-status,
+.is-dark .agent-scope-text {
   color: #94a3b8;
+}
+
+.is-dark .agent-scope {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.is-dark .agent-note {
+  background: rgba(37, 99, 235, 0.14);
+}
+
+.is-dark .agent-note-text {
+  color: #93c5fd;
 }
 
 .is-dark .welcome-card,
@@ -656,6 +813,29 @@ onMounted(() => {
 
 .is-dark .chat-input {
   color: #f8fafc;
+}
+
+.is-dark .quick-chip { background: rgba(37, 99, 235, 0.15); }
+.is-dark .quick-chip:active { background: rgba(37, 99, 235, 0.25); }
+.is-dark .chip-text { color: #60a5fa; }
+.is-dark .nav-action { background: rgba(37, 99, 235, 0.16); }
+.is-dark .nav-action:active { background: rgba(37, 99, 235, 0.26); }
+.is-dark .persona-chip { background: rgba(30, 41, 59, 0.6); border-color: #334155; }
+.is-dark .persona-active { background: rgba(37, 99, 235, 0.2); border-color: #2563eb; }
+.is-dark .persona-label { color: #94a3b8; }
+.is-dark .persona-active .persona-label { color: #60a5fa; }
+.is-dark .time-text { color: #94a3b8; background: rgba(100, 116, 139, 0.15); }
+.is-dark .send-btn { background: #334155; }
+.is-dark .send-label { color: #64748b; }
+.is-dark .send-active .send-label { color: #ffffff; }
+.is-dark .dot { background: #64748b; }
+
+.is-dark .chat-list-surface {
+  background-color: #0f172a;
+}
+
+.theme-green .chat-list-surface {
+  background-color: #f0fdf4;
 }
 
 /* ================================================================
@@ -712,6 +892,36 @@ onMounted(() => {
 
 .is-dark .persona-label {
   color: #cbd5e1;
+}
+
+.chat-page.is-dark .input-bar {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: #334155;
+}
+
+.chat-page.is-dark .chat-nav {
+  background: #0f172a;
+  border-bottom-color: #334155;
+}
+
+.chat-page.is-dark .input-row {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.chat-list {
+  background-color: #f5f5f7;
+}
+
+.chat-page.is-dark .chat-list,
+.chat-page.is-dark .chat-list-surface {
+  background-color: #0f172a;
+}
+
+.chat-page.theme-green .chat-list,
+.chat-page.theme-green .chat-list-surface {
+  background-color: #f0fdf4;
 }
 
 /* #endif */

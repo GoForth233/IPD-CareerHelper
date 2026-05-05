@@ -1,5 +1,5 @@
 <template>
-  <view class="login-page">
+  <view class="login-page" :class="[themeClass, fontClass]">
 
     <!-- ── 自定义 Toast ── -->
     <view class="snack-bar" :class="['snack-' + snack.type, snack.visible ? 'snack-show' : '']">
@@ -239,9 +239,14 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { sendCodeApi, resetPasswordApi, registerApi, loginApi, wechatLoginApi, checkEmailApi } from '@/api/user';
 import { enterGuestMode } from '@/utils/auth';
+import { useTheme } from '@/utils/theme';
 
 const statusTopPx = ref(52);
-onMounted(() => { statusTopPx.value = getTopSafeHeight(); });
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
+onMounted(() => {
+  refreshTheme();
+  statusTopPx.value = getTopSafeHeight();
+});
 
 // ─── 自定义 Toast ───────────────────────────────────────────────
 const snack = reactive({ visible: false, message: '', type: 'info' as 'success' | 'error' | 'info' });
@@ -264,7 +269,6 @@ const verifyCode = ref('');
 const ageConfirmed = ref(false);
 const agreed = ref(false);
 const loading = ref(false);
-const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
 
 // ─── 校验状态 ────────────────────────────────────────────────────
 const nicknameError = ref('');
@@ -713,4 +717,51 @@ const guestLogin = () => {
     width: 100%;
   }
 }
+
+/* ---- Dark mode ---- */
+.is-dark {
+  background: #0f172a;
+}
+.is-dark .login-page {
+  background: linear-gradient(180deg,#0f172a 0%,#0f172a 100%);
+}
+.is-dark .form-sheet {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: #334155;
+}
+.is-dark .sheet-title { color: #f8fafc; }
+.is-dark .sheet-subtitle { color: #94a3b8; }
+.is-dark .segment-bar { background: #1e293b; border-color: #334155; }
+.is-dark .seg-active { background: #334155; color: #f8fafc; }
+.is-dark .field-label { color: #94a3b8; }
+.is-dark .field-input {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+.is-dark .ph { color: #64748b; }
+.is-dark .input-error { background: rgba(239, 68, 68, 0.08) !important; border-color: #ef4444 !important; }
+.is-dark .checkbox { background: #1e293b; border-color: #334155; }
+.is-dark .agreement-text { color: #94a3b8; }
+.is-dark .link { color: #60a5fa; }
+.is-dark .forgot-link { color: #60a5fa; }
+.is-dark .divider-line { background: #334155; }
+.is-dark .btn-guest { background: #1e293b; border-color: #334155; }
+.is-dark .guest-text { color: #94a3b8; }
+.is-dark .strength-bar { background: #334155; }
+.is-dark .modal-card { background: #1e293b; border-color: #334155; }
+.is-dark .modal-title { color: #f8fafc; }
+.is-dark .modal-hint { color: #94a3b8; }
+.is-dark .agreement-section-title { color: #f8fafc; }
+.is-dark .agreement-body { color: #94a3b8; }
+.is-dark .modal-btn-cancel { background: #334155; color: #f8fafc; }
+.is-dark .snack-success { background: rgba(22, 101, 52, 0.2); border-color: #22c55e; }
+.is-dark .snack-success .snack-icon { color: #34d399; }
+.is-dark .snack-success .snack-msg { color: #bbf7d0; }
+.is-dark .snack-error { background: rgba(153, 27, 27, 0.2); border-color: #ef4444; }
+.is-dark .snack-error .snack-icon { color: #f87171; }
+.is-dark .snack-error .snack-msg { color: #fecaca; }
+.is-dark .snack-info { background: rgba(30, 58, 138, 0.2); border-color: #2563eb; }
+.is-dark .snack-info .snack-icon { color: #60a5fa; }
+.is-dark .snack-info .snack-msg { color: #bfdbfe; }
 </style>

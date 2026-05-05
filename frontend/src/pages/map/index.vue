@@ -1,5 +1,5 @@
 <template>
-  <view class="map-page" :class="{ 'is-dark': darkPref }">
+  <view class="map-page" :class="[themeClass, fontClass]">
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="nav-row">
@@ -221,9 +221,10 @@ import {
   type UserCareerPlan,
   type CareerMilestone,
 } from '@/api/career';
+import { useTheme } from '@/utils/theme';
 
 // ── shared ────────────────────────────────────────────────────────────────────
-const darkPref     = ref(false);
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(44);
 const activeTab    = ref<'map' | 'plan'>('map');
 
@@ -443,7 +444,7 @@ const loadAll = async (preferredPathId?: number) => {
 };
 
 onMounted(() => {
-  darkPref.value = uni.getStorageSync('app_pref_dark') === '1';
+  refreshTheme();
   const systemInfo = uni.getSystemInfoSync();
   topSafeHeight.value = (systemInfo.statusBarHeight || 20) + 8;
   const pages = getCurrentPages();
@@ -456,6 +457,7 @@ onMounted(() => {
 // Re-pull progress when the page becomes visible -- if a user marks a
 // node from a different page in the future, the timeline stays in sync.
 onShow(() => {
+  refreshTheme();
   refreshProgress();
   if (activeTab.value === 'plan' && !plan.value) {
     loadPlan();

@@ -1,5 +1,5 @@
 <template>
-  <view class="start-page" :class="{ 'is-dark': darkPref }">
+  <view class="start-page" :class="[themeClass, fontClass]">
     <view class="header">
       <text class="title">Start Mock Interview</text>
       <text class="subtitle">Pick a target role and difficulty. The AI interviewer will adapt every question to your choices.</text>
@@ -101,14 +101,16 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { startInterviewApi } from '@/api/interview';
 import { getProfileSnapshotApi, updatePreferencesApi } from '@/api/user';
 import { LOGIN_PAGE } from '@/utils/auth';
+import { useTheme } from '@/utils/theme';
 
 const positions = ref<string[]>(['Java Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer', 'Product Manager', 'Data Analyst']);
 const selectedPosition = ref('');
 const selectedPositionIndex = ref(0);
-const darkPref = ref(uni.getStorageSync('app_pref_dark') === '1');
+const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 /**
  * Tells the user *why* a position came pre-selected — e.g. "From your INFP
@@ -209,7 +211,12 @@ const applyPrefill = async () => {
 };
 
 onMounted(() => {
+  refreshTheme();
   applyPrefill();
+});
+
+onShow(() => {
+  refreshTheme();
 });
 
 const startInterview = async () => {
@@ -527,6 +534,13 @@ const startInterview = async () => {
 .diff-card,
 .expect-card {
   overflow: visible;
+}
+
+.start-page.is-dark .sticky-cta {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(15, 23, 42, 0.96);
+  border-color: #334155;
 }
 
 /* #endif */
