@@ -66,7 +66,7 @@
         </view>
         <view class="agent-head-copy">
           <text class="agent-kicker">AI Career Agent</text>
-          <text class="agent-title">{{ agentToday.headline }}</text>
+          <text class="agent-title">{{ agentHeadline }}</text>
         </view>
         <view class="risk-pill" :class="'risk-' + agentToday.riskLevel.toLowerCase()">
           <text class="risk-text">{{ agentToday.riskLevel }}</text>
@@ -93,37 +93,10 @@
         </view>
         <text class="agent-progress-text">{{ t('agent.hub.readiness', { n: agentToday.progressPercent }) }}</text>
       </view>
-      <text class="agent-focus">{{ t('home.todayFocusPrefix') }}{{ agentToday.todayFocus }}</text>
-      <text class="agent-reason">{{ agentToday.reason }}</text>
-      <view v-if="agentRisk" class="risk-watch-card">
-        <view class="risk-watch-head">
-          <text class="risk-watch-kicker">{{ t('agent.hub.riskSection') }}</text>
-          <view class="risk-watch-badges">
-            <text class="risk-watch-level" :class="'risk-watch-' + agentRisk.overallLevel.toLowerCase()">{{ agentRisk.overallLevel }}</text>
-            <text class="risk-watch-trend">{{ primaryRiskTrend }}</text>
-          </view>
-        </view>
-        <text class="risk-watch-title">{{ agentRisk.primaryRiskTitle }}</text>
-        <text class="risk-watch-summary">{{ agentRisk.summary }}</text>
-        <text v-if="primaryRiskRecommendation" class="risk-watch-next">{{ t('home.riskNextPrefix') }}{{ primaryRiskRecommendation }}</text>
-      </view>
-      <view v-if="agentPlan" class="agent-plan-card">
-        <view class="agent-plan-head">
-          <text class="agent-plan-kicker">{{ t('agent.hub.planSection') }}</text>
-          <text class="agent-plan-health" :class="'agent-plan-' + agentPlan.planHealth.toLowerCase()">{{ planHealthLabel }}</text>
-        </view>
-        <text class="agent-plan-title">{{ agentPlan.hasPlan ? (agentPlan.targetRole || t('home.agentPlanCareerTarget')) : t('home.agentNoPlan') }}</text>
-        <text v-if="agentPlan.nextMilestoneTitle" class="agent-plan-milestone">{{ agentPlan.nextMilestoneHorizon }} · {{ agentPlan.nextMilestoneTitle }}</text>
-        <view v-if="agentPlan.weeklyFocus?.length" class="agent-plan-focus-list">
-          <text v-for="focus in agentPlan.weeklyFocus.slice(0, 2)" :key="focus" class="agent-plan-focus">• {{ focus }}</text>
-        </view>
-        <text v-if="agentPlan.adjustmentReason" class="agent-plan-reason">{{ agentPlan.adjustmentReason }}</text>
-        <view v-if="!agentPlan.hasPlan || agentPlan.planHealth === 'NEEDS_REFRESH'" class="agent-plan-action" @click="ensureAgentPlan">
-          <text class="agent-plan-action-text">{{ agentPlan.hasPlan ? t('agent.hub.planRefresh') : t('agent.hub.planGenerate') }}</text>
-        </view>
-      </view>
-      <view v-if="agentToday.riskReasons?.length" class="agent-risks">
-        <text v-for="risk in agentToday.riskReasons.slice(0, 2)" :key="risk" class="agent-risk-item">• {{ risk }}</text>
+      <text class="agent-focus">{{ t('home.todayFocusPrefix') }}{{ agentFocus }}</text>
+      <text class="agent-reason">{{ agentReason }}</text>
+      <view v-if="agentRiskReasons.length" class="agent-risks">
+        <text v-for="reason in agentRiskReasons.slice(0, 2)" :key="reason" class="agent-risk-item">• {{ reason }}</text>
       </view>
       <view v-if="agentToday.actions?.length" class="agent-actions">
         <view
@@ -133,7 +106,7 @@
           :class="{ 'agent-action-primary': action.priority === 'HIGH' }"
           @click="navTo(action.target)"
         >
-          <text class="agent-action-text">{{ action.label }}</text>
+          <text class="agent-action-text">{{ action.labelKey ? t(action.labelKey) : action.label }}</text>
         </view>
       </view>
       <view v-if="agentTasks.length" class="agent-task-list">
@@ -341,16 +314,9 @@ import { getCheckInStatusApi, type CheckInStatus } from '@/api/checkin';
 import {
   completeAgentTaskApi,
   dismissAgentTaskApi,
-  ensureCareerAgentPlanApi,
-  getAgentProfileApi,
-  getCareerAgentPlanSummaryApi,
-  getCareerAgentRiskWatchApi,
-  getCareerAgentTodayApi,
-  getTodayAgentTasksApi,
+  getAgentBundleApi,
   type AgentTask,
   type AgentUserProfile,
-  type CareerAgentPlanSummary,
-  type CareerAgentRiskWatch,
   type CareerAgentToday,
 } from '@/api/agent';
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
@@ -391,27 +357,22 @@ const homeError = ref('');
 const checkin = ref<CheckInStatus | null>(null);
 const agentToday = ref<CareerAgentToday | null>(null);
 const agentTasks = ref<AgentTask[]>([]);
-const agentRisk = ref<CareerAgentRiskWatch | null>(null);
-const agentPlan = ref<CareerAgentPlanSummary | null>(null);
-const agentPlanLoading = ref(false);
 const agentProfile = ref<AgentUserProfile | null>(null);
 const checkinPercent = computed(() => {
   if (!checkin.value || !checkin.value.todayTotal) return 0;
   return Math.round((checkin.value.todayCompleted / checkin.value.todayTotal) * 100);
 });
-const primaryRisk = computed(() => agentRisk.value?.risks?.[0] || null);
-const primaryRiskTrend = computed(() => {
-  const trend = primaryRisk.value?.trend || 'STABLE';
-  if (trend === 'RISING') return 'Rising';
-  if (trend === 'DECREASING') return 'Improving';
-  return 'Stable';
-});
-const primaryRiskRecommendation = computed(() => primaryRisk.value?.recommendation || '');
-const planHealthLabel = computed(() => {
-  const health = agentPlan.value?.planHealth || 'MISSING';
-  if (health === 'ON_TRACK') return t('agent.hub.planHealthOnTrack');
-  if (health === 'NEEDS_REFRESH') return t('agent.hub.planHealthNeedsRefresh');
-  return t('agent.hub.planHealthMissing');
+const tkKey = (key: string | undefined, fallback: string) => (key ? t(key) : fallback);
+const agentHeadline = computed(() => tkKey(agentToday.value?.headlineKey, agentToday.value?.headline || ''));
+const agentFocus = computed(() => tkKey(agentToday.value?.focusKey, agentToday.value?.todayFocus || ''));
+const agentReason = computed(() => tkKey(agentToday.value?.reasonKey, agentToday.value?.reason || ''));
+const agentRiskReasons = computed(() => {
+  const today = agentToday.value;
+  if (!today?.riskReasons?.length) return [];
+  return today.riskReasons.map((raw, i) => {
+    const key = today.riskReasonKeys?.[i];
+    return key ? t(key) : raw;
+  });
 });
 
 // Search filters every section so the home page works as a quick triage tool.
@@ -546,43 +507,18 @@ const loadAgentToday = async () => {
   if (!uid || uid <= 0) {
     agentToday.value = null;
     agentTasks.value = [];
-    agentRisk.value = null;
-    agentPlan.value = null;
     agentProfile.value = null;
     return;
   }
   try {
-    const [today, tasks, risk, plan, profile] = await Promise.all([
-      getCareerAgentTodayApi(),
-      getTodayAgentTasksApi(),
-      getCareerAgentRiskWatchApi(),
-      getCareerAgentPlanSummaryApi(),
-      getAgentProfileApi(),
-    ]);
-    agentToday.value = today;
-    agentTasks.value = tasks || [];
-    agentRisk.value = risk;
-    agentPlan.value = plan;
-    agentProfile.value = profile;
+    const bundle = await getAgentBundleApi();
+    agentToday.value = bundle.today;
+    agentTasks.value = bundle.tasks || [];
+    agentProfile.value = bundle.profile;
   } catch {
     agentToday.value = null;
     agentTasks.value = [];
-    agentRisk.value = null;
-    agentPlan.value = null;
     agentProfile.value = null;
-  }
-};
-
-const ensureAgentPlan = async () => {
-  if (agentPlanLoading.value) return;
-  agentPlanLoading.value = true;
-  try {
-    agentPlan.value = await ensureCareerAgentPlanApi();
-    uni.showToast({ title: 'Plan ready', icon: 'success' });
-  } catch (e: any) {
-    uni.showToast({ title: e?.message || 'Failed to generate plan', icon: 'none' });
-  } finally {
-    agentPlanLoading.value = false;
   }
 };
 
@@ -590,7 +526,6 @@ const completeAgentTask = async (taskId: number) => {
   try {
     const updated = await completeAgentTaskApi(taskId);
     agentTasks.value = agentTasks.value.map((task) => task.taskId === taskId ? updated : task);
-    getCareerAgentRiskWatchApi().then((risk) => { agentRisk.value = risk; }).catch(() => undefined);
     uni.showToast({ title: 'Task completed', icon: 'success' });
   } catch (e: any) {
     uni.showToast({ title: e?.message || 'Failed', icon: 'none' });
@@ -601,7 +536,6 @@ const dismissAgentTask = async (taskId: number) => {
   try {
     await dismissAgentTaskApi(taskId);
     agentTasks.value = agentTasks.value.filter((task) => task.taskId !== taskId);
-    getCareerAgentRiskWatchApi().then((risk) => { agentRisk.value = risk; }).catch(() => undefined);
     uni.showToast({ title: 'Skipped', icon: 'none' });
   } catch (e: any) {
     uni.showToast({ title: e?.message || 'Failed', icon: 'none' });

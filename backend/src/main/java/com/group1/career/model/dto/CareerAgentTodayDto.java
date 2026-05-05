@@ -15,10 +15,14 @@ public class CareerAgentTodayDto {
     private String stage;
     private String riskLevel;
     private String headline;
+    private String headlineKey;
     private String reason;
+    private String reasonKey;
     private String todayFocus;
+    private String focusKey;
     private Integer progressPercent;
     private List<String> riskReasons;
+    private List<String> riskReasonKeys;
     private List<Action> actions;
 
     @Data
@@ -27,6 +31,7 @@ public class CareerAgentTodayDto {
     @AllArgsConstructor
     public static class Action {
         private String label;
+        private String labelKey;
         private String target;
         private String type;
         private String priority;
