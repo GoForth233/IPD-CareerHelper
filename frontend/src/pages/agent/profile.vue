@@ -5,7 +5,7 @@
       <view class="profile-back" @click="goBack">
         <text class="profile-back-icon">←</text>
       </view>
-      <text class="profile-header-title">帮 Agent 了解你</text>
+      <text class="profile-header-title">{{ t('agent.profile.title') }}</text>
     </view>
 
     <!-- completeness banner -->
@@ -18,7 +18,7 @@
         ></view>
       </view>
       <text class="profile-banner-label">
-        Agent 对你的了解程度：{{ agentProfile.completenessScore }}%
+        {{ t('agent.profile.completeness', { n: agentProfile.completenessScore }) }}
         （{{ levelLabel }}）
       </text>
     </view>
@@ -26,59 +26,59 @@
     <!-- form -->
     <view class="profile-form">
       <view class="profile-section">
-        <text class="profile-section-title">职业目标</text>
+        <text class="profile-section-title">{{ t('agent.profile.sectionGoal') }}</text>
 
         <view class="profile-field">
-          <text class="profile-label">目标岗位城市</text>
+          <text class="profile-label">{{ t('agent.profile.targetCity') }}</text>
           <input
             v-model="form.targetCity"
             class="profile-input"
-            placeholder="例：上海、北京、成都"
+            :placeholder="t('agent.profile.targetCityPlaceholder')"
             maxlength="30"
           />
         </view>
 
         <view class="profile-field">
-          <text class="profile-label">目标行业</text>
+          <text class="profile-label">{{ t('agent.profile.targetIndustry') }}</text>
           <input
             v-model="form.targetIndustry"
             class="profile-input"
-            placeholder="例：互联网、金融、教育"
+            :placeholder="t('agent.profile.targetIndustryPlaceholder')"
             maxlength="30"
           />
         </view>
 
         <view class="profile-field">
-          <text class="profile-label">求职时间线</text>
+          <text class="profile-label">{{ t('agent.profile.timeline') }}</text>
           <view class="profile-chips">
             <view
               v-for="opt in timelineOptions"
-              :key="opt"
+              :key="opt.val"
               class="profile-chip"
-              :class="{ 'profile-chip-active': form.timeline === opt }"
-              @click="form.timeline = opt"
+              :class="{ 'profile-chip-active': form.timeline === opt.val }"
+              @click="form.timeline = opt.val"
             >
-              <text class="profile-chip-text">{{ opt }}</text>
+              <text class="profile-chip-text">{{ opt.label }}</text>
             </view>
           </view>
         </view>
 
         <view class="profile-field">
-          <text class="profile-label">职业目标备注</text>
+          <text class="profile-label">{{ t('agent.profile.careerGoalNote') }}</text>
           <textarea
             v-model="form.careerGoalNote"
             class="profile-textarea"
-            placeholder="简单描述你的职业规划方向（选填）"
+            :placeholder="t('agent.profile.careerGoalNotePlaceholder')"
             maxlength="200"
           />
         </view>
       </view>
 
       <view class="profile-section">
-        <text class="profile-section-title">学习投入</text>
+        <text class="profile-section-title">{{ t('agent.profile.sectionLearning') }}</text>
 
         <view class="profile-field">
-          <text class="profile-label">每周可投入时间</text>
+          <text class="profile-label">{{ t('agent.profile.weeklyHours') }}</text>
           <view class="profile-chips">
             <view
               v-for="opt in weeklyOptions"
@@ -93,7 +93,7 @@
         </view>
 
         <view class="profile-field">
-          <text class="profile-label">偏好任务难度</text>
+          <text class="profile-label">{{ t('agent.profile.difficulty') }}</text>
           <view class="profile-chips">
             <view
               v-for="opt in difficultyOptions"
@@ -109,35 +109,35 @@
       </view>
 
       <view class="profile-section">
-        <text class="profile-section-title">升学 / 出国意向</text>
+        <text class="profile-section-title">{{ t('agent.profile.sectionStudy') }}</text>
         <view class="profile-toggle-row">
-          <text class="profile-label">考虑考研</text>
+          <text class="profile-label">{{ t('agent.profile.gradSchool') }}</text>
           <view class="profile-toggle-group">
             <view
               class="profile-toggle-btn"
               :class="{ 'profile-toggle-active': form.considerGradSchool === true }"
               @click="form.considerGradSchool = true"
-            ><text class="profile-toggle-text">是</text></view>
+            ><text class="profile-toggle-text">{{ t('agent.profile.yes') }}</text></view>
             <view
               class="profile-toggle-btn"
               :class="{ 'profile-toggle-active': form.considerGradSchool === false }"
               @click="form.considerGradSchool = false"
-            ><text class="profile-toggle-text">否</text></view>
+            ><text class="profile-toggle-text">{{ t('agent.profile.no') }}</text></view>
           </view>
         </view>
         <view class="profile-toggle-row">
-          <text class="profile-label">考虑出国留学</text>
+          <text class="profile-label">{{ t('agent.profile.studyAbroad') }}</text>
           <view class="profile-toggle-group">
             <view
               class="profile-toggle-btn"
               :class="{ 'profile-toggle-active': form.considerStudyAbroad === true }"
               @click="form.considerStudyAbroad = true"
-            ><text class="profile-toggle-text">是</text></view>
+            ><text class="profile-toggle-text">{{ t('agent.profile.yes') }}</text></view>
             <view
               class="profile-toggle-btn"
               :class="{ 'profile-toggle-active': form.considerStudyAbroad === false }"
               @click="form.considerStudyAbroad = false"
-            ><text class="profile-toggle-text">否</text></view>
+            ><text class="profile-toggle-text">{{ t('agent.profile.no') }}</text></view>
           </view>
         </view>
       </view>
@@ -150,7 +150,7 @@
         :class="{ 'profile-submit-loading': saving }"
         @click="saveInputs"
       >
-        <text class="profile-submit-text">{{ saving ? '保存中…' : '保存并更新 Agent 画像' }}</text>
+        <text class="profile-submit-text">{{ saving ? t('agent.profile.saving') : t('agent.profile.save') }}</text>
       </view>
     </view>
   </view>
@@ -158,7 +158,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getAgentProfileApi, saveProfileInputsApi, type AgentUserProfile, type ProfileInputsRequest } from '@/api/agent';
+
+const { t } = useI18n();
 
 const agentProfile = ref<AgentUserProfile | null>(null);
 const saving = ref(false);
@@ -174,24 +177,32 @@ const form = ref<ProfileInputsRequest>({
   careerGoalNote: '',
 });
 
-const timelineOptions = ['1个月', '3个月', '6个月', '校招季', '不确定'];
-const weeklyOptions = [
-  { label: '< 5小时', val: '3' },
-  { label: '5-10小时', val: '7' },
-  { label: '10-20小时', val: '15' },
-  { label: '> 20小时', val: '25' },
-];
-const difficultyOptions = [
-  { label: '轻松', val: 'EASY' },
-  { label: '适中', val: 'MEDIUM' },
-  { label: '挑战', val: 'HARD' },
-];
+const timelineOptions = computed(() => [
+  { label: t('agent.profile.timeline1m'), val: '1个月' },
+  { label: t('agent.profile.timeline3m'), val: '3个月' },
+  { label: t('agent.profile.timeline6m'), val: '6个月' },
+  { label: t('agent.profile.timelineFull'), val: '校招季' },
+  { label: t('agent.profile.timelineUnknown'), val: '不确定' },
+]);
+
+const weeklyOptions = computed(() => [
+  { label: t('agent.profile.weeklyHoursLt5'), val: '3' },
+  { label: t('agent.profile.weeklyHours5to10'), val: '7' },
+  { label: t('agent.profile.weeklyHours10to20'), val: '15' },
+  { label: t('agent.profile.weeklyHoursGt20'), val: '25' },
+]);
+
+const difficultyOptions = computed(() => [
+  { label: t('agent.profile.difficultyEasy'), val: 'EASY' },
+  { label: t('agent.profile.difficultyMedium'), val: 'MEDIUM' },
+  { label: t('agent.profile.difficultyHard'), val: 'HARD' },
+]);
 
 const levelLabel = computed(() => {
   const lvl = agentProfile.value?.personalizationLevel || 'LOW';
-  if (lvl === 'HIGH') return '非常了解你';
-  if (lvl === 'MEDIUM') return '正在了解你';
-  return '刚刚开始';
+  if (lvl === 'HIGH') return t('agent.profile.levelHigh');
+  if (lvl === 'MEDIUM') return t('agent.profile.levelMedium');
+  return t('agent.profile.levelLow');
 });
 
 onMounted(async () => {
@@ -215,10 +226,10 @@ const saveInputs = async () => {
     if (form.value.careerGoalNote?.trim()) payload.careerGoalNote = form.value.careerGoalNote.trim();
 
     agentProfile.value = await saveProfileInputsApi(payload);
-    uni.showToast({ title: 'Agent 画像已更新', icon: 'success' });
+    uni.showToast({ title: t('agent.profile.saveSuccess'), icon: 'success' });
     setTimeout(() => uni.navigateBack(), 800);
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+    uni.showToast({ title: e?.message || t('agent.profile.saveFailed'), icon: 'none' });
   } finally {
     saving.value = false;
   }

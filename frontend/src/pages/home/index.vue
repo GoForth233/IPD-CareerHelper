@@ -10,7 +10,7 @@
         <input
           class="search-input"
           v-model="searchQuery"
-          placeholder="Search videos, articles, paths..."
+          :placeholder="t('home.searchPlaceholder')"
           placeholder-class="search-ph"
           @confirm="onSearch"
         />
@@ -29,7 +29,7 @@
     <view class="greeting-row">
       <text class="greeting-kicker">Career Loop</text>
       <text class="greeting-title">Hello, {{ userInfo.nickname || 'Guest' }}</text>
-      <text class="greeting-text">Pull down to refresh — fresh videos and articles every day.</text>
+      <text class="greeting-text">{{ t('home.pullToRefresh') }}</text>
     </view>
 
     <view class="feature-grid">
@@ -37,25 +37,25 @@
         <view class="feature-icon icon-assess">
           <text class="fi-char">&#x1F9ED;</text>
         </view>
-        <text class="feature-label">Assessment</text>
+        <text class="feature-label">{{ t('home.featureAssessment') }}</text>
       </view>
       <view class="feature-item" @click="navTo('/pages/map/index')">
         <view class="feature-icon icon-map">
           <text class="fi-char">&#x1F5FA;</text>
         </view>
-        <text class="feature-label">Skill Map</text>
+        <text class="feature-label">{{ t('home.featureSkillMap') }}</text>
       </view>
       <view class="feature-item" @click="navTo('/pages/resume-ai/index')">
         <view class="feature-icon icon-ai">
           <text class="fi-char">&#x2728;</text>
         </view>
-        <text class="feature-label">AI Resume</text>
+        <text class="feature-label">{{ t('home.featureAiResume') }}</text>
       </view>
       <view class="feature-item" @click="navTo('/pages/interview/start')">
         <view class="feature-icon icon-interview">
           <text class="fi-char">&#x1F3A4;</text>
         </view>
-        <text class="feature-label">Mock Interview</text>
+        <text class="feature-label">{{ t('home.featureMockInterview') }}</text>
       </view>
     </view>
 
@@ -76,11 +76,11 @@
         <view class="agent-pct-bar-wrap">
           <view class="agent-pct-bar-fill" :style="{ width: agentProfile.completenessScore + '%' }" :class="'agent-pct-' + agentProfile.personalizationLevel.toLowerCase()"></view>
         </view>
-        <text class="agent-pct-label">{{ agentProfile.personalizationLevel === 'HIGH' ? 'Highly personalised' : agentProfile.personalizationLevel === 'MEDIUM' ? 'Getting to know you' : 'Just getting started' }} · {{ agentProfile.completenessScore }}%</text>
+        <text class="agent-pct-label">{{ agentProfile.personalizationLevel === 'HIGH' ? t('agent.hub.profileLevelHigh') : agentProfile.personalizationLevel === 'MEDIUM' ? t('agent.hub.profileLevelMedium') : t('agent.hub.profileLevelLow') }} · {{ agentProfile.completenessScore }}%</text>
         <text class="agent-pct-arrow">›</text>
       </view>
       <view v-if="agentProfile && agentProfile.missingSignals?.length" class="agent-missing-row">
-        <text class="agent-missing-label">Help me know you better:</text>
+        <text class="agent-missing-label">{{ t('home.agentHelpLabel') }}</text>
         <view class="agent-missing-chips">
           <view v-for="sig in agentProfile.missingSignals.slice(0, 2)" :key="sig.key" class="agent-missing-chip" @click="navTo('/pages/agent/profile')">
             <text class="agent-missing-chip-text">+ {{ sig.label }}</text>
@@ -91,13 +91,13 @@
         <view class="agent-progress-bar">
           <view class="agent-progress-fill" :style="{ width: agentToday.progressPercent + '%' }"></view>
         </view>
-        <text class="agent-progress-text">{{ agentToday.progressPercent }}% readiness</text>
+        <text class="agent-progress-text">{{ t('agent.hub.readiness', { n: agentToday.progressPercent }) }}</text>
       </view>
-      <text class="agent-focus">Today: {{ agentToday.todayFocus }}</text>
+      <text class="agent-focus">{{ t('home.todayFocusPrefix') }}{{ agentToday.todayFocus }}</text>
       <text class="agent-reason">{{ agentToday.reason }}</text>
       <view v-if="agentRisk" class="risk-watch-card">
         <view class="risk-watch-head">
-          <text class="risk-watch-kicker">Risk Watch</text>
+          <text class="risk-watch-kicker">{{ t('agent.hub.riskSection') }}</text>
           <view class="risk-watch-badges">
             <text class="risk-watch-level" :class="'risk-watch-' + agentRisk.overallLevel.toLowerCase()">{{ agentRisk.overallLevel }}</text>
             <text class="risk-watch-trend">{{ primaryRiskTrend }}</text>
@@ -105,21 +105,21 @@
         </view>
         <text class="risk-watch-title">{{ agentRisk.primaryRiskTitle }}</text>
         <text class="risk-watch-summary">{{ agentRisk.summary }}</text>
-        <text v-if="primaryRiskRecommendation" class="risk-watch-next">Next: {{ primaryRiskRecommendation }}</text>
+        <text v-if="primaryRiskRecommendation" class="risk-watch-next">{{ t('home.riskNextPrefix') }}{{ primaryRiskRecommendation }}</text>
       </view>
       <view v-if="agentPlan" class="agent-plan-card">
         <view class="agent-plan-head">
-          <text class="agent-plan-kicker">Long-term Plan</text>
+          <text class="agent-plan-kicker">{{ t('agent.hub.planSection') }}</text>
           <text class="agent-plan-health" :class="'agent-plan-' + agentPlan.planHealth.toLowerCase()">{{ planHealthLabel }}</text>
         </view>
-        <text class="agent-plan-title">{{ agentPlan.hasPlan ? (agentPlan.targetRole || 'Career target') : 'No plan yet' }}</text>
+        <text class="agent-plan-title">{{ agentPlan.hasPlan ? (agentPlan.targetRole || t('home.agentPlanCareerTarget')) : t('home.agentNoPlan') }}</text>
         <text v-if="agentPlan.nextMilestoneTitle" class="agent-plan-milestone">{{ agentPlan.nextMilestoneHorizon }} · {{ agentPlan.nextMilestoneTitle }}</text>
         <view v-if="agentPlan.weeklyFocus?.length" class="agent-plan-focus-list">
           <text v-for="focus in agentPlan.weeklyFocus.slice(0, 2)" :key="focus" class="agent-plan-focus">• {{ focus }}</text>
         </view>
         <text v-if="agentPlan.adjustmentReason" class="agent-plan-reason">{{ agentPlan.adjustmentReason }}</text>
         <view v-if="!agentPlan.hasPlan || agentPlan.planHealth === 'NEEDS_REFRESH'" class="agent-plan-action" @click="ensureAgentPlan">
-          <text class="agent-plan-action-text">{{ agentPlan.hasPlan ? 'Refresh plan' : 'Generate plan' }}</text>
+          <text class="agent-plan-action-text">{{ agentPlan.hasPlan ? t('agent.hub.planRefresh') : t('agent.hub.planGenerate') }}</text>
         </view>
       </view>
       <view v-if="agentToday.riskReasons?.length" class="agent-risks">
@@ -143,47 +143,47 @@
               <text class="agent-task-title">{{ task.title }}</text>
               <text v-if="task.source === 'PLAN_WEEKLY'" class="agent-task-source">Plan</text>
             </view>
-            <text class="agent-task-desc">{{ task.description || 'Agent-generated action for today' }}</text>
+            <text class="agent-task-desc">{{ task.description || t('home.agentTaskDefaultDesc') }}</text>
           </view>
           <view class="agent-task-actions">
             <view v-if="task.status !== 'DONE'" class="agent-task-btn agent-task-complete" @click.stop="completeAgentTask(task.taskId)">
-              <text class="agent-task-btn-text">Done</text>
+              <text class="agent-task-btn-text">{{ t('agent.hub.taskDone') }}</text>
             </view>
             <view v-if="task.status === 'TODO'" class="agent-task-btn" @click.stop="dismissAgentTask(task.taskId)">
-              <text class="agent-task-btn-text">Skip</text>
+              <text class="agent-task-btn-text">{{ t('agent.hub.taskSkip') }}</text>
             </view>
           </view>
         </view>
       </view>
       <view class="agent-hub-entry" @click="navTo('/pages/agent/index')">
-        <text class="agent-hub-entry-text">进入 Agent Hub →</text>
+        <text class="agent-hub-entry-text">{{ t('home.agentHubEntry') }}</text>
       </view>
     </view>
 
     <!-- 7-day check-in chip — short, glanceable, taps through to the calendar -->
     <view v-if="checkin" class="checkin-card" @click="navTo('/pages/checkin/index')">
       <view class="checkin-left">
-        <text class="checkin-kicker">Daily check-in</text>
-        <text class="checkin-title">{{ checkin.streakDays || 0 }} day streak</text>
-        <text class="checkin-sub">{{ checkin.todayCompleted }}/{{ checkin.todayTotal }} done today · {{ checkin.weeklyDays }}/7 this week</text>
+        <text class="checkin-kicker">{{ t('checkin.title') }}</text>
+        <text class="checkin-title">{{ t('checkin.streak', { n: checkin.streakDays || 0 }) }}</text>
+        <text class="checkin-sub">{{ checkin.todayCompleted }}/{{ checkin.todayTotal }} {{ t('checkin.todayDone') }} · {{ checkin.weeklyDays }}/7 {{ t('checkin.weeklyDays') }}</text>
       </view>
       <view class="checkin-right">
         <view class="checkin-bar">
           <view class="checkin-bar-fill" :style="{ width: checkinPercent + '%' }"></view>
         </view>
-        <text class="checkin-cta">View calendar ›</text>
+        <text class="checkin-cta">{{ t('checkin.viewCalendar') }}</text>
       </view>
     </view>
     <view v-if="checkin && (!checkin.streakDays || !checkin.todayCompleted)" class="checkin-tip">
-      <text class="checkin-tip-text">Pick one task below to keep the streak alive.</text>
+      <text class="checkin-tip-text">{{ t('checkin.keepStreak') }}</text>
     </view>
 
     <!-- Section 1 — Career Videos (Bilibili) -->
     <view class="section" v-if="filteredVideos.length > 0">
       <view class="section-header">
         <view class="section-titles">
-          <text class="section-title">Career Videos</text>
-          <text class="section-meta">From Bilibili · refreshed daily</text>
+          <text class="section-title">{{ t('home.videos') }}</text>
+          <text class="section-meta">{{ t('home.videosSubtitle') }}</text>
         </view>
       </view>
 
@@ -220,8 +220,8 @@
     <view class="section" v-if="filteredArticles.length > 0">
       <view class="section-header">
         <view class="section-titles">
-          <text class="section-title">Career Insights</text>
-          <text class="section-meta">Read, then act on the next action card</text>
+          <text class="section-title">{{ t('home.articles') }}</text>
+          <text class="section-meta">{{ t('home.articlesSubtitle') }}</text>
         </view>
       </view>
 
@@ -255,8 +255,8 @@
     <view class="section" v-if="filteredConsultations.length > 0">
       <view class="section-header">
         <view class="section-titles">
-          <text class="section-title">From the Field</text>
-          <text class="section-meta">Today's next step for you — plus curated notes</text>
+          <text class="section-title">{{ t('home.consultations') }}</text>
+          <text class="section-meta">{{ t('home.consultationsSubtitle') }}</text>
         </view>
       </view>
 
@@ -282,11 +282,11 @@
     <view class="section" v-if="filteredCareerCards.length > 0">
       <view class="section-header">
         <view class="section-titles">
-          <text class="section-title">Career Paths</text>
-          <text class="section-meta">Explore the full Skill Map</text>
+          <text class="section-title">{{ t('home.careerPaths') }}</text>
+          <text class="section-meta">{{ t('home.careerPathsSubtitle') }}</text>
         </view>
         <view class="section-more" @click="navTo('/pages/map/index')">
-          <text class="section-more-text">Open Map</text>
+          <text class="section-more-text">{{ t('home.careerPathsOpen') }}</text>
           <text class="section-more-arrow">›</text>
         </view>
       </view>
@@ -308,15 +308,15 @@
     <view class="empty-state"
           v-if="searchQuery && filteredVideos.length === 0 && filteredArticles.length === 0 && filteredConsultations.length === 0 && filteredCareerCards.length === 0">
       <text class="empty-icon">🔍</text>
-      <text class="empty-text">No results found for "{{ searchQuery }}"</text>
-      <button class="btn-clear" @click="clearSearch">Clear Search</button>
+      <text class="empty-text">{{ t('home.searchEmpty', { q: searchQuery }) }}</text>
+      <button class="btn-clear" @click="clearSearch">{{ t('home.searchClear') }}</button>
     </view>
 
     <view class="empty-state"
           v-if="!searchQuery && homeError">
       <text class="empty-icon">⚠️</text>
       <text class="empty-text">{{ homeError }}</text>
-      <button class="btn-clear" @click="loadHomeContent">Retry</button>
+      <button class="btn-clear" @click="loadHomeContent">{{ t('common.retry') }}</button>
     </view>
 
     <view class="bottom-safe"></view>
@@ -325,6 +325,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import { openLink } from '@/utils/openLink';
 import { refreshHomeContentApi } from '@/api/home';
@@ -355,6 +356,7 @@ import {
 import { clearAuthState, LOGIN_PAGE } from '@/utils/auth';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const API_BASE_URL = /api\.careerloop\.top/i.test(RAW_BASE_URL)
@@ -407,9 +409,9 @@ const primaryRiskTrend = computed(() => {
 const primaryRiskRecommendation = computed(() => primaryRisk.value?.recommendation || '');
 const planHealthLabel = computed(() => {
   const health = agentPlan.value?.planHealth || 'MISSING';
-  if (health === 'ON_TRACK') return 'On track';
-  if (health === 'NEEDS_REFRESH') return 'Needs refresh';
-  return 'Missing';
+  if (health === 'ON_TRACK') return t('agent.hub.planHealthOnTrack');
+  if (health === 'NEEDS_REFRESH') return t('agent.hub.planHealthNeedsRefresh');
+  return t('agent.hub.planHealthMissing');
 });
 
 // Search filters every section so the home page works as a quick triage tool.
