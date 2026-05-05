@@ -3,17 +3,19 @@
     <web-view v-if="url" :src="url" @error="handleError"></web-view>
     <view class="fallback" v-if="showFallback">
       <text class="fb-icon">🔗</text>
-      <text class="fb-text">Cannot open external link directly in app.</text>
+      <text class="fb-text">{{ t('webview.fallbackText') }}</text>
       <text class="fb-url">{{ url }}</text>
-      <button class="btn-copy" @click="copyUrl">Copy Link to Browser</button>
+      <button class="btn-copy" @click="copyUrl">{{ t('webview.copyBtn') }}</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onLoad } from '@dcloudio/uni-app';
 
+const { t } = useI18n();
 const url = ref('');
 const title = ref('');
 const showFallback = ref(false);
@@ -36,7 +38,7 @@ const copyUrl = () => {
   uni.setClipboardData({
     data: url.value,
     success: () => {
-      uni.showToast({ title: 'Link copied', icon: 'success' });
+      uni.showToast({ title: t('webview.copied'), icon: 'success' });
     }
   });
 };

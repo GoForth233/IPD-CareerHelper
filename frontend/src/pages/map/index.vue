@@ -5,21 +5,21 @@
     <view class="nav-row">
       <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
-        <text class="back-text">Back</text>
+        <text class="back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="nav-title">Career</text>
+      <text class="nav-title">{{ t('map.navTitle') }}</text>
       <view class="nav-right" @click="activeTab === 'map' ? switchRole() : null">
-        <text class="nav-action" v-if="activeTab === 'map'">Role</text>
+        <text class="nav-action" v-if="activeTab === 'map'">{{ t('map.roleBtn') }}</text>
       </view>
     </view>
 
     <!-- Tab switcher -->
     <view class="tab-bar">
       <view class="tab-item" :class="{ 'tab-active': activeTab === 'map' }" @click="activeTab = 'map'">
-        <text class="tab-text">Skill Map</text>
+        <text class="tab-text">{{ t('map.tabMap') }}</text>
       </view>
       <view class="tab-item" :class="{ 'tab-active': activeTab === 'plan' }" @click="activeTab = 'plan'">
-        <text class="tab-text">AI Plan</text>
+        <text class="tab-text">{{ t('map.tabPlan') }}</text>
         <view class="tab-badge" v-if="plan && plan.version && plan.version > 0"></view>
       </view>
     </view>
@@ -29,15 +29,15 @@
          ══════════════════════════════════════════ -->
     <view v-if="activeTab === 'map'">
     <view class="page-intro">
-      <text class="intro-title">Learning roadmap</text>
-      <text class="intro-text">Use the timeline to see what is complete, what is active now, and what unlocks next for this role.</text>
+      <text class="intro-title">{{ t('map.intro') }}</text>
+      <text class="intro-text">{{ t('map.introText') }}</text>
     </view>
 
     <!-- Role header card -->
     <view class="role-card">
       <view class="role-info">
-        <text class="role-name" @click="switchRole">{{ currentPath?.name || 'Pick a role' }}</text>
-        <text class="role-desc">{{ currentPath?.description || 'Skill progression & career development roadmap' }}</text>
+        <text class="role-name" @click="switchRole">{{ currentPath?.name || t('map.pickRole') }}</text>
+        <text class="role-desc">{{ currentPath?.description || t('map.defaultRoleDesc') }}</text>
       </view>
       <view class="progress-ring">
         <text class="ring-val">{{ overallPercent }}%</text>
@@ -56,8 +56,8 @@
       <!-- Empty state -->
       <view class="empty-state" v-else-if="nodes.length === 0">
         <text class="empty-icon">🗺️</text>
-        <text class="empty-text">No roadmap yet</text>
-        <text class="empty-sub">This role's learning path hasn't been published.</text>
+        <text class="empty-text">{{ t('map.noRoadmap') }}</text>
+        <text class="empty-sub">{{ t('map.noRoadmapSub') }}</text>
       </view>
 
       <!-- Real skill timeline -->
@@ -71,7 +71,7 @@
         >
           <view class="tl-dot" :class="dotClass(node)">{{ dotIcon(node) }}</view>
           <view class="tl-card" :class="cardClass(node)">
-            <text class="tl-level">L{{ node.level }} · Stage {{ idx + 1 }}</text>
+            <text class="tl-level">{{ t('map.stageLabel', { level: node.level, stage: idx + 1 }) }}</text>
             <text class="tl-title">{{ node.name }}</text>
             <text class="tl-desc" v-if="node.description">{{ node.description }}</text>
             <view class="tl-meta-row">
@@ -95,11 +95,11 @@
           <text class="sheet-mastery">{{ statusLabel(selectedNode) }} · ~{{ selectedNode.estimatedHours || 10 }} h</text>
         </view>
         <view class="sheet-section">
-          <text class="sheet-label">What this stage covers</text>
+          <text class="sheet-label">{{ t('map.sheetCovers') }}</text>
           <text class="sheet-advice">{{ selectedNode.description || 'Description coming soon.' }}</text>
         </view>
         <view class="sheet-section" v-if="prerequisiteName">
-          <text class="sheet-label">Prerequisite</text>
+          <text class="sheet-label">{{ t('map.sheetPrereq') }}</text>
           <view class="topic-tags">
             <view class="topic-tag"><text class="topic-text">{{ prerequisiteName }}</text></view>
           </view>
@@ -120,17 +120,17 @@
       <!-- Loading -->
       <view class="plan-loading" v-if="planLoading">
         <view class="plan-load-spinner"></view>
-        <text class="plan-load-text">AI 正在为你生成专属规划…</text>
-        <text class="plan-load-sub">通常需要 15–30 秒，请稍候</text>
+        <text class="plan-load-text">{{ t('map.planLoading') }}</text>
+        <text class="plan-load-sub">{{ t('map.planLoadingSub') }}</text>
       </view>
 
       <!-- No plan yet -->
       <view class="plan-empty" v-else-if="!plan">
         <text class="plan-empty-icon">🗺</text>
-        <text class="plan-empty-title">还没有 AI 职业规划</text>
-        <text class="plan-empty-sub">AI 会根据你的测评、简历和历史记录，生成一份专属的职业发展路径</text>
+        <text class="plan-empty-title">{{ t('map.planEmpty') }}</text>
+        <text class="plan-empty-sub">{{ t('map.planEmptySub') }}</text>
         <view class="plan-gen-btn" @click="handleGenerate()">
-          <text class="plan-gen-btn-text">✨ 立即生成</text>
+          <text class="plan-gen-btn-text">{{ t('map.planGenerate') }}</text>
         </view>
       </view>
 
@@ -139,17 +139,17 @@
 
         <!-- Target role card -->
         <view class="plan-hero">
-          <text class="plan-hero-label">目标职位</text>
+          <text class="plan-hero-label">{{ t('map.planTargetRole') }}</text>
           <text class="plan-hero-role">{{ plan.targetRole }}</text>
           <text class="plan-hero-meta">v{{ plan.version }} · {{ formatDate(plan.lastUpdatedAt) }}</text>
           <view class="plan-regen-btn" @click="handleGenerate(plan.targetRole)">
-            <text class="plan-regen-text">重新生成</text>
+            <text class="plan-regen-text">{{ t('map.planRegenerate') }}</text>
           </view>
         </view>
 
         <!-- Weekly focus -->
         <view class="plan-section" v-if="weeklyFocus.length">
-          <text class="plan-section-title">📌 本周重点</text>
+          <text class="plan-section-title">{{ t('map.planWeeklyFocus') }}</text>
           <view class="focus-list">
             <view class="focus-item" v-for="(item, i) in weeklyFocus" :key="i">
               <view class="focus-dot">{{ i + 1 }}</view>
@@ -160,7 +160,7 @@
 
         <!-- Milestones -->
         <view class="plan-section" v-if="milestones.length">
-          <text class="plan-section-title">🎯 里程碑规划</text>
+          <text class="plan-section-title">{{ t('map.planMilestones') }}</text>
           <view class="milestone-card" v-for="ms in milestones" :key="ms.horizon">
             <view class="ms-header">
               <view class="ms-horizon-badge">
@@ -170,7 +170,7 @@
             </view>
             <view class="ms-body">
               <view class="ms-row" v-if="ms.actions && ms.actions.length">
-                <text class="ms-row-label">行动计划</text>
+                <text class="ms-row-label">{{ t('map.planActions') }}</text>
                 <view class="ms-tag-row">
                   <view class="ms-tag ms-tag-action" v-for="a in ms.actions" :key="a">
                     <text class="ms-tag-text">{{ a }}</text>
@@ -178,7 +178,7 @@
                 </view>
               </view>
               <view class="ms-row" v-if="ms.skills && ms.skills.length">
-                <text class="ms-row-label">技能清单</text>
+                <text class="ms-row-label">{{ t('map.planSkills') }}</text>
                 <view class="ms-tag-row">
                   <view class="ms-tag ms-tag-skill" v-for="s in ms.skills" :key="s">
                     <text class="ms-tag-text">{{ s }}</text>
@@ -186,7 +186,7 @@
                 </view>
               </view>
               <view class="ms-row" v-if="ms.kpis && ms.kpis.length">
-                <text class="ms-row-label">成功标准</text>
+                <text class="ms-row-label">{{ t('map.planKpis') }}</text>
                 <view class="ms-tag-row">
                   <view class="ms-tag ms-tag-kpi" v-for="k in ms.kpis" :key="k">
                     <text class="ms-tag-text">{{ k }}</text>
@@ -206,6 +206,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import {
   getCareerPathsApi,
@@ -223,7 +224,8 @@ import {
 } from '@/api/career';
 import { useTheme } from '@/utils/theme';
 
-// ── shared ────────────────────────────────────────────────────────────────────
+// ── shared ─────────────────────────────────────────────────────────────────────────────────
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(44);
 const activeTab    = ref<'map' | 'plan'>('map');
@@ -303,18 +305,18 @@ const badgeClass = (n: CareerNode) => {
 };
 const statusLabel = (n: CareerNode) => {
   switch (nodeStatus(n)) {
-    case 'COMPLETED':   return 'Completed';
-    case 'IN_PROGRESS': return 'In Progress';
-    case 'LOCKED':      return 'Locked';
-    default:            return 'Available';
+    case 'COMPLETED':   return t('map.statusCompleted');
+    case 'IN_PROGRESS': return t('map.statusInProgress');
+    case 'LOCKED':      return t('map.statusLocked');
+    default:            return t('map.statusAvailable');
   }
 };
 const ctaLabel = (n: CareerNode) => {
   switch (nodeStatus(n)) {
-    case 'COMPLETED':   return 'Mark as In Progress';
-    case 'IN_PROGRESS': return 'Mark as Completed';
-    case 'LOCKED':      return 'Locked - finish prerequisite first';
-    default:            return 'Start Learning';
+    case 'COMPLETED':   return t('map.ctaMarkInProgress');
+    case 'IN_PROGRESS': return t('map.ctaMarkCompleted');
+    case 'LOCKED':      return t('map.ctaLocked');
+    default:            return t('map.ctaStart');
   }
 };
 
@@ -352,25 +354,25 @@ const toggleNodeStatus = async (node: CareerNode) => {
   if (isLocked(node)) return;
   const uid = getUid();
   if (!uid) {
-    uni.showToast({ title: 'Please sign in first', icon: 'none' });
+    uni.showToast({ title: t('map.toastSignIn'), icon: 'none' });
     return;
   }
   const status = nodeStatus(node);
   try {
     if (status === 'IN_PROGRESS') {
       await completeNodeApi(uid, node.nodeId!);
-      uni.showToast({ title: 'Marked as completed', icon: 'success' });
+      uni.showToast({ title: t('map.toastCompleted'), icon: 'success' });
     } else if (status === 'COMPLETED') {
       // Re-unlock to revisit; backend just updates the row's status.
       await unlockNodeApi(uid, node.nodeId!);
-      uni.showToast({ title: 'Reopened', icon: 'none' });
+      uni.showToast({ title: t('map.toastReopened'), icon: 'none' });
     } else {
       await unlockNodeApi(uid, node.nodeId!);
-      uni.showToast({ title: 'Stage started', icon: 'success' });
+      uni.showToast({ title: t('map.toastStarted'), icon: 'success' });
     }
     await refreshProgress();
   } catch (e: any) {
-    uni.showToast({ title: e?.message || 'Update failed', icon: 'none' });
+    uni.showToast({ title: e?.message || t('map.toastFail'), icon: 'none' });
   }
   showDetail.value = false;
 };
@@ -489,23 +491,15 @@ const handleGenerate = async (targetRole?: string) => {
   plan.value = null;
   try {
     plan.value = await generateCareerPlanApi(targetRole);
-    uni.showToast({ title: '规划生成完成 ✨', icon: 'success' });
+    uni.showToast({ title: t('map.planDone'), icon: 'success' });
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '生成失败，请稍后再试', icon: 'none' });
+    uni.showToast({ title: e?.message || t('map.planFail'), icon: 'none' });
   } finally {
     planLoading.value = false;
   }
 };
 
-const horizonLabel = (h: string) => {
-  switch (h) {
-    case '6m': return '6个月';
-    case '1y': return '1年';
-    case '3y': return '3年';
-    case '5y': return '5年';
-    default:   return h;
-  }
-};
+const horizonLabel = (h: string) => h;
 
 const formatDate = (iso?: string) => {
   if (!iso) return '';

@@ -9,23 +9,23 @@
     </view>
 
     <view class="header">
-      <text class="title">Resume Diagnosis</text>
-      <text class="subtitle">Pick one of your resumes and paste a job description. AI will score the match and suggest improvements.</text>
+      <text class="title">{{ t('resumeAi.title') }}</text>
+      <text class="subtitle">{{ t('resumeAi.subtitle') }}</text>
     </view>
 
     <view class="card">
       <view class="section">
-        <text class="section-title">Resume</text>
+        <text class="section-title">{{ t('resumeAi.resumeLabel') }}</text>
         <view class="select-box" :class="{ 'has-value': !!selectedResume }" @click="selectResume">
           <view class="s-icon-wrap"><text class="s-icon-text">PDF</text></view>
-          <text class="s-text">{{ selectedResume || 'Choose a resume from your library' }}</text>
+          <text class="s-text">{{ selectedResume || t('resumeAi.chooseResume') }}</text>
           <text class="s-chevron">›</text>
         </view>
       </view>
 
       <view class="section">
         <view class="jd-header">
-          <text class="section-title">Job Description</text>
+          <text class="section-title">{{ t('resumeAi.jdLabel') }}</text>
           <text class="jd-counter" :class="{ 'jd-counter-warn': jdText.length > 4000 }">
             {{ jdText.length }} / 4000
           </text>
@@ -34,13 +34,13 @@
           class="jd-input"
           v-model="jdText"
           :maxlength="4000"
-          :placeholder="jdPlaceholder"
+          :placeholder="t('resumeAi.jdPlaceholder')"
           placeholder-class="ph"
         ></textarea>
       </view>
 
       <button class="btn-primary" :loading="analyzing" @click="startAnalysis">
-        Analyze
+        {{ t('resumeAi.analyzeBtn') }}
       </button>
     </view>
 
@@ -56,8 +56,8 @@
     <view class="result-card" v-if="showResult && result">
       <view class="r-header">
         <view class="r-title-wrap">
-          <text class="r-title">Match Score</text>
-          <text class="r-sub">vs. the job description</text>
+          <text class="r-title">{{ t('resumeAi.matchScore') }}</text>
+          <text class="r-sub">{{ t('resumeAi.vsJobDesc') }}</text>
         </view>
         <view class="score-ring" :class="scoreClass">
           <text class="score-val">{{ result.overallScore }}</text>
@@ -66,34 +66,35 @@
 
       <view class="r-body">
         <view class="point-block strengths" v-if="result.strengths && result.strengths.length">
-          <text class="point-title">Strengths</text>
+          <text class="point-title">{{ t('resumeAi.strengths') }}</text>
           <view class="point-list">
             <text class="point-text" v-for="(s, i) in result.strengths" :key="'s'+i">{{ s }}</text>
           </view>
         </view>
 
         <view class="point-block weaknesses" v-if="result.weaknesses && result.weaknesses.length">
-          <text class="point-title">Areas to Improve</text>
+          <text class="point-title">{{ t('resumeAi.weaknesses') }}</text>
           <view class="point-list">
             <text class="point-text" v-for="(w, i) in result.weaknesses" :key="'w'+i">{{ w }}</text>
           </view>
         </view>
 
         <view class="point-block suggestions" v-if="result.suggestions && result.suggestions.length">
-          <text class="point-title">Suggestions</text>
+          <text class="point-title">{{ t('resumeAi.suggestions') }}</text>
           <view class="point-list">
             <text class="point-text" v-for="(g, i) in result.suggestions" :key="'g'+i">{{ g }}</text>
           </view>
         </view>
       </view>
 
-      <button class="btn-secondary" :loading="tailoring" @click="generateTailored">Generate Tailored Resume</button>
+      <button class="btn-secondary" :loading="tailoring" @click="generateTailored">{{ t('resumeAi.tailorBtn') }}</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import {
@@ -110,6 +111,7 @@ const selectedResume = ref('');
 const selectedResumeId = ref<number | null>(null);
 const userResumes = ref<Resume[]>([]);
 const jdText = ref('');
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(44);
 const analyzing = ref(false);
@@ -149,6 +151,7 @@ const loadResumes = async () => {
  * so the empty textarea isn't a blank wall to fill.
  */
 const applyPrefill = async () => {
+  jdPlaceholder.value = t('resumeAi.jdPlaceholder');
   try {
     const snap = await getProfileSnapshotApi();
     const lastResumeId = snap?.resume?.lastResumeId;
@@ -159,23 +162,16 @@ const applyPrefill = async () => {
         selectedResume.value = match.title || `Resume #${match.resumeId}`;
       }
     }
-    const targetRole = snap?.preferences?.targetRole;
-    if (targetRole && !jdText.value) {
-      // We can't fabricate a real JD, but we can lower the activation cost
-      // by suggesting the role the user is interested in -- they'll usually
-      // paste a real JD on top of (or instead of) this stub.
-      jdPlaceholder.value = `Paste a "${targetRole}" job description here. Tip: from your assessment we know this is a role you're considering — paste the JD from a real listing for the most accurate diagnosis.`;
-    }
   } catch {
     // Snapshot is best-effort.
   }
 };
 
-const jdPlaceholder = ref('Paste the target job description here. AI will diagnose your resume against it...');
+const jdPlaceholder = ref('');
 
 const selectResume = () => {
   if (!userResumes.value.length) {
-    uni.showToast({ title: 'No resumes yet — upload one first', icon: 'none' });
+    uni.showToast({ title: t('resume.noResumes'), icon: 'none' });
     return;
   }
   const itemList = userResumes.value.map(

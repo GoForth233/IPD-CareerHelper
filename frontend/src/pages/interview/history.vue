@@ -4,17 +4,17 @@
     <view class="nav-row">
       <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
-        <text class="back-text">Back</text>
+        <text class="back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="nav-title">Interviews</text>
+      <text class="nav-title">{{ t('interviewHistory.navTitle') }}</text>
       <view class="nav-new-btn" @click="startNew">
-        <text class="nav-new-text">+ New</text>
+        <text class="nav-new-text">{{ t('interviewHistory.newBtn') }}</text>
       </view>
     </view>
 
     <view class="page-hero">
-      <text class="hero-title">Interview History</text>
-      <text class="hero-subtitle">Review previous sessions or start a fresh practice run.</text>
+      <text class="hero-title">{{ t('interviewHistory.heroTitle') }}</text>
+      <text class="hero-subtitle">{{ t('interviewHistory.heroSubtitle') }}</text>
     </view>
 
     <!-- Loading skeleton -->
@@ -38,20 +38,20 @@
           <view class="card-top">
             <text class="position">{{ item.positionName }}</text>
             <view :class="['status-pill', (item.status ?? '').toLowerCase()]">
-              <text class="pill-text">{{ item.status === 'COMPLETED' ? 'Completed' : 'Ongoing' }}</text>
+              <text class="pill-text">{{ item.status === 'COMPLETED' ? t('interviewHistory.statusCompleted') : t('interviewHistory.statusOngoing') }}</text>
             </view>
           </view>
           <view class="card-bottom">
             <view class="info-item">
-              <text class="info-label">Difficulty</text>
+              <text class="info-label">{{ t('interviewHistory.difficultyLabel') }}</text>
               <text class="info-val">{{ item.difficulty }}</text>
             </view>
             <view class="info-item" v-if="item.finalScore != null">
-              <text class="info-label">Score</text>
+              <text class="info-label">{{ t('interviewHistory.scoreLabel') }}</text>
               <text class="info-val score-val">{{ item.finalScore }}</text>
             </view>
             <view class="info-item info-item-time">
-              <text class="info-label">Time</text>
+              <text class="info-label">{{ t('interviewHistory.timeLabel') }}</text>
               <text class="info-val">{{ formatTime(item.startedAt) }}</text>
             </view>
           </view>
@@ -61,9 +61,9 @@
 
     <view class="empty" v-else>
       <text class="empty-icon">💼</text>
-      <text class="empty-text">No interview history yet</text>
-      <text class="empty-desc">Start your first mock interview to generate a session record and score history.</text>
-      <button class="btn-primary" @click="startNew">Start your first interview</button>
+      <text class="empty-text">{{ t('interviewHistory.emptyText') }}</text>
+      <text class="empty-desc">{{ t('interviewHistory.emptyDesc') }}</text>
+      <button class="btn-primary" @click="startNew">{{ t('interviewHistory.emptyBtn') }}</button>
     </view>
   </view>
 </template>
@@ -73,10 +73,12 @@ import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getUserInterviewsApi, type Interview } from '@/api/interview';
+import { useI18n } from 'vue-i18n';
 import { useTheme } from '@/utils/theme';
 
 const interviews = ref<Interview[]>([]);
 const loading = ref(true);
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 

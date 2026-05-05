@@ -6,26 +6,26 @@
     <view class="nav-bar">
       <view class="nav-back" @click="goBack">
         <text class="nav-back-icon">‹</text>
-        <text class="nav-back-text">Back</text>
+        <text class="nav-back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="nav-title">AI Memory</text>
+      <text class="nav-title">{{ t('memory.navTitle') }}</text>
       <view class="nav-right-placeholder"></view>
     </view>
 
     <!-- Header -->
     <view class="page-header">
-      <text class="page-title">AI Memory</text>
-      <text class="page-subtitle">What your AI agent can use when giving personalised career advice.</text>
+      <text class="page-title">{{ t('memory.title') }}</text>
+      <text class="page-subtitle">{{ t('memory.subtitle') }}</text>
     </view>
 
     <view v-if="!loading" class="context-section">
       <view class="context-card">
         <view class="context-head">
           <text class="context-icon">👤</text>
-          <text class="context-title">Profile known by AI</text>
+          <text class="context-title">{{ t('memory.profileTitle') }}</text>
         </view>
         <view v-if="profileItems.length === 0" class="context-empty">
-          <text class="context-empty-text">No basic profile yet. Complete your profile so AI can use your school, major, and graduation year.</text>
+          <text class="context-empty-text">{{ t('memory.profileEmpty') }}</text>
         </view>
         <view v-else class="context-list">
           <view v-for="item in profileItems" :key="item.label" class="context-row">
@@ -38,10 +38,10 @@
       <view class="context-card">
         <view class="context-head">
           <text class="context-icon">🧭</text>
-          <text class="context-title">Career portrait</text>
+          <text class="context-title">{{ t('memory.snapshotTitle') }}</text>
         </view>
         <view v-if="snapshotItems.length === 0" class="context-empty">
-          <text class="context-empty-text">No assessment, resume, interview, or target role data yet.</text>
+          <text class="context-empty-text">{{ t('memory.snapshotEmpty') }}</text>
         </view>
         <view v-else class="context-list">
           <view v-for="item in snapshotItems" :key="item.label" class="context-row">
@@ -60,8 +60,8 @@
     <!-- Empty state -->
     <view v-else-if="facts.length === 0" class="empty-state">
       <text class="empty-icon">🧠</text>
-      <text class="empty-title">No extracted chat memories yet</text>
-      <text class="empty-desc">These memories appear after several saved assistant messages. Your profile and career portrait above can already be used by AI.</text>
+      <text class="empty-title">{{ t('memory.noFacts') }}</text>
+      <text class="empty-desc">{{ t('memory.noFactsDesc') }}</text>
     </view>
 
     <!-- Facts grouped by category -->
@@ -96,7 +96,7 @@
       <!-- Clear all -->
       <view class="clear-all-row">
         <view class="btn-clear-all" @click="confirmClearAll">
-          <text class="btn-clear-all-text">Clear All Memories</text>
+          <text class="btn-clear-all-text">{{ t('memory.clearAll') }}</text>
         </view>
       </view>
     </view>
@@ -107,6 +107,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import request from '@/utils/request';
@@ -128,6 +129,7 @@ const loading = ref(true);
 const facts = ref<UserFact[]>([]);
 const userProfile = ref<User | null>(null);
 const profileSnapshot = ref<UserProfileSnapshot | null>(null);
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 onMounted(async () => {

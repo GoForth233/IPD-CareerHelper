@@ -4,12 +4,12 @@
 
     <view class="page-header">
       <view class="header-row">
-        <text class="page-title">Notifications</text>
+        <text class="page-title">{{ t('messages.title') }}</text>
         <view
           class="clear-btn"
           v-if="filteredMessages.length > 0 && unreadCount > 0"
           @click="markAllReadHandler"
-        ><text class="clear-btn-text">Mark all read</text></view>
+        ><text class="clear-btn-text">{{ t('messages.markAllRead') }}</text></view>
       </view>
     </view>
 
@@ -60,8 +60,8 @@
       <!-- Empty state -->
       <view class="empty-state" v-if="!systemLoading && filteredMessages.length === 0">
         <text class="empty-icon">🔕</text>
-        <text class="empty-text">No notifications yet</text>
-        <text class="empty-sub">Complete an interview or assessment and it'll show up here.</text>
+        <text class="empty-text">{{ t('messages.empty') }}</text>
+        <text class="empty-sub">{{ t('messages.emptySub') }}</text>
       </view>
 
       <!-- Reserve space above tab bar to prevent last row from being covered. -->
@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import {
@@ -83,16 +84,17 @@ import {
 } from '@/api/notification';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const topSafeHeight = ref(88);
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 // ─── F9: Category tabs ───────────────────────────────────────────────────────
-const TABS = [
-  { key: 'ALL',       label: 'All' },
-  { key: 'CAREER',    label: 'Career' },
-  { key: 'SYSTEM',    label: 'System' },
-  { key: 'AI',        label: 'AI' },
-];
+const TABS = computed(() => [
+  { key: 'ALL',       label: t('messages.tabAll') },
+  { key: 'CAREER',    label: t('messages.tabCareer') },
+  { key: 'SYSTEM',    label: t('messages.tabSystem') },
+  { key: 'AI',        label: t('messages.tabAI') },
+]);
 
 type TabKey = 'ALL' | 'CAREER' | 'SYSTEM' | 'AI';
 
@@ -125,17 +127,17 @@ const iconForType = (type: string): string => {
 const nameForType = (type: string): string => {
   switch (type) {
     case 'INTERVIEW_REPORT':
-    case 'INTERVIEW_COMPLETED': return 'Interview';
+    case 'INTERVIEW_COMPLETED': return t('messages.typeInterview');
     case 'ASSESSMENT_RESULT':
-    case 'ASSESSMENT_DONE':     return 'Assessment';
+    case 'ASSESSMENT_DONE':     return t('messages.typeAssessment');
     case 'RESUME_DIAGNOSIS':
-    case 'RESUME_REVIEWED':     return 'Resume AI';
-    case 'WEEKLY_REPORT':       return 'Weekly Report';
-    case 'STREAK_WARNING':      return 'Check-in Streak';
-    case 'MARKET_LIKE':         return 'Market';
-    case 'AI_PROACTIVE':        return 'AI Advisor';
-    case 'ADMIN_BROADCAST':     return 'Announcement';
-    default:                    return 'System';
+    case 'RESUME_REVIEWED':     return t('messages.typeResumeAI');
+    case 'WEEKLY_REPORT':       return t('messages.typeWeeklyReport');
+    case 'STREAK_WARNING':      return t('messages.typeCheckin');
+    case 'MARKET_LIKE':         return t('messages.typeMarket');
+    case 'AI_PROACTIVE':        return t('messages.typeAI');
+    case 'ADMIN_BROADCAST':     return t('messages.typeAnnouncement');
+    default:                    return t('messages.typeSystem');
   }
 };
 
@@ -178,14 +180,14 @@ const formatRelativeTime = (ts?: string): string => {
   const date = new Date(ts.replace(' ', 'T'));
   if (isNaN(date.getTime())) return '';
   const diff = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-  if (diff < 60) return 'Just now';
+  if (diff < 60) return t('messages.timeJustNow');
   const m = Math.floor(diff / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t('messages.timeMins', { m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return t('messages.timeHours', { h });
   const d = Math.floor(h / 24);
-  if (d === 1) return 'Yesterday';
-  if (d < 7) return `${d}d ago`;
+  if (d === 1) return t('messages.timeYesterday');
+  if (d < 7) return t('messages.timeDays', { d });
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 

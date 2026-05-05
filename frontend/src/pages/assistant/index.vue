@@ -15,7 +15,7 @@
           </view>
         </view>
         <view class="nav-action" @click="openHistory">
-          <text class="nav-action-text">History</text>
+          <text class="nav-action-text">{{ t('assistantPage.history') }}</text>
         </view>
       </view>
       <!-- F15: Persona switcher -->
@@ -49,7 +49,7 @@
         <text class="welcome-title">{{ currentPersona.name }}</text>
         <text class="welcome-desc">{{ currentPersona.intro }}</text>
         <view class="agent-scope">
-          <text class="agent-scope-label">Best for</text>
+          <text class="agent-scope-label">{{ t('assistantPage.bestFor') }}</text>
           <text class="agent-scope-text">{{ currentPersona.bestFor }}</text>
         </view>
         <view class="agent-note">
@@ -129,7 +129,9 @@ import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import request from '@/utils/request';
 import { useTheme } from '@/utils/theme';
+import { useI18n } from 'vue-i18n';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 interface ChatMessage {

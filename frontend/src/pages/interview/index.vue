@@ -1,12 +1,15 @@
 <template>
   <view class="legacy-bridge">
-    <text class="bridge-title">Redirecting to Interview Setup</text>
-    <text class="bridge-copy">The mock interview entry now uses the live interview flow.</text>
+    <text class="bridge-title">{{ t('common.loading') }}</text>
+    <text class="bridge-copy"></text>
   </view>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 onMounted(() => {
   setTimeout(() => {

@@ -3,18 +3,18 @@
     <view class="status-spacer" :style="{ height: topSafeHeight + 'px' }"></view>
 
     <view class="page-header">
-      <text class="page-title">Resume Hub</text>
-      <text class="page-subtitle">Manage your career assets</text>
+      <text class="page-title">{{ t('resume.hubTitle') }}</text>
+      <text class="page-subtitle">{{ t('resume.hubSubtitle') }}</text>
     </view>
 
     <!-- Section header (compact, replaces oversized hero) -->
     <view class="section-bar">
       <view class="section-titles">
-        <text class="section-title">My Resumes</text>
-        <text class="section-sub">{{ resumeList.length }} {{ resumeList.length === 1 ? 'file' : 'files' }} · stored privately</text>
+        <text class="section-title">{{ t('resume.myResumes') }}</text>
+        <text class="section-sub">{{ t('resume.filesCount', { n: resumeList.length }) }}</text>
       </view>
       <view class="section-action" @click="handleUploadClick">
-        <text class="section-action-text">+ Add</text>
+        <text class="section-action-text">{{ t('resume.addBtn') }}</text>
       </view>
     </view>
 
@@ -47,7 +47,7 @@
         </view>
         <view class="rc-actions">
           <view class="rc-action-btn" @click="handlePreview(item)">
-            <text class="rc-action-text">Preview</text>
+            <text class="rc-action-text">{{ t('resume.previewBtn') }}</text>
           </view>
           <view class="rc-more" @click="handleMore(idx)">
             <text class="rc-more-dots">···</text>
@@ -61,23 +61,23 @@
           <text class="add-plus">+</text>
         </view>
         <view class="add-info">
-          <text class="add-title">New Resume</text>
-          <text class="add-desc">Create from template or upload PDF</text>
+          <text class="add-title">{{ t('resume.newResume') }}</text>
+          <text class="add-desc">{{ t('resume.newResumeDesc') }}</text>
         </view>
       </view>
     </view>
 
     <view class="empty-state" v-else-if="!isLoading">
       <text class="empty-icon">📄</text>
-      <text class="empty-title">No resumes yet</text>
-      <text class="empty-desc">Create one from the guided template or upload an existing PDF to start using diagnosis and interview features.</text>
+      <text class="empty-title">{{ t('resume.noResumes') }}</text>
+      <text class="empty-desc">{{ t('resume.noResumesDesc2') }}</text>
       <view class="add-card" @click="handleUploadClick">
         <view class="add-icon">
           <text class="add-plus">+</text>
         </view>
         <view class="add-info">
-          <text class="add-title">Add your first resume</text>
-          <text class="add-desc">Template creation and PDF upload are both supported</text>
+          <text class="add-title">{{ t('resume.addFirst') }}</text>
+          <text class="add-desc">{{ t('resume.addFirstDesc') }}</text>
         </view>
       </view>
     </view>
@@ -88,23 +88,23 @@
     <view class="sheet-mask" v-if="showSheet" @click="closeSheet"></view>
     <view class="sheet" :class="{ 'sheet-open': showSheet }">
       <view class="sheet-title-bar">
-        <text class="sheet-title">Choose an option</text>
+        <text class="sheet-title">{{ t('resume.chooseOption') }}</text>
       </view>
       <view class="sheet-option" @click="selectAction('template')">
         <text class="sheet-option-icon">📝</text>
-        <text class="sheet-option-text">Fill from Template</text>
+        <text class="sheet-option-text">{{ t('resume.useTemplateBtn') }}</text>
       </view>
       <view class="sheet-option" @click="selectAction('upload')">
         <view class="sheet-option-col">
           <view class="sheet-option-row">
             <text class="sheet-option-icon">📎</text>
-            <text class="sheet-option-text">Upload PDF Resume</text>
+            <text class="sheet-option-text">{{ t('resume.uploadPDF') }}</text>
           </view>
-          <text class="sheet-option-hint">Send your PDF to yourself in WeChat first, then select it here</text>
+          <text class="sheet-option-hint">{{ t('resume.uploadHint') }}</text>
         </view>
       </view>
       <view class="sheet-cancel" @click="closeSheet">
-        <text class="sheet-cancel-text">Cancel</text>
+        <text class="sheet-cancel-text">{{ t('common.cancel') }}</text>
       </view>
     </view>
   </view>
@@ -112,6 +112,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import {
@@ -151,14 +152,14 @@ const formatRelative = (ts?: string): string => {
   if (isNaN(date.getTime())) return '';
   const diffMs = Date.now() - date.getTime();
   const sec = Math.max(0, Math.floor(diffMs / 1000));
-  if (sec < 60) return 'Just now';
+  if (sec < 60) return t('messages.timeJustNow');
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return t('messages.timeMins', { m: min });
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return t('messages.timeHours', { h: hr });
   const day = Math.floor(hr / 24);
-  if (day === 1) return 'Yesterday';
-  if (day < 7) return `${day}d ago`;
+  if (day === 1) return t('messages.timeYesterday');
+  if (day < 7) return t('messages.timeDays', { d: day });
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
@@ -205,6 +206,7 @@ const loadResumes = async () => {
 
 const showSheet = ref(false);
 const topSafeHeight = ref(88);
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const handleUploadClick = () => {
@@ -220,7 +222,7 @@ const selectAction = (type: string) => {
   if (type === 'upload') {
     const userId = Number(uni.getStorageSync('userId'));
     if (!userId || isNaN(userId) || userId <= 0) {
-      uni.showToast({ title: 'Please log in first', icon: 'none' });
+      uni.showToast({ title: t('map.toastSignIn'), icon: 'none' });
       return;
     }
     uni.chooseMessageFile({

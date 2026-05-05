@@ -5,33 +5,33 @@
     <view class="page-header">
       <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
-        <text class="back-text">Back</text>
+        <text class="back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="page-title">Assessment</text>
+      <text class="page-title">{{ t('assessment.pageTitle') }}</text>
       <view class="header-action"></view>
     </view>
 
     <view class="page-summary">
-      <text class="summary-title">Build your profile first</text>
-      <text class="summary-text">These tests feed your Skill Map and AI advisor, so the first step should feel clear and low-friction.</text>
+      <text class="summary-title">{{ t('assessment.summaryTitle') }}</text>
+      <text class="summary-text">{{ t('assessment.summaryText') }}</text>
     </view>
 
     <view class="flow-bar">
       <view class="flow-pill">
-        <text class="flow-step">Step 1</text>
-        <text class="flow-desc">Complete assessments first — Skill Map and AI Advisor will personalize based on your profile</text>
+        <text class="flow-step">{{ t('assessment.step1') }}</text>
+        <text class="flow-desc">{{ t('assessment.step1Desc') }}</text>
       </view>
     </view>
 
     <view class="status-card card-data">
       <view class="card-header">
-        <text class="card-title">Career Aptitude Test</text>
-        <text class="card-subtitle">Discover your core strengths through professional assessments</text>
+        <text class="card-title">{{ t('assessment.aptitudeTitle') }}</text>
+        <text class="card-subtitle">{{ t('assessment.aptitudeSubtitle') }}</text>
       </view>
       <view class="card-body">
         <view class="progress-info">
-          <text class="progress-text">{{ completedCount }} completed</text>
-          <text class="progress-label">{{ totalCount }} assessments available</text>
+          <text class="progress-text">{{ t('assessment.completedCount', { n: completedCount }) }}</text>
+          <text class="progress-label">{{ t('assessment.availableCount', { n: totalCount }) }}</text>
         </view>
         <view class="radar-placeholder">
           <text class="radar-icon">🧭</text>
@@ -39,7 +39,7 @@
       </view>
     </view>
 
-    <view class="section-title">Featured Assessments</view>
+    <view class="section-title">{{ t('assessment.featured') }}</view>
 
     <!-- Skeleton while scales load -->
     <view class="skeleton-list" v-if="loading">
@@ -65,29 +65,30 @@
             <text class="a-title">{{ s.title }}</text>
             <text class="a-desc">{{ s.description }}</text>
             <view class="tags">
-              <text class="tag">⏱ ~{{ estimateMinutes(s.questionCount) }} min</text>
-              <text class="tag tag-blue">{{ s.questionCount }} Qs</text>
-              <text class="tag tag-done" v-if="completedScales.has(s.scaleId)">✓ Done</text>
+              <text class="tag">⏱ {{ t('assessment.minEst', { n: estimateMinutes(s.questionCount) }) }}</text>
+              <text class="tag tag-blue">{{ t('assessment.questionCount', { n: s.questionCount }) }}</text>
+              <text class="tag tag-done" v-if="completedScales.has(s.scaleId)">{{ t('assessment.doneBadge') }}</text>
             </view>
           </view>
         </view>
         <view class="card-right">
-          <view class="btn-start">{{ completedScales.has(s.scaleId) ? 'Retake' : 'Start' }}</view>
+          <view class="btn-start">{{ completedScales.has(s.scaleId) ? t('assessment.retakeBtn') : t('assessment.startBtn') }}</view>
         </view>
       </view>
     </view>
 
     <view class="empty-state" v-else>
       <text class="empty-icon">📝</text>
-      <text class="empty-text">{{ loadError ? 'Assessments failed to load' : 'No assessments available yet' }}</text>
-      <text class="empty-desc">{{ loadError || "The administrator hasn't published any quiz banks. Check back later." }}</text>
-      <button class="btn-retry" v-if="loadError" @click="loadAll">Retry</button>
+      <text class="empty-text">{{ loadError ? t('assessment.loadFail') : t('assessment.noAssessments') }}</text>
+      <text class="empty-desc">{{ loadError || t('assessment.noAssessmentsDesc') }}</text>
+      <button class="btn-retry" v-if="loadError" @click="loadAll">{{ t('common.retry') }}</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { useTheme } from '@/utils/theme';
@@ -97,6 +98,7 @@ import {
   type AssessmentScale,
 } from '@/api/assessment';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 const loading = ref(true);

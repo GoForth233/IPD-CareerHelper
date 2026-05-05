@@ -8,7 +8,7 @@
         <text class="back-icon">‹</text>
       </view>
       <view class="top-meta">
-        <text class="top-title">{{ interview?.positionName || 'Mock Interview' }}</text>
+        <text class="top-title">{{ interview?.positionName || t('interviewRoom.mockInterview') }}</text>
         <text class="top-sub">{{ interview?.difficulty || 'Normal' }} · Voice · EN</text>
       </view>
       <!-- End button moved to bottom action zone for better thumb reach -->
@@ -32,16 +32,16 @@
     />
     <view v-else class="camera-pip camera-pip-fallback">
       <text class="camera-fallback-icon">📷</text>
-      <text class="camera-fallback-text">{{ cameraError || 'Tap to enable camera' }}</text>
+      <text class="camera-fallback-text">{{ cameraError || t('interviewRoom.tapToEnable') }}</text>
       <view class="camera-enable-btn" @click="requestCamera">
-        <text class="camera-enable-text">Enable</text>
+        <text class="camera-enable-text">{{ t('interviewRoom.enableCamera') }}</text>
       </view>
     </view>
     <!-- #endif -->
     <!-- #ifndef MP-WEIXIN -->
     <view class="camera-pip camera-pip-fallback">
       <text class="camera-fallback-icon">📷</text>
-      <text class="camera-fallback-text">Camera preview is mini-program only</text>
+      <text class="camera-fallback-text">{{ t('interviewRoom.cameraOnly') }}</text>
     </view>
     <!-- #endif -->
 
@@ -80,14 +80,14 @@
          hearing-impaired users and gives a tap-to-replay affordance. -->
     <view class="caption-card" v-if="lastAiText || lastUserText">
       <view v-if="lastAiText" class="caption-row">
-        <text class="caption-tag tag-ai">AI</text>
+        <text class="caption-tag tag-ai">{{ t('interviewRoom.captionAi') }}</text>
         <text class="caption-body">{{ lastAiText }}</text>
         <view class="caption-replay" v-if="lastAudioUrl" @click="replayAudio">
           <text class="replay-icon">↻</text>
         </view>
       </view>
       <view v-if="lastUserText" class="caption-row caption-user">
-        <text class="caption-tag tag-user">YOU</text>
+        <text class="caption-tag tag-user">{{ t('interviewRoom.captionYou') }}</text>
         <text class="caption-body">{{ lastUserText }}</text>
       </view>
     </view>
@@ -123,10 +123,10 @@
       <view class="footer-row">
         <view class="text-mode-btn" @click="switchToTextMode">
           <text class="text-mode-icon">⌨</text>
-          <text class="text-mode-label">Switch to text mode</text>
+          <text class="text-mode-label">{{ t('interviewRoom.switchToText') }}</text>
         </view>
         <view class="end-btn-bottom" @click="endInterview">
-          <text class="end-btn-bottom-text">End Interview</text>
+          <text class="end-btn-bottom-text">{{ t('interviewRoom.endInterview') }}</text>
         </view>
       </view>
     </view>
@@ -140,6 +140,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import {
   endInterviewApi,
@@ -150,6 +151,8 @@ import {
   type VoiceTurnResponse,
 } from '@/api/interview';
 import { submitBodyLanguageFrameApi } from '@/api/bodyLanguage';
+
+const { t } = useI18n();
 
 // ───────────────────────── State ─────────────────────────
 const statusTopPx = ref(52);
@@ -185,7 +188,7 @@ let innerAudio: UniNamespace.InnerAudioContext | null = null;
 // ───────────────────────── Computed ─────────────────────────
 const recordTimerText = computed(() => {
   const s = Math.max(0, RECORD_MAX_SECONDS - recordSeconds.value);
-  return `${s}s left`;
+  return t('interviewRoom.timeLeft', { s });
 });
 
 const statusDotClass = computed(() => {
@@ -196,10 +199,10 @@ const statusDotClass = computed(() => {
 });
 
 const statusLabel = computed(() => {
-  if (aiTalking.value) return 'Interviewer speaking…';
-  if (isRecording.value) return 'Listening to you';
-  if (isThinking.value) return 'Thinking…';
-  return 'Ready';
+  if (aiTalking.value) return t('interviewRoom.statusSpeaking');
+  if (isRecording.value) return t('interviewRoom.statusListening');
+  if (isThinking.value) return t('interviewRoom.statusThinking');
+  return t('interviewRoom.statusReady');
 });
 
 const mouthClass = computed(() => {
@@ -208,8 +211,8 @@ const mouthClass = computed(() => {
 });
 
 const recordHint = computed(() => {
-  if (!lastAiText.value) return 'Hold the mic and answer the first question';
-  return 'Hold the mic to answer · release to send';
+  if (!lastAiText.value) return t('interviewRoom.hintFirst');
+  return t('interviewRoom.hintContinue');
 });
 
 // ───────────────────────── Lifecycle ─────────────────────────

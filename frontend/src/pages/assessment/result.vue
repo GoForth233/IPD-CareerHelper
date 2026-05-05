@@ -3,24 +3,24 @@
     <!-- Loading + error states -->
     <view class="loading-state" v-if="loading">
       <view class="spinner"></view>
-      <text class="loading-text">Loading your result...</text>
+      <text class="loading-text">{{ t('assessmentResult.loading') }}</text>
     </view>
 
     <view class="error-state" v-else-if="errorMsg">
       <text class="err-title">{{ errorMsg }}</text>
-      <view class="btn-retry" @click="loadResult"><text class="btn-retry-text">Retry</text></view>
+      <view class="btn-retry" @click="loadResult"><text class="btn-retry-text">{{ t('assessmentResult.retry') }}</text></view>
     </view>
 
     <template v-else-if="record">
       <view class="result-header">
-        <text class="result-subtitle">Your personality type is</text>
+        <text class="result-subtitle">{{ t('assessmentResult.personalityType') }}</text>
         <text class="result-title">{{ summaryDisplay }}</text>
         <view class="tags-container" v-if="typeTags.length > 0">
           <text class="tag" v-for="(t, i) in typeTags" :key="i">{{ t }}</text>
         </view>
       </view>
 
-      <view class="section-title">Dimension Breakdown</view>
+      <view class="section-title">{{ t('assessmentResult.dimensionBreakdown') }}</view>
       <view class="radar-card">
         <view class="skill-bars">
           <view class="skill-row" v-for="(d, i) in dimensions" :key="i">
@@ -32,23 +32,23 @@
       </view>
 
       <view class="section-title">
-        <text class="section-title-text">Personality Insight</text>
+        <text class="section-title-text">{{ t('assessmentResult.personalityInsight') }}</text>
         <text class="ai-badge" v-if="insight.fromAi">AI</text>
       </view>
       <view class="analysis-card">
         <view class="paragraph">
-          <text class="p-title">Career Strengths</text>
+          <text class="p-title">{{ t('assessmentResult.careerStrengths') }}</text>
           <text class="p-content">{{ insight.strengths }}</text>
         </view>
         <view class="divider"></view>
         <view class="paragraph">
-          <text class="p-title">Growth Areas</text>
+          <text class="p-title">{{ t('assessmentResult.growthAreas') }}</text>
           <text class="p-content">{{ insight.growth }}</text>
         </view>
         <template v-if="insight.suggestedRoles && insight.suggestedRoles.length > 0">
           <view class="divider"></view>
           <view class="paragraph">
-            <text class="p-title">Suggested Roles</text>
+            <text class="p-title">{{ t('assessmentResult.suggestedRoles') }}</text>
             <view class="roles-row">
               <text class="role-chip" v-for="(r, i) in insight.suggestedRoles" :key="i">{{ r }}</text>
             </view>
@@ -63,18 +63,19 @@
         class="btn-primary practice-cta"
         @click="practiceInterview"
       >
-        <text class="btn-primary-text">Practice an Interview as {{ primarySuggestedRole }}</text>
+        <text class="btn-primary-text">{{ t('assessmentResult.practiceInterview', { role: primarySuggestedRole }) }}</text>
       </view>
       <view class="btn-primary" :class="{ 'btn-secondary-tone': !!primarySuggestedRole }" @click="goMap">
-        <text class="btn-primary-text">View Recommended Career Map</text>
+        <text class="btn-primary-text">{{ t('assessmentResult.viewCareerMap') }}</text>
       </view>
-      <view class="btn-secondary" @click="goBack"><text class="btn-secondary-text">Back to Assessment</text></view>
+      <view class="btn-secondary" @click="goBack"><text class="btn-secondary-text">{{ t('assessmentResult.backToAssessment') }}</text></view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import {
   getAssessmentRecordApi,
@@ -83,6 +84,7 @@ import {
 import { updatePreferencesApi } from '@/api/user';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const loading = ref(true);
 const errorMsg = ref('');

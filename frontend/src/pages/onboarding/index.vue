@@ -11,22 +11,20 @@
       <swiper-item class="slide">
         <view class="slide-inner">
           <view class="slide-emoji">🎓</view>
-          <text class="slide-title">欢迎来到 CareerLoop</text>
-          <text class="slide-desc">
-            你的 AI 职业成长伙伴。从简历诊断、面试模拟，到专属职业路径规划——一站式搞定求职。
-          </text>
+          <text class="slide-title">{{ t('onboarding.slide1Title') }}</text>
+          <text class="slide-desc">{{ t('onboarding.slide1Desc') }}</text>
           <view class="feature-list">
             <view class="feature-row">
               <text class="feature-icon">🤖</text>
-              <text class="feature-text">AI 智能助手，7×24 小时陪你准备</text>
+              <text class="feature-text">{{ t('onboarding.feature1') }}</text>
             </view>
             <view class="feature-row">
               <text class="feature-icon">🎯</text>
-              <text class="feature-text">6 套测评 + 专属职业规划</text>
+              <text class="feature-text">{{ t('onboarding.feature2') }}</text>
             </view>
             <view class="feature-row">
               <text class="feature-icon">🎤</text>
-              <text class="feature-text">模拟面试 + 肢体语言分析</text>
+              <text class="feature-text">{{ t('onboarding.feature3') }}</text>
             </view>
           </view>
         </view>
@@ -36,28 +34,28 @@
       <swiper-item class="slide">
         <view class="slide-inner">
           <view class="slide-emoji">✨</view>
-          <text class="slide-title">三位 AI 导师，各有所长</text>
-          <text class="slide-desc">根据你的需求随时切换，找到最适合你的陪伴方式。</text>
+          <text class="slide-title">{{ t('onboarding.slide2Title') }}</text>
+          <text class="slide-desc">{{ t('onboarding.slide2Desc') }}</text>
           <view class="persona-list">
             <view class="persona-card">
               <text class="persona-emoji">😊</text>
               <view class="persona-info">
-                <text class="persona-name">小职</text>
-                <text class="persona-role">温和导师 · 鼓励为主</text>
+                <text class="persona-name">{{ t('onboarding.persona1Name') }}</text>
+                <text class="persona-role">{{ t('onboarding.persona1Role') }}</text>
               </view>
             </view>
             <view class="persona-card">
               <text class="persona-emoji">🔥</text>
               <view class="persona-info">
-                <text class="persona-name">小严</text>
-                <text class="persona-role">严格学长 · 深度追问</text>
+                <text class="persona-name">{{ t('onboarding.persona2Name') }}</text>
+                <text class="persona-role">{{ t('onboarding.persona2Role') }}</text>
               </view>
             </view>
             <view class="persona-card">
-              <text class="persona-emoji">🎙️</text>
+              <text class="persona-emoji">�</text>
               <view class="persona-info">
-                <text class="persona-name">小面</text>
-                <text class="persona-role">面试官 · 真实模拟</text>
+                <text class="persona-name">{{ t('onboarding.persona3Name') }}</text>
+                <text class="persona-role">{{ t('onboarding.persona3Role') }}</text>
               </view>
             </view>
           </view>
@@ -68,15 +66,13 @@
       <swiper-item class="slide">
         <view class="slide-inner">
           <view class="slide-emoji">🚀</view>
-          <text class="slide-title">开始你的职业旅程</text>
-          <text class="slide-desc">
-            建议先完成一项测评，AI 会根据你的结果为你定制专属职业路径。整个流程只需 5 分钟！
-          </text>
+          <text class="slide-title">{{ t('onboarding.slide3Title') }}</text>
+          <text class="slide-desc">{{ t('onboarding.slide3Desc') }}</text>
           <view class="tip-card">
-            <text class="tip-title">💡 快速上手建议</text>
-            <text class="tip-item">① 完成「性格倾向测评」了解自己</text>
-            <text class="tip-item">② 上传简历，获取 AI 诊断报告</text>
-            <text class="tip-item">③ 与小职聊聊你的职业目标</text>
+            <text class="tip-title">{{ t('onboarding.tipsTitle') }}</text>
+            <text class="tip-item">{{ t('onboarding.tip1') }}</text>
+            <text class="tip-item">{{ t('onboarding.tip2') }}</text>
+            <text class="tip-item">{{ t('onboarding.tip3') }}</text>
           </view>
         </view>
       </swiper-item>
@@ -95,15 +91,15 @@
     <!-- Bottom actions -->
     <view class="bottom-bar">
       <view v-if="current < 2" class="btn-row">
-        <text class="btn-skip" @click="finish">跳过</text>
+        <text class="btn-skip" @click="finish">{{ t('onboarding.skip') }}</text>
         <view class="btn-next" @click="next">
-          <text class="btn-next-text">下一步</text>
+          <text class="btn-next-text">{{ t('onboarding.next') }}</text>
           <text class="btn-next-arrow">→</text>
         </view>
       </view>
       <view v-else class="btn-row btn-row-single">
         <view class="btn-start" @click="finish">
-          <text class="btn-start-text">开始探索 →</text>
+          <text class="btn-start-text">{{ t('onboarding.start') }}</text>
         </view>
       </view>
     </view>
@@ -112,7 +108,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
+const { t } = useI18n();
 const ONBOARDING_KEY = 'onboarding_v1_seen';
 
 const current = ref(0);
