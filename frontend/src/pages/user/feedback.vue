@@ -6,21 +6,21 @@
     <view class="nav-bar">
       <view class="nav-back" @click="goBack">
         <text class="nav-back-icon">‹</text>
-        <text class="nav-back-text">Back</text>
+        <text class="nav-back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="nav-title">Feedback</text>
+      <text class="nav-title">{{ t('feedback.title') }}</text>
       <view class="nav-placeholder"></view>
     </view>
 
     <scroll-view class="content" scroll-y>
       <view class="hero-block">
         <view class="hero-icon">💬</view>
-        <text class="hero-title">We're listening</text>
-        <text class="hero-desc">Report bugs, suggest features, or flag inappropriate content. All feedback is reviewed within 48h.</text>
+        <text class="hero-title">{{ t('feedback.heroTitle') }}</text>
+        <text class="hero-desc">{{ t('feedback.heroDesc') }}</text>
       </view>
 
       <!-- Category picker -->
-      <text class="section-label">Category</text>
+      <text class="section-label">{{ t('feedback.categoryLabel') }}</text>
       <view class="category-row">
         <view
           v-for="cat in CATEGORIES"
@@ -35,11 +35,11 @@
       </view>
 
       <!-- Content textarea -->
-      <text class="section-label">Your feedback <text class="req">*</text></text>
+      <text class="section-label">{{ t('feedback.contentLabel') }} <text class="req">*</text></text>
       <textarea
         class="fb-textarea"
         v-model="form.content"
-        placeholder="Describe the issue or suggestion in detail..."
+        :placeholder="t('feedback.contentPlaceholder')"
         placeholder-class="ph"
         maxlength="2000"
         auto-height
@@ -47,17 +47,17 @@
       <text class="char-count">{{ form.content.length }} / 2000</text>
 
       <!-- Contact (optional) -->
-      <text class="section-label">Contact (optional)</text>
+      <text class="section-label">{{ t('feedback.contactLabel') }}</text>
       <input
         class="fb-input"
         v-model="form.contact"
-        placeholder="Email or phone — we'll reach out if needed"
+        :placeholder="t('feedback.contactPlaceholder')"
         placeholder-class="ph"
       />
 
       <button class="btn-submit" :disabled="submitting || !form.content.trim()" @click="doSubmit">
-        <text v-if="submitting">Submitting…</text>
-        <text v-else>Submit Feedback</text>
+        <text v-if="submitting">{{ t('feedback.submitting') }}</text>
+        <text v-else>{{ t('feedback.submit') }}</text>
       </button>
 
       <view class="bottom-pad"></view>
@@ -66,22 +66,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { submitFeedbackApi, type FeedbackCategory } from '@/api/feedback';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(44);
 const submitting = ref(false);
 
-const CATEGORIES: { value: FeedbackCategory; emoji: string; label: string }[] = [
+const CATEGORIES = computed<{ value: FeedbackCategory; emoji: string; label: string }[]>(() => [
   { value: 'FUNCTION_BUG',    emoji: '🐛', label: 'Bug' },
-  { value: 'SUGGESTION',      emoji: '💡', label: 'Suggestion' },
-  { value: 'CONTENT_REPORT',  emoji: '🚩', label: 'Report' },
-  { value: 'OTHER',           emoji: '💬', label: 'Other' },
-];
+  { value: 'SUGGESTION',      emoji: '💡', label: t('feedback.catSuggestion') },
+  { value: 'CONTENT_REPORT',  emoji: '🚩', label: t('feedback.catReport') },
+  { value: 'OTHER',           emoji: '💬', label: t('feedback.catOther') },
+]);
 
 const form = ref({
   category: 'SUGGESTION' as FeedbackCategory,
@@ -94,7 +96,7 @@ const goBack = () => uni.navigateBack();
 const doSubmit = async () => {
   const text = form.value.content.trim();
   if (!text) {
-    uni.showToast({ title: 'Please describe your feedback', icon: 'none' });
+    uni.showToast({ title: t('feedback.contentRequired'), icon: 'none' });
     return;
   }
   submitting.value = true;
@@ -104,10 +106,10 @@ const doSubmit = async () => {
       content: text,
       contact: form.value.contact.trim() || undefined,
     });
-    uni.showToast({ title: 'Submitted! Thank you 🙏', icon: 'success' });
+    uni.showToast({ title: t('feedback.submitSuccess'), icon: 'success' });
     setTimeout(() => uni.navigateBack(), 1500);
   } catch (e: any) {
-    uni.showToast({ title: e?.message || 'Submit failed', icon: 'none' });
+    uni.showToast({ title: e?.message || t('common.failed'), icon: 'none' });
   } finally {
     submitting.value = false;
   }

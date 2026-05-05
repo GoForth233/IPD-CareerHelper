@@ -5,9 +5,9 @@
     <view class="nav-row">
       <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
-        <text class="back-text">Back</text>
+        <text class="back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="nav-title">Daily Check-in</text>
+      <text class="nav-title">{{ t('checkin.navTitle') }}</text>
       <view class="nav-spacer"></view>
     </view>
 
@@ -15,11 +15,11 @@
       <view class="hero-row">
         <view class="hero-streak">
           <text class="streak-num">{{ status?.streakDays || 0 }}</text>
-          <text class="streak-label">day streak</text>
+          <text class="streak-label">{{ t('checkin.dayStreakLabel') }}</text>
         </view>
         <view class="hero-progress">
           <text class="hero-progress-text">{{ status?.todayCompleted || 0 }}/{{ status?.todayTotal || 3 }}</text>
-          <text class="hero-progress-label">tasks done today</text>
+          <text class="hero-progress-label">{{ t('checkin.tasksDoneToday') }}</text>
         </view>
       </view>
       <view class="hero-bar">
@@ -29,7 +29,7 @@
     </view>
 
     <view class="actions-card">
-      <text class="actions-title">Today's tasks</text>
+      <text class="actions-title">{{ t('checkin.todayTasksTitle') }}</text>
       <view class="action-list">
         <view
           v-for="a in actionItems"
@@ -40,7 +40,7 @@
           <view class="action-icon" :class="a.tone">{{ a.icon }}</view>
           <view class="action-body">
             <text class="action-name">{{ a.label }}</text>
-            <text class="action-desc">{{ a.done ? 'Completed today ✓' : a.cta }}</text>
+            <text class="action-desc">{{ a.done ? t('checkin.completedToday') : a.cta }}</text>
           </view>
           <text class="action-arrow">›</text>
         </view>
@@ -48,7 +48,7 @@
     </view>
 
     <view class="week-card">
-      <text class="week-title">Last 7 days</text>
+      <text class="week-title">{{ t('checkin.last7Title') }}</text>
       <view class="week-grid">
         <view
           v-for="(d, idx) in last7Days"
@@ -60,10 +60,10 @@
           <view class="week-cell-dot" v-if="d.active"></view>
         </view>
       </view>
-      <text class="week-meta">{{ status?.weeklyDays || 0 }} / 7 days · earn the weekly badge at 5/7</text>
+      <text class="week-meta">{{ t('checkin.weekMeta', { n: status?.weeklyDays || 0 }) }}</text>
       <view class="badge-row" v-if="status?.badgeEarnedThisWeek">
         <text class="badge-icon">🏆</text>
-        <text class="badge-text">Weekly badge earned — keep going to beat your streak!</text>
+        <text class="badge-text">{{ t('checkin.weeklyBadge') }}</text>
       </view>
     </view>
 
@@ -73,11 +73,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getCheckInStatusApi, getCheckInCalendarApi, type CheckInStatus, type CheckInDay } from '@/api/checkin';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 
@@ -87,14 +89,10 @@ const calendar = ref<CheckInDay[]>([]);
 const goBack = () => uni.navigateBack({ delta: 1 });
 
 const heroTip = computed(() => {
-  if (!status.value) return 'Loading your streak…';
-  if (status.value.todayCompleted >= status.value.todayTotal) {
-    return 'Today is complete. Come back tomorrow to keep the streak alive.';
-  }
-  if (status.value.todayCompleted > 0) {
-    return 'Great start. One more task and today is in the bag.';
-  }
-  return 'Pick a task to start the streak today.';
+  if (!status.value) return t('checkin.heroLoading');
+  if (status.value.todayCompleted >= status.value.todayTotal) return t('checkin.heroAllDone');
+  if (status.value.todayCompleted > 0) return t('checkin.heroAlmostDone');
+  return t('checkin.heroStartStreak');
 });
 
 const progressPercent = computed(() => {
@@ -117,17 +115,17 @@ const actionItems = computed<ActionItem[]>(() => {
   return [
     {
       code: 'ASSESSMENT',
-      label: 'Take an assessment',
-      cta: 'Open the latest MBTI / Holland scale',
-      icon: '🧭',
+      label: t('checkin.actionAssessmentLabel'),
+      cta: t('checkin.actionAssessmentCta'),
+      icon: '�',
       tone: 'tone-blue',
       target: '/pages/assessment/index',
       done: done.has('ASSESSMENT'),
     },
     {
       code: 'INTERVIEW',
-      label: 'Run a mock interview',
-      cta: 'Practice text or voice',
+      label: t('checkin.actionInterviewLabel'),
+      cta: t('checkin.actionInterviewCta'),
       icon: '🎤',
       tone: 'tone-orange',
       target: '/pages/interview/start',
@@ -135,8 +133,8 @@ const actionItems = computed<ActionItem[]>(() => {
     },
     {
       code: 'SKILL_NODE',
-      label: 'Tick off a skill node',
-      cta: 'Mark a node complete on the Skill Map',
+      label: t('checkin.actionSkillLabel'),
+      cta: t('checkin.actionSkillCta'),
       icon: '🗺',
       tone: 'tone-violet',
       target: '/pages/map/index',
@@ -155,7 +153,7 @@ interface DayCell {
 
 const last7Days = computed<DayCell[]>(() => {
   const days: DayCell[] = [];
-  const dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dowNames = [t('checkin.dow.sun'), t('checkin.dow.mon'), t('checkin.dow.tue'), t('checkin.dow.wed'), t('checkin.dow.thu'), t('checkin.dow.fri'), t('checkin.dow.sat')];
   const today = new Date();
   const activeSet = new Set(calendar.value.map((c) => c.day));
   for (let i = 6; i >= 0; i--) {

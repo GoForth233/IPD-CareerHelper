@@ -4,7 +4,7 @@
       <view class="header-top">
         <view class="back-btn" @click="goBack">
           <text class="back-icon">‹</text>
-          <text class="back-text">Back</text>
+          <text class="back-text">{{ t('common.back') }}</text>
         </view>
       </view>
       <view class="progress-wrapper">
@@ -18,17 +18,17 @@
     <!-- Loading state while we fetch the question bank -->
     <view class="loading-state" v-if="loading">
       <view class="spinner"></view>
-      <text class="loading-text">Loading questions...</text>
+      <text class="loading-text">{{ t('quiz.loading') }}</text>
     </view>
 
     <view class="error-state" v-else-if="errorMsg">
       <text class="err-title">{{ errorMsg }}</text>
-      <view class="btn-retry" @click="loadQuestions"><text class="btn-retry-text">Retry</text></view>
+      <view class="btn-retry" @click="loadQuestions"><text class="btn-retry-text">{{ t('quiz.retry') }}</text></view>
     </view>
 
     <template v-else-if="currentQuestion">
       <view class="question-card">
-        <text class="q-type">Question {{ currentIndex + 1 }}</text>
+        <text class="q-type">{{ t('quiz.question', { n: currentIndex + 1 }) }}</text>
         <text class="q-title">{{ currentQuestion.questionText }}</text>
       </view>
 
@@ -51,18 +51,19 @@
         class="btn-prev"
         :class="{ 'btn-disabled': currentIndex === 0 }"
         @click="handlePrev"
-      ><text class="btn-prev-text">Previous</text></view>
+      ><text class="btn-prev-text">{{ t('quiz.previous') }}</text></view>
       <view
         class="btn-next"
         :class="{ 'btn-next-disabled': currentAnswerOptionId == null || submitting }"
         @click="handleNext"
-      ><text class="btn-next-text">{{ submitting ? 'Submitting...' : (isLastQuestion ? 'View Results' : 'Next') }}</text></view>
+      ><text class="btn-next-text">{{ submitting ? t('quiz.submitting') : (isLastQuestion ? t('quiz.viewResults') : t('quiz.next')) }}</text></view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import {
   getScaleQuestionsApi,
@@ -72,6 +73,7 @@ import {
 import { useTheme } from '@/utils/theme';
 
 const currentIndex = ref(0);
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const loading = ref(true);
 const submitting = ref(false);

@@ -1,13 +1,13 @@
 <template>
   <view class="start-page" :class="[themeClass, fontClass]">
     <view class="header">
-      <text class="title">Start Mock Interview</text>
-      <text class="subtitle">Pick a target role and difficulty. The AI interviewer will adapt every question to your choices.</text>
+      <text class="title">{{ t('interview.startPageTitle') }}</text>
+      <text class="subtitle">{{ t('interview.startSubtitle') }}</text>
     </view>
 
     <view class="form-card">
       <view class="form-item">
-        <text class="label">Mode</text>
+        <text class="label">{{ t('interview.modeLabel') }}</text>
         <view class="mode-grid">
           <view
             v-for="item in modes"
@@ -27,19 +27,19 @@
 
       <view class="form-item">
         <view class="label-row">
-          <text class="label">Target Position</text>
+          <text class="label">{{ t('interview.positionLabel') }}</text>
           <text v-if="prefillSource" class="label-hint">{{ prefillSource }}</text>
         </view>
         <picker :range="positions" :value="selectedPositionIndex" @change="onPositionChange">
           <view class="picker-box" :class="{ 'picker-filled': selectedPosition }">
-            <text class="picker-val" :class="{ 'has-val': selectedPosition }">{{ selectedPosition || 'Tap to choose a role' }}</text>
+            <text class="picker-val" :class="{ 'has-val': selectedPosition }">{{ selectedPosition || t('interview.chooseRole') }}</text>
             <text class="picker-arrow">›</text>
           </view>
         </picker>
       </view>
 
       <view class="form-item form-item-last">
-        <text class="label">Difficulty</text>
+        <text class="label">{{ t('interview.difficultyLabel') }}</text>
         <view class="difficulty-grid">
           <view
             v-for="item in difficulties"
@@ -57,26 +57,26 @@
     <!-- What to expect: fills the bottom half with useful preview context
          instead of empty white space -->
     <view class="expect-card">
-      <text class="expect-title">What to expect</text>
+      <text class="expect-title">{{ t('interview.whatToExpect') }}</text>
       <view class="expect-row">
         <text class="expect-icon">⏱</text>
         <view class="expect-body">
-          <text class="expect-h">~10 minutes</text>
-          <text class="expect-p">A short, focused session. End any time with the button at the bottom.</text>
+          <text class="expect-h">{{ t('interview.expect1Title') }}</text>
+          <text class="expect-p">{{ t('interview.expect1Desc') }}</text>
         </view>
       </view>
       <view class="expect-row">
         <text class="expect-icon">💬</text>
         <view class="expect-body">
-          <text class="expect-h">Adaptive questions</text>
-          <text class="expect-p">The AI follows up based on your answers — give specific, structured replies.</text>
+          <text class="expect-h">{{ t('interview.expect2Title') }}</text>
+          <text class="expect-p">{{ t('interview.expect2Desc') }}</text>
         </view>
       </view>
       <view class="expect-row">
         <text class="expect-icon">📊</text>
         <view class="expect-body">
-          <text class="expect-h">AI-scored report</text>
-          <text class="expect-p">When you finish, you'll get a 5-dimension breakdown with strengths and improvements.</text>
+          <text class="expect-h">{{ t('interview.expect3Title') }}</text>
+          <text class="expect-p">{{ t('interview.expect3Desc') }}</text>
         </view>
       </view>
     </view>
@@ -92,21 +92,23 @@
         :class="{ 'btn-disabled': !selectedPosition || loading }"
         @click="startInterview"
       >
-        <text class="btn-primary-label" v-if="loading">Starting...</text>
-        <text class="btn-primary-label" v-else>{{ selectedPosition ? (selectedMode === 'voice' ? 'Start Voice Interview' : 'Start Text Interview') : 'Choose a position to begin' }}</text>
+        <text class="btn-primary-label" v-if="loading">{{ t('interview.starting') }}</text>
+        <text class="btn-primary-label" v-else>{{ selectedPosition ? (selectedMode === 'voice' ? t('interview.startVoice') : t('interview.startText')) : t('interview.chooseFirst') }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { startInterviewApi } from '@/api/interview';
 import { getProfileSnapshotApi, updatePreferencesApi } from '@/api/user';
 import { LOGIN_PAGE } from '@/utils/auth';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const positions = ref<string[]>(['Java Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer', 'Product Manager', 'Data Analyst']);
 const selectedPosition = ref('');
 const selectedPositionIndex = ref(0);
@@ -119,20 +121,20 @@ const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
  */
 const prefillSource = ref('');
 
-const difficulties = [
-  { label: 'Easy',   value: 'Easy',   desc: 'Conversational warm-up' },
-  { label: 'Normal', value: 'Normal', desc: 'Standard interview pace' },
-  { label: 'Hard',   value: 'Hard',   desc: 'Senior-level deep dive' },
-];
+const difficulties = computed(() => [
+  { label: t('interview.diffEasy'),   value: 'Easy',   desc: t('interview.diffEasyDesc') },
+  { label: t('interview.diffNormal'), value: 'Normal', desc: t('interview.diffNormalDesc') },
+  { label: t('interview.diffHard'),   value: 'Hard',   desc: t('interview.diffHardDesc') },
+]);
 const selectedDifficulty = ref('Normal');
 
 // Voice is the recommended path — it's the differentiated experience and
 // what real interviews feel like. We keep Text as the fallback for users
 // without a quiet space or with poor mic permissions.
-const modes = [
-  { label: 'Voice',  value: 'voice', icon: '🎤', badge: 'Recommended', desc: 'Talk to the AI interviewer with your camera on' },
-  { label: 'Text',   value: 'text',  icon: '⌨',  badge: '',            desc: 'Classic chat — best in noisy environments' },
-];
+const modes = computed(() => [
+  { label: t('interview.modeVoice'), value: 'voice', icon: '🎤', badge: t('interview.modeRecommended'), desc: t('interview.modeVoiceDesc') },
+  { label: t('interview.modeText'),  value: 'text',  icon: '⌨',  badge: '',                              desc: t('interview.modeTextDesc') },
+]);
 // Persist the user's last choice so returning users land on their preference.
 const selectedMode = ref<'voice' | 'text'>(
   (uni.getStorageSync('interview_mode') as 'voice' | 'text') || 'voice'
@@ -177,7 +179,7 @@ const applyPrefill = async () => {
     const idx = ensurePositionExists(fromQuery);
     selectedPositionIndex.value = idx;
     selectedPosition.value = positions.value[idx];
-    prefillSource.value = 'From your assessment';
+    prefillSource.value = t('interview.fromAssessment');
     return;
   }
 
@@ -191,12 +193,12 @@ const applyPrefill = async () => {
       const idx = ensurePositionExists(targetRole);
       selectedPositionIndex.value = idx;
       selectedPosition.value = positions.value[idx];
-      prefillSource.value = snap?.assessment ? 'From your assessment' : 'Recently chosen';
+      prefillSource.value = snap?.assessment ? t('interview.fromAssessment') : t('interview.recentlyChosen');
     } else if (lastPos) {
       const idx = ensurePositionExists(lastPos);
       selectedPositionIndex.value = idx;
       selectedPosition.value = positions.value[idx];
-      prefillSource.value = 'From your last interview';
+      prefillSource.value = t('interview.fromLast');
     }
 
     // The mode prefilled on storage takes priority -- only fall back to the
@@ -221,14 +223,14 @@ onShow(() => {
 
 const startInterview = async () => {
   if (!selectedPosition.value) {
-    uni.showToast({ title: 'Please select a position', icon: 'none' });
+    uni.showToast({ title: t('interview.chooseFirst'), icon: 'none' });
     return;
   }
 
   const userId = uni.getStorageSync('userId');
   const numericId = Number(userId);
   if (!userId || isNaN(numericId) || numericId <= 0) {
-    uni.showToast({ title: 'Please sign in first', icon: 'none' });
+    uni.showToast({ title: t('map.toastSignIn'), icon: 'none' });
     setTimeout(() => {
       uni.reLaunch({ url: LOGIN_PAGE });
     }, 600);
@@ -254,7 +256,7 @@ const startInterview = async () => {
       interviewMode: selectedMode.value,
     }).catch(() => { /* snapshot writes are non-blocking */ });
 
-    uni.showToast({ title: 'Interview started', icon: 'success' });
+    uni.showToast({ title: t('interview.start'), icon: 'success' });
     const targetPath = selectedMode.value === 'voice'
       ? `/pages/interview/room?interviewId=${interview.interviewId}`
       : `/pages/interview/chat?interviewId=${interview.interviewId}`;

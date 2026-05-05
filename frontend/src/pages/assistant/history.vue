@@ -4,28 +4,28 @@
       <view class="nav-row">
         <view class="back-btn" @click="goBack">
           <text class="back-icon">‹</text>
-          <text class="back-text">Back</text>
+          <text class="back-text">{{ t('common.back') }}</text>
         </view>
-        <text class="nav-title">AI Chat History</text>
+        <text class="nav-title">{{ t('assistantHistory.navTitle') }}</text>
         <view class="nav-placeholder"></view>
       </view>
     </view>
 
     <scroll-view class="content" scroll-y>
       <view class="retention-card">
-        <text class="retention-title">Cloud history retention</text>
-        <text class="retention-desc">Your assistant conversations are saved in the cloud so the AI can continue context and build long-term memory. They are kept until you delete a session or remove your account.</text>
-        <text class="retention-desc">Deleting a session removes its messages. AI-extracted facts can be managed separately on the AI Memory page.</text>
+        <text class="retention-title">{{ t('assistantHistory.retentionTitle') }}</text>
+        <text class="retention-desc">{{ t('assistantHistory.retentionDesc') }}</text>
+        <text class="retention-desc">{{ t('assistantHistory.retentionDesc2') }}</text>
       </view>
 
       <view v-if="loading" class="loading-card">
-        <text class="loading-text">Loading history...</text>
+        <text class="loading-text">{{ t('assistantHistory.loading') }}</text>
       </view>
 
       <view v-else-if="sessions.length === 0" class="empty-state">
         <text class="empty-icon">💬</text>
-        <text class="empty-title">No saved conversations yet</text>
-        <text class="empty-desc">Start chatting with 小职, 小严, or 小面. Your cloud sessions will appear here after the first saved reply.</text>
+        <text class="empty-title">{{ t('assistantHistory.emptyTitle') }}</text>
+        <text class="empty-desc">{{ t('assistantHistory.emptyDesc') }}</text>
       </view>
 
       <view v-else class="session-list">
@@ -42,11 +42,11 @@
             </view>
             <text class="session-time">{{ formatTime(session.updatedAt || session.createdAt) }}</text>
           </view>
-          <text class="session-title">{{ session.title || 'New Conversation' }}</text>
+          <text class="session-title">{{ session.title || t('assistantHistory.newConversation') }}</text>
           <view class="session-bottom">
-            <text class="session-hint">Tap to continue this conversation</text>
+            <text class="session-hint">{{ t('assistantHistory.tapToContinue') }}</text>
             <view class="delete-btn" @click.stop="confirmDelete(session)">
-              <text class="delete-text">Delete</text>
+              <text class="delete-text">{{ t('assistantHistory.deleteBtn') }}</text>
             </view>
           </view>
         </view>
@@ -59,6 +59,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import request from '@/utils/request';
 import { useTheme } from '@/utils/theme';
@@ -72,6 +73,7 @@ interface AssistantSession {
   updatedAt?: string;
 }
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafe = ref(44);
 const loading = ref(true);
@@ -110,7 +112,7 @@ const formatTime = (value?: string) => {
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  if (sameDay) return `Today ${time}`;
+  if (sameDay) return t('messages.timeToday', { time }) || `Today ${time}`;
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
 };
 
@@ -124,9 +126,9 @@ const openSession = (session: AssistantSession) => {
 
 const confirmDelete = (session: AssistantSession) => {
   uni.showModal({
-    title: 'Delete Conversation',
-    content: `Delete "${session.title || 'New Conversation'}" and all messages in it?`,
-    confirmText: 'Delete',
+    title: t('assistantHistory.deleteBtn'),
+    content: `Delete "${session.title || t('assistantHistory.newConversation')}" and all messages in it?`,
+    confirmText: t('assistantHistory.deleteBtn'),
     confirmColor: '#ef4444',
     success: async (res) => {
       if (!res.confirm) return;

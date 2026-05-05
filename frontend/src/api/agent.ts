@@ -2,6 +2,7 @@ import request from '@/utils/request';
 
 export interface CareerAgentAction {
   label: string;
+  labelKey?: string;
   target: string;
   type: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW' | string;
@@ -12,10 +13,14 @@ export interface CareerAgentToday {
   stage: string;
   riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | string;
   headline: string;
+  headlineKey?: string;
   reason: string;
+  reasonKey?: string;
   todayFocus: string;
+  focusKey?: string;
   progressPercent: number;
   riskReasons: string[];
+  riskReasonKeys?: string[];
   actions: CareerAgentAction[];
 }
 
@@ -38,11 +43,14 @@ export interface AgentTask {
 export interface CareerAgentRiskItem {
   code: string;
   title: string;
+  titleKey?: string;
   level: 'HIGH' | 'MEDIUM' | 'LOW' | string;
   trend: 'RISING' | 'STABLE' | 'DECREASING' | string;
   score: number;
   reason: string;
+  reasonKey?: string;
   recommendation: string;
+  recommendationKey?: string;
 }
 
 export interface CareerAgentRiskWatch {
@@ -190,3 +198,14 @@ export const getWeeklyReviewLatestApi = () =>
 
 export const getAgentEventsApi = (limit = 20) =>
   request<AgentEvent[]>({ url: `/api/agent/events?limit=${limit}`, method: 'GET', silent: true });
+
+export interface AgentBundle {
+  today: CareerAgentToday;
+  tasks: AgentTask[];
+  risk: CareerAgentRiskWatch;
+  plan: CareerAgentPlanSummary;
+  profile: AgentUserProfile;
+}
+
+export const getAgentBundleApi = () =>
+  request<AgentBundle>({ url: '/api/agent/bundle', method: 'GET', silent: true });

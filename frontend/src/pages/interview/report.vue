@@ -4,29 +4,29 @@
     <view class="nav-row">
       <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
-        <text class="back-text">Back</text>
+        <text class="back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="nav-title">Interview Report</text>
+      <text class="nav-title">{{ t('interviewReport.navTitle') }}</text>
       <view style="width:64px;"></view>
     </view>
 
     <!-- Loading state while AI evaluates -->
     <view class="loading-state" v-if="loading">
       <view class="spinner"></view>
-      <text class="loading-title">Evaluating your interview...</text>
-      <text class="loading-sub">The AI is analyzing every answer in your transcript. This usually takes 10-30 seconds.</text>
+      <text class="loading-title">{{ t('interviewReport.loading') }}</text>
+      <text class="loading-sub">{{ t('interviewReport.loadingSub') }}</text>
     </view>
 
     <!-- Error state -->
     <view class="error-state" v-else-if="errorMsg">
-      <text class="err-title">Could not load report</text>
+      <text class="err-title">{{ t('interviewReport.errTitle') }}</text>
       <text class="err-detail">{{ errorMsg }}</text>
-      <button class="btn-retry" @click="loadReport">Retry</button>
+      <button class="btn-retry" @click="loadReport">{{ t('interviewReport.retry') }}</button>
     </view>
 
     <template v-else-if="report">
       <view class="report-header">
-        <text class="r-title">Interview Report</text>
+        <text class="r-title">{{ t('interviewReport.reportTitle') }}</text>
         <text class="r-sub">{{ report.positionName }} · {{ report.difficulty }}{{ report.durationSeconds ? ' · ' + formatDuration(report.durationSeconds) : '' }}</text>
         <text class="r-desc">{{ report.textSummary || 'Use the breakdown below to identify which parts of your interview performance are already stable and which ones still need practice.' }}</text>
       </view>
@@ -37,17 +37,17 @@
           <view class="score-ring" :class="scoreRingClass">
             <text class="score-num" :class="scoreNumClass">{{ report.overallScore }}</text>
           </view>
-          <text class="score-label">Overall Score</text>
+          <text class="score-label">{{ t('interviewReport.overallScore') }}</text>
         </view>
         <view class="score-summary">
           <text class="score-eval" :class="scoreNumClass">{{ scoreLabel }}</text>
-          <text class="score-desc">{{ report.totalQuestions }} question{{ report.totalQuestions === 1 ? '' : 's' }} answered. Review the dimensions below to see where to focus next.</text>
+          <text class="score-desc">{{ t('interviewReport.questionsAnswered', { n: report.totalQuestions }) }}</text>
         </view>
       </view>
 
       <!-- Dimensions breakdown -->
       <view class="dims-section">
-        <text class="section-title">Dimension Breakdown</text>
+        <text class="section-title">{{ t('interviewReport.dimensionBreakdown') }}</text>
         <view class="dims-card">
           <view class="dim-row" v-for="(d, i) in dimensions" :key="i">
             <text class="dim-name">{{ d.name }}</text>
@@ -61,7 +61,7 @@
 
       <!-- Strengths -->
       <view class="advice-section" v-if="report.strengths && report.strengths.length">
-        <text class="section-title">Strengths</text>
+        <text class="section-title">{{ t('interviewReport.strengths') }}</text>
         <view class="advice-card good" v-for="(a, i) in report.strengths" :key="'s' + i">
           <text class="advice-icon">✓</text>
           <view class="advice-body">
@@ -73,7 +73,7 @@
 
       <!-- Improvements -->
       <view class="advice-section" v-if="report.improvements && report.improvements.length">
-        <text class="section-title">Areas to Improve</text>
+        <text class="section-title">{{ t('interviewReport.improvements') }}</text>
         <view class="advice-card warn" v-for="(a, i) in report.improvements" :key="'i' + i">
           <text class="advice-icon">!</text>
           <view class="advice-body">
@@ -85,25 +85,25 @@
 
       <!-- Contribute to the question market -->
       <view class="advice-section">
-        <text class="section-title">Help others practice</text>
+        <text class="section-title">{{ t('interviewReport.helpOthers') }}</text>
         <view class="contribute-card">
-          <text class="contribute-tip">Did one of the AI's questions stand out? Share it with the market — your name stays anonymous.</text>
+          <text class="contribute-tip">{{ t('interviewReport.helpOthersTip') }}</text>
           <textarea
             class="contribute-input"
             v-model="contributeText"
             :maxlength="800"
-            placeholder="Paste or paraphrase a question you want to share..."
+            :placeholder="t('interviewReport.questionPlaceholder')"
           />
           <view class="contribute-actions">
             <button
               class="btn-secondary"
               @click="navTo('/pages/market/index?position=' + encodeURIComponent(report.positionName || ''))"
-            >Browse market</button>
+            >{{ t('interviewReport.browseMarket') }}</button>
             <button
               class="btn-primary"
               :disabled="contributing || !contributeText.trim()"
               @click="submitContribution"
-            >{{ contributing ? 'Sharing…' : 'Share question' }}</button>
+            >{{ contributing ? t('market.sharing') : t('market.shareBtn') }}</button>
           </view>
         </view>
       </view>
@@ -111,19 +111,21 @@
 
     <!-- Bottom action -->
     <view class="bottom-bar">
-      <button class="btn-back" @click="backToLobby">Back to Interview Lobby</button>
+      <button class="btn-back" @click="backToLobby">{{ t('interviewReport.backToLobby') }}</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { getInterviewReportApi, type InterviewReport } from '@/api/interview';
 import { contributeQuestionApi } from '@/api/market';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 const loading = ref(true);

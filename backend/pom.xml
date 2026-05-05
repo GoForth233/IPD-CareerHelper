@@ -110,13 +110,7 @@
             <version>2.3.3</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- H2 (Demo runtime, avoids requiring local MySQL) -->
+        <!-- H2 (Demo runtime, avoids requiring local MySQL; also on test classpath via runtime scope) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

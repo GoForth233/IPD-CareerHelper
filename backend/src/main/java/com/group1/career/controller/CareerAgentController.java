@@ -1,6 +1,7 @@
 package com.group1.career.controller;
 
 import com.group1.career.common.Result;
+import com.group1.career.model.dto.AgentBundleDto;
 import com.group1.career.model.dto.AgentUserProfileDto;
 import com.group1.career.model.dto.ProfileInputsRequest;
 import com.group1.career.model.dto.CareerAgentPlanDto;
@@ -58,6 +59,13 @@ public class CareerAgentController {
     public Result<AgentUserProfileDto> profileInputs(@RequestBody ProfileInputsRequest req) {
         Long userId = SecurityUtil.requireCurrentUserId();
         return Result.success(agentProfileService.saveInputs(userId, req));
+    }
+
+    @Operation(summary = "Get all agent data in one request (today + tasks + risk + plan + profile)")
+    @GetMapping("/bundle")
+    public Result<AgentBundleDto> bundle() {
+        Long userId = SecurityUtil.requireCurrentUserId();
+        return Result.success(careerAgentService.getBundle(userId));
     }
 
     @Operation(summary = "Get today's rule-driven career agent recommendation")

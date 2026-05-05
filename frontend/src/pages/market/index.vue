@@ -5,9 +5,9 @@
     <view class="nav-row">
       <view class="back-btn" @click="goBack">
         <text class="back-icon">‹</text>
-        <text class="back-text">Back</text>
+        <text class="back-text">{{ t('common.back') }}</text>
       </view>
-      <text class="nav-title">Question Market</text>
+      <text class="nav-title">{{ t('market.title') }}</text>
       <view style="width:64px;"></view>
     </view>
 
@@ -26,7 +26,7 @@
       <input
         class="filter-input"
         v-model="positionFilter"
-        placeholder="Filter by position (e.g. Java Developer)"
+        :placeholder="t('market.filterPlaceholder')"
         @confirm="applyFilters"
       />
       <view class="diff-row">
@@ -36,22 +36,22 @@
           :class="['diff-chip', difficultyFilter === d ? 'diff-chip-on' : '']"
           @click="setDifficulty(d)"
         >
-          <text class="diff-chip-text">{{ d || 'Any' }}</text>
+          <text class="diff-chip-text">{{ d || t('market.diffAny') }}</text>
         </view>
         <view class="diff-action" @click="applyFilters">
-          <text class="diff-action-text">Apply</text>
+          <text class="diff-action-text">{{ t('market.applyFilter') }}</text>
         </view>
       </view>
     </view>
 
     <view class="contribute-card">
-      <text class="contribute-title">Share a question</text>
-      <text class="contribute-sub">It stays anonymous. Help the next candidate prepare smarter.</text>
+      <text class="contribute-title">{{ t('market.shareTitle') }}</text>
+      <text class="contribute-sub">{{ t('market.shareSub') }}</text>
       <view class="contribute-meta">
         <input
           class="meta-input"
           v-model="contributePosition"
-          placeholder="Position (e.g. Frontend Engineer)"
+          :placeholder="t('market.positionPlaceholder')"
         />
         <picker mode="selector" :range="['Easy', 'Normal', 'Hard']" @change="onPickDifficulty">
           <view class="meta-picker">
@@ -64,26 +64,26 @@
         class="contribute-input"
         v-model="contributeContent"
         :maxlength="800"
-        placeholder="Type a real question you were asked..."
+        :placeholder="t('market.questionPlaceholder')"
       />
       <view class="contribute-actions">
         <button
           class="btn-primary"
           :disabled="contributing || !contributeContent.trim()"
           @click="submitContribution"
-        >{{ contributing ? 'Sharing…' : 'Share question' }}</button>
+        >{{ contributing ? t('market.sharing') : t('market.shareBtn') }}</button>
       </view>
     </view>
 
     <view class="list-state" v-if="loading">
       <view class="spinner"></view>
-      <text class="loading-text">Loading question market…</text>
+      <text class="loading-text">{{ t('market.loading') }}</text>
     </view>
 
     <view class="empty-state" v-else-if="!loading && items.length === 0">
       <text class="empty-icon">📭</text>
-      <text class="empty-text">No questions match these filters yet.</text>
-      <text class="empty-sub">Be the first to contribute one above!</text>
+      <text class="empty-text">{{ t('market.empty') }}</text>
+      <text class="empty-sub">{{ t('market.emptySub') }}</text>
     </view>
 
     <view class="list" v-else>
@@ -102,7 +102,7 @@
         </view>
         <text class="q-content">{{ q.content }}</text>
         <view v-if="q.answer && expandedId === q.id" class="q-answer">
-          <text class="q-answer-label">Reference Answer</text>
+          <text class="q-answer-label">{{ t('market.refAnswer') }}</text>
           <text class="q-answer-text">{{ q.answer }}</text>
         </view>
         <view class="q-foot">
@@ -112,16 +112,16 @@
           </view>
           <text class="q-meta">drawn {{ q.drawCount }}×</text>
           <view v-if="q.answer" class="answer-btn" @click="toggleAnswer(q.id)">
-            <text class="answer-btn-text">{{ expandedId === q.id ? 'Hide Answer' : 'Show Answer' }}</text>
+            <text class="answer-btn-text">{{ expandedId === q.id ? t('market.hideAnswer') : t('market.showAnswer') }}</text>
           </view>
         </view>
       </view>
     </view>
 
     <view class="pagination" v-if="items.length > 0 || page > 0">
-      <button class="btn-page" :disabled="page === 0 || loading" @click="prevPage">‹ Prev</button>
+      <button class="btn-page" :disabled="page === 0 || loading" @click="prevPage">‹ {{ t('market.prev') }}</button>
       <text class="page-meta">{{ page + 1 }} / {{ Math.max(1, Math.ceil(total / size)) }}</text>
-      <button class="btn-page" :disabled="(page + 1) * size >= total || loading" @click="nextPage">Next ›</button>
+      <button class="btn-page" :disabled="(page + 1) * size >= total || loading" @click="nextPage">{{ t('market.next') }} ›</button>
     </view>
 
     <view class="bottom-safe"></view>
@@ -129,12 +129,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { listMarketApi, likeQuestionApi, contributeQuestionApi, type MarketQuestion } from '@/api/market';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(52);
 
@@ -142,12 +144,12 @@ const positionFilter = ref('');
 const difficultyFilter = ref<string>(''); // '' = any
 const difficulties = ['', 'Easy', 'Normal', 'Hard'];
 const sourceFilter = ref<string>(''); // '' = all sources
-const sources = [
-  { label: 'All', value: '' },
-  { label: '✓ Official', value: 'OFFICIAL' },
-  { label: '👤 Community', value: 'USER' },
+const sources = computed(() => [
+  { label: t('market.srcAll'), value: '' },
+  { label: '✓ ' + t('market.srcOfficial'), value: 'OFFICIAL' },
+  { label: '👤 ' + t('market.srcCommunity'), value: 'USER' },
   { label: '🤖 AI', value: 'AI_GENERATED' },
-];
+]);
 const expandedId = ref<number | null>(null);
 
 const items = ref<MarketQuestion[]>([]);

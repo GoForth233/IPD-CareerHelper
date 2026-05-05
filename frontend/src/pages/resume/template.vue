@@ -8,8 +8,8 @@
         <text class="back-icon">‹</text>
       </view>
       <view class="header-text">
-        <text class="page-title">Build Your Resume</text>
-        <text class="page-subtitle">Fill in the form · AI polishes & exports a PDF</text>
+        <text class="page-title">{{ t('resumeTemplate.pageTitle') }}</text>
+        <text class="page-subtitle">{{ t('resumeTemplate.pageSubtitle') }}</text>
       </view>
     </view>
 
@@ -17,28 +17,28 @@
     <view class="progress-track">
       <view class="progress-fill" :style="{ width: progressPct + '%' }"></view>
     </view>
-    <text class="progress-label">Step {{ currentStep }} of 3 — {{ stepLabels[currentStep - 1] }}</text>
+    <text class="progress-label">{{ t('resumeTemplate.stepLabel', { step: currentStep, label: stepLabels[currentStep - 1] }) }}</text>
 
     <!-- ===== Step 1: Basic Info ===== -->
     <view v-show="currentStep === 1" class="step-body">
       <view class="field-group">
-        <text class="field-label">Full Name <text class="req">*</text></text>
+        <text class="field-label">{{ t('resumeTemplate.fieldName') }} <text class="req">*</text></text>
         <input class="field-input" v-model="form.name" placeholder="e.g. Zhang Wei" />
       </view>
       <view class="field-group">
-        <text class="field-label">Phone</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldPhone') }}</text>
         <input class="field-input" v-model="form.phone" type="number" placeholder="e.g. 138 0000 0000" />
       </view>
       <view class="field-group">
-        <text class="field-label">Email</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldEmail') }}</text>
         <input class="field-input" v-model="form.email" placeholder="your@email.com" />
       </view>
       <view class="field-group">
-        <text class="field-label">Target Role <text class="req">*</text></text>
+        <text class="field-label">{{ t('resumeTemplate.fieldTargetRole') }} <text class="req">*</text></text>
         <input class="field-input" v-model="form.targetRole" placeholder="e.g. Frontend Developer" />
       </view>
       <view class="field-group">
-        <text class="field-label">Preferred City</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldCity') }}</text>
         <input class="field-input" v-model="form.city" placeholder="e.g. Beijing / Shanghai / Remote" />
       </view>
     </view>
@@ -46,37 +46,37 @@
     <!-- ===== Step 2: Education + Skills ===== -->
     <view v-show="currentStep === 2" class="step-body">
       <view class="field-group">
-        <text class="field-label">University</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldUniversity') }}</text>
         <input class="field-input" v-model="form.university" placeholder="e.g. Tsinghua University" />
       </view>
       <view class="field-group">
-        <text class="field-label">Major</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldMajor') }}</text>
         <input class="field-input" v-model="form.major" placeholder="e.g. Computer Science" />
       </view>
       <view class="field-group">
-        <text class="field-label">Degree</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldDegree') }}</text>
         <picker mode="selector" :range="degreeOptions" @change="onDegreeChange">
           <view class="field-picker" :class="{ 'picker-filled': form.degree }">
             <text class="picker-text" :class="{ 'picker-text-filled': form.degree }">
-              {{ form.degree || 'Tap to select' }}
+              {{ form.degree || t('resumeTemplate.tapToSelect') }}
             </text>
             <text class="picker-arrow">›</text>
           </view>
         </picker>
       </view>
       <view class="field-group">
-        <text class="field-label">Graduation Year</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldGradYear') }}</text>
         <picker mode="date" fields="year" @change="onYearChange">
           <view class="field-picker" :class="{ 'picker-filled': form.graduationYear }">
             <text class="picker-text" :class="{ 'picker-text-filled': form.graduationYear }">
-              {{ form.graduationYear || 'Tap to select' }}
+              {{ form.graduationYear || t('resumeTemplate.tapToSelect') }}
             </text>
             <text class="picker-arrow">›</text>
           </view>
         </picker>
       </view>
       <view class="field-group">
-        <text class="field-label">Core Skills</text>
+        <text class="field-label">{{ t('resumeTemplate.fieldSkills') }}</text>
         <input class="field-input" v-model="form.skills" placeholder="e.g. Vue3, Spring Boot, Python, SQL" />
       </view>
     </view>
@@ -85,11 +85,11 @@
     <view v-show="currentStep === 3" class="step-body">
       <view class="tip-card">
         <text class="tip-icon">💡</text>
-        <text class="tip-text">Just describe what you did in plain language. AI will restructure it using the STAR method and professional wording.</text>
+        <text class="tip-text">{{ t('resumeTemplate.experienceTip') }}</text>
       </view>
       <view class="field-group">
         <view class="field-label-row">
-          <text class="field-label">Project & Internship Experience</text>
+          <text class="field-label">{{ t('resumeTemplate.fieldExperience') }}</text>
           <text class="char-count">{{ form.experience.length }} / 800</text>
         </view>
         <textarea
@@ -109,7 +109,7 @@
         class="btn-back"
         @click="currentStep--"
       >
-        <text class="btn-back-text">← Back</text>
+        <text class="btn-back-text">{{ t('resumeTemplate.backBtn') }}</text>
       </view>
       <view
         v-if="currentStep < 3"
@@ -117,7 +117,7 @@
         :class="{ 'btn-disabled': !stepValid }"
         @click="nextStep"
       >
-        <text class="btn-next-text">Next →</text>
+        <text class="btn-next-text">{{ t('resumeTemplate.nextBtn') }}</text>
       </view>
       <view
         v-if="currentStep === 3"
@@ -125,7 +125,7 @@
         :class="{ 'btn-disabled': submitting }"
         @click="handleGenerate"
       >
-        <text class="btn-generate-text">{{ submitting ? 'AI Generating...' : '✨ Generate Resume' }}</text>
+        <text class="btn-generate-text">{{ submitting ? t('resumeTemplate.generating') : t('resumeTemplate.generateBtn') }}</text>
       </view>
     </view>
   </view>
@@ -133,16 +133,18 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { generateResumeFromTemplateApi } from '@/api/resume';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafe = ref(getTopSafeHeight());
 const submitting = ref(false);
 const currentStep = ref(1);
-const stepLabels = ['Basic Info', 'Education & Skills', 'Experience'];
+const stepLabels = computed(() => [t('resumeTemplate.step1'), t('resumeTemplate.step2'), t('resumeTemplate.step3')]);
 const degreeOptions = ['Associate', 'Bachelor', 'Master', 'Doctorate'];
 
 const form = ref({
@@ -164,7 +166,7 @@ const stepValid = computed(() => {
 
 const nextStep = () => {
   if (!stepValid.value) {
-    uni.showToast({ title: 'Name and Target Role are required', icon: 'none' });
+    uni.showToast({ title: t('resumeTemplate.requiredError'), icon: 'none' });
     return;
   }
   currentStep.value++;
@@ -179,13 +181,13 @@ const onYearChange = (e: any) => { form.value.graduationYear = e.detail.value; }
 
 const handleGenerate = async () => {
   if (!form.value.name.trim() || !form.value.targetRole.trim()) {
-    uni.showToast({ title: 'Name and Target Role are required', icon: 'none' });
+    uni.showToast({ title: t('resumeTemplate.requiredError'), icon: 'none' });
     currentStep.value = 1;
     return;
   }
   const userId = Number(uni.getStorageSync('userId'));
   if (!userId || isNaN(userId) || userId <= 0) {
-    uni.showToast({ title: 'Please log in first', icon: 'none' });
+    uni.showToast({ title: t('resumeTemplate.loginRequired'), icon: 'none' });
     return;
   }
   submitting.value = true;

@@ -3,12 +3,12 @@
     <view class="interview-info" v-if="interview">
       <view class="session-copy">
         <text class="position">{{ interview.positionName }}</text>
-        <text class="session-text">Respond in complete answers and keep each reply focused on one example or argument.</text>
+        <text class="session-text">{{ t('interviewChat.sessionCopy') }}</text>
       </view>
       <view class="info-actions">
         <text class="difficulty">{{ interview.difficulty }}</text>
         <view class="end-link" @click="endInterview">
-          <text class="end-link-text">End</text>
+          <text class="end-link-text">{{ t('interviewChat.endBtn') }}</text>
         </view>
       </view>
     </view>
@@ -37,7 +37,7 @@
       <input 
         class="chat-input" 
         v-model="inputText" 
-        placeholder="Type your answer..." 
+        :placeholder="t('interviewChat.inputPlaceholder')" 
         placeholder-class="ph"
         @confirm="sendMessage"
       />
@@ -46,7 +46,7 @@
         :class="{ 'send-active': inputText.trim() && !aiTyping }"
         @click="sendMessage"
       >
-        <text class="send-label">Send</text>
+        <text class="send-label">{{ t('interviewChat.sendBtn') }}</text>
       </view>
     </view>
   </view>
@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { onShow } from '@dcloudio/uni-app';
 import {
   getInterviewByIdApi,
@@ -72,6 +73,7 @@ const inputText = ref('');
 const aiTyping = ref(false);
 const typingElapsed = ref(0);
 let typingTimer: any = null;
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const startTypingTimer = () => {

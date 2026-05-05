@@ -25,10 +25,13 @@ public class CareerAgentRiskDto {
     public static class RiskItem {
         private String code;
         private String title;
+        private String titleKey;
         private String level;
         private String trend;
         private Integer score;
         private String reason;
+        private String reasonKey;
         private String recommendation;
+        private String recommendationKey;
     }
 }

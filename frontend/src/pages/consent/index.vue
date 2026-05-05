@@ -6,23 +6,21 @@
         <text class="brand-logo-text">CL</text>
       </view>
       <text class="brand-name">Career Loop</text>
-      <text class="brand-slogan">AI-powered career platform</text>
+      <text class="brand-slogan">{{ t('consent.slogan') }}</text>
     </view>
 
     <!-- Main consent card -->
     <view class="consent-card" v-if="!readonlyMode">
-      <text class="consent-title">Welcome to Career Loop</text>
-      <text class="consent-desc">
-        Before you start, please read our service agreements. We take your privacy seriously and will process your data in accordance with applicable laws.
-      </text>
+      <text class="consent-title">{{ t('consent.title') }}</text>
+      <text class="consent-desc">{{ t('consent.desc') }}</text>
 
       <!-- Agreements list -->
       <view class="agree-list">
         <view class="agree-row" @click="openDoc('privacy')">
           <view class="agree-icon-wrap"><text class="agree-icon">🔒</text></view>
           <view class="agree-text-wrap">
-            <text class="agree-title-text">Privacy Policy</text>
-            <text class="agree-meta">How we collect, use and protect your data</text>
+            <text class="agree-title-text">{{ t('consent.privacyTitle') }}</text>
+            <text class="agree-meta">{{ t('consent.privacyMeta') }}</text>
           </view>
           <text class="agree-arrow">›</text>
         </view>
@@ -30,8 +28,8 @@
         <view class="agree-row" @click="openDoc('terms')">
           <view class="agree-icon-wrap"><text class="agree-icon">📋</text></view>
           <view class="agree-text-wrap">
-            <text class="agree-title-text">Terms of Service</text>
-            <text class="agree-meta">Rules for using Career Loop services</text>
+            <text class="agree-title-text">{{ t('consent.termsTitle') }}</text>
+            <text class="agree-meta">{{ t('consent.termsMeta') }}</text>
           </view>
           <text class="agree-arrow">›</text>
         </view>
@@ -42,7 +40,7 @@
         <view class="checkbox" :class="{ checked: ageChecked }">
           <text v-if="ageChecked" class="check-mark">✓</text>
         </view>
-        <text class="check-label">I confirm that I am <text class="check-highlight">14 years of age or older</text></text>
+        <text class="check-label">{{ t('consent.ageLabel') }}</text>
       </view>
 
       <!-- Agreement checkbox -->
@@ -51,23 +49,23 @@
           <text v-if="termsChecked" class="check-mark">✓</text>
         </view>
         <view class="check-label-wrap">
-          <text class="check-label">I have read and agree to the </text>
-          <text class="check-link" @click.stop="openDoc('terms')">Terms of Service</text>
-          <text class="check-label"> and </text>
-          <text class="check-link" @click.stop="openDoc('privacy')">Privacy Policy</text>
+          <text class="check-label">{{ t('consent.agreeLabel') }} </text>
+          <text class="check-link" @click.stop="openDoc('terms')">{{ t('consent.agreeTerms') }}</text>
+          <text class="check-label"> {{ t('consent.agreeAnd') }} </text>
+          <text class="check-link" @click.stop="openDoc('privacy')">{{ t('consent.agreePrivacy') }}</text>
         </view>
       </view>
 
       <!-- Action buttons -->
       <view class="btn-agree" :class="{ 'btn-disabled': !canAgree }" @click="onAgree">
-        <text class="btn-agree-text">Agree and Continue</text>
+        <text class="btn-agree-text">{{ t('consent.agreeBtn') }}</text>
       </view>
       <view class="btn-disagree" @click="onDisagree">
-        <text class="btn-disagree-text">Disagree and Exit</text>
+        <text class="btn-disagree-text">{{ t('consent.disagreeBtn') }}</text>
       </view>
 
       <text class="consent-footnote">
-        You can view or delete your data at any time from the Profile settings page. Continued use of the app constitutes acceptance of our updated policies.
+        {{ t('consent.footnote') }}
       </text>
     </view>
 
@@ -75,7 +73,7 @@
     <view class="doc-modal-mask" v-if="showDoc" @tap="closeDoc">
       <view class="doc-modal" @tap.stop>
         <view class="doc-modal-header">
-          <text class="doc-modal-title">{{ docType === 'terms' ? 'Terms of Service' : 'Privacy Policy' }}</text>
+          <text class="doc-modal-title">{{ docType === 'terms' ? t('consent.termsTitle') : t('consent.privacyTitle') }}</text>
           <view class="doc-close-btn" @click="closeDoc"><text class="doc-close-icon">✕</text></view>
         </view>
         <scroll-view scroll-y class="doc-scroll">
@@ -138,7 +136,7 @@
           </view>
         </scroll-view>
         <view class="doc-modal-footer">
-          <view class="doc-btn-close" @click="closeDoc"><text class="doc-btn-close-text">I have read this / 我已阅读</text></view>
+          <view class="doc-btn-close" @click="closeDoc"><text class="doc-btn-close-text">{{ t('consent.docCloseBtn') }}</text></view>
         </view>
       </view>
     </view>
@@ -147,6 +145,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { isLoggedIn, LOGIN_PAGE } from '@/utils/auth';
 import request from '@/utils/request';
 import { useTheme } from '@/utils/theme';
@@ -162,6 +161,7 @@ const termsChecked = ref(false);
 const showDoc = ref(false);
 const docType = ref<'privacy' | 'terms'>('privacy');
 const readonlyMode = ref(false);
+const { t } = useI18n();
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const canAgree = computed(() => ageChecked.value && termsChecked.value);

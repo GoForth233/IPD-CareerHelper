@@ -10,46 +10,46 @@
     <view class="hero">
       <view class="status-bar-spacer" :style="{ height: statusTopPx + 'px' }"></view>
       <text class="hero-kicker">CAREER LOOP</text>
-      <text class="hero-title">Start Your Career Loop</text>
-      <text class="hero-subtitle">Sign in to keep your assessments, resumes, and interview records connected across the product.</text>
+      <text class="hero-title">{{ t('login.heroTitle') }}</text>
+      <text class="hero-subtitle">{{ t('login.heroSubtitle') }}</text>
     </view>
 
     <view class="form-sheet">
       <view class="segment-wrap">
         <view class="segment-bar">
-          <view class="seg-item" :class="{ 'seg-active': mode === 'login' }" @click="switchMode('login')"><text>Sign In</text></view>
-          <view class="seg-item" :class="{ 'seg-active': mode === 'register' }" @click="switchMode('register')"><text>Sign Up</text></view>
+          <view class="seg-item" :class="{ 'seg-active': mode === 'login' }" @click="switchMode('login')"><text>{{ t('login.tabSignIn') }}</text></view>
+          <view class="seg-item" :class="{ 'seg-active': mode === 'register' }" @click="switchMode('register')"><text>{{ t('login.tabSignUp') }}</text></view>
         </view>
       </view>
 
       <view class="sheet-head">
-        <text class="sheet-title">{{ mode === 'login' ? 'Welcome Back' : 'Create Your Account' }}</text>
-        <text class="sheet-subtitle">{{ mode === 'login' ? 'Pick up where you left off.' : 'Set up your account and unlock the full workflow.' }}</text>
+        <text class="sheet-title">{{ mode === 'login' ? t('login.welcomeBack') : t('login.createYourAccount') }}</text>
+        <text class="sheet-subtitle">{{ mode === 'login' ? t('login.continueWhereLeft') : t('login.unlockWorkflow') }}</text>
       </view>
 
       <!-- Nickname -->
       <view class="field" v-if="mode === 'register'">
-        <text class="field-label">Nickname</text>
+        <text class="field-label">{{ t('login.nicknameLabel') }}</text>
         <input class="field-input" :class="{ 'input-error': nicknameError }" v-model="nickname"
-          placeholder="Choose a display name" placeholder-class="ph" maxlength="20" @blur="validateNickname" />
+          :placeholder="t('login.nicknamePlaceholder')" placeholder-class="ph" maxlength="20" @blur="validateNickname" />
         <text class="field-hint-error" v-if="nicknameError">{{ nicknameError }}</text>
       </view>
 
       <!-- Email -->
       <view class="field">
-        <text class="field-label">Email</text>
+        <text class="field-label">{{ t('login.emailLabel') }}</text>
         <input class="field-input" :class="{ 'input-error': emailError }" v-model="account"
-          placeholder="Enter your email address" placeholder-class="ph" maxlength="60"
+          :placeholder="t('login.emailPlaceholder')" placeholder-class="ph" maxlength="60"
           @input="onEmailInput" @blur="onEmailBlur" />
         <text class="field-hint-error" v-if="emailError">{{ emailError }}</text>
-        <text class="field-hint-checking" v-if="checkingEmail">Checking availability...</text>
+        <text class="field-hint-checking" v-if="checkingEmail">{{ t('login.checkingEmail') }}</text>
       </view>
 
       <!-- Password -->
       <view class="field">
-        <text class="field-label">Password</text>
+        <text class="field-label">{{ t('login.passwordLabel') }}</text>
         <input class="field-input" :class="{ 'input-error': passwordStrength && passwordStrength.level === 0 }"
-          v-model="password" type="password" placeholder="Enter your password" placeholder-class="ph" maxlength="32" />
+          v-model="password" type="password" :placeholder="t('login.passwordPlaceholder')" placeholder-class="ph" maxlength="32" />
         <view class="strength-row" v-if="mode === 'register' && password.length > 0">
           <view class="strength-bars">
             <view v-for="i in 3" :key="i" class="strength-bar"
@@ -63,22 +63,22 @@
 
       <!-- Confirm Password -->
       <view class="field" v-if="mode === 'register'">
-        <text class="field-label">Confirm Password</text>
+        <text class="field-label">{{ t('login.confirmPasswordLabel') }}</text>
         <input class="field-input" :class="{ 'input-error': confirmPassword.length > 0 && confirmPassword !== password }"
-          v-model="confirmPassword" type="password" placeholder="Enter your password again"
+          v-model="confirmPassword" type="password" :placeholder="t('login.confirmPasswordPlaceholder')"
           placeholder-class="ph" maxlength="32" />
-        <text class="field-hint-error" v-if="confirmPassword.length > 0 && confirmPassword !== password">Passwords do not match</text>
+        <text class="field-hint-error" v-if="confirmPassword.length > 0 && confirmPassword !== password">{{ t('login.passwordsNoMatch') }}</text>
       </view>
 
       <!-- Verification Code -->
       <view class="field" v-if="mode === 'register'">
-        <text class="field-label">Email Verification Code</text>
+        <text class="field-label">{{ t('login.codeLabel') }}</text>
         <view class="code-row">
           <input class="field-input code-input" :class="{ 'input-error': codeError }"
-            v-model="verifyCode" placeholder="6-digit code" placeholder-class="ph"
+            v-model="verifyCode" :placeholder="t('login.codePlaceholder')" placeholder-class="ph"
             maxlength="6" type="number" @blur="validateCode" />
           <view class="btn-send-code" :class="{ 'is-disabled': codeCooldown > 0 || sendingCode }" @click="sendRegisterCode">
-            <text class="btn-send-text">{{ sendingCode ? '...' : (codeCooldown > 0 ? codeCooldown + 's' : 'Send Code') }}</text>
+            <text class="btn-send-text">{{ sendingCode ? '...' : (codeCooldown > 0 ? codeCooldown + 's' : t('login.sendCode')) }}</text>
           </view>
         </view>
         <text class="field-hint-error" v-if="codeError">{{ codeError }}</text>
@@ -86,7 +86,7 @@
 
       <!-- Forgot password -->
       <view class="forgot-row" v-if="mode === 'login'">
-        <text class="forgot-link" @click="showForgotModal = true">Forgot password?</text>
+        <text class="forgot-link" @click="showForgotModal = true">{{ t('login.forgotPassword') }}</text>
       </view>
 
       <!-- Agreement -->
@@ -95,7 +95,7 @@
           <text v-if="ageConfirmed" class="check-mark">✓</text>
         </view>
         <view class="agreement-copy">
-          <text class="agreement-text">I confirm that I am 14 years of age or older / 我确认本人已满 14 周岁</text>
+          <text class="agreement-text">{{ t('login.ageConfirm') }}</text>
         </view>
       </view>
       <view class="agreement-row">
@@ -103,30 +103,30 @@
           <text v-if="agreed" class="check-mark">✓</text>
         </view>
         <view class="agreement-copy">
-          <text class="agreement-text">I have read and agree to the</text>
-          <text class="link" @click="openAgreement('terms')">Terms of Service</text>
-          <text class="agreement-text">and</text>
-          <text class="link" @click="openAgreement('privacy')">Privacy Policy</text>
+          <text class="agreement-text">{{ t('login.iHaveRead') }}</text>
+          <text class="link" @click="openAgreement('terms')">{{ t('login.termsLink') }}</text>
+          <text class="agreement-text">{{ t('login.andText') }}</text>
+          <text class="link" @click="openAgreement('privacy')">{{ t('login.privacyLink') }}</text>
         </view>
       </view>
 
       <view class="btn-primary" @click="handleSubmit" :class="{ 'is-loading': loading, 'is-disabled': !canSubmit }">
-        <text class="btn-text">{{ loading ? 'Please wait...' : (mode === 'login' ? 'Sign In and Continue' : 'Create Account and Continue') }}</text>
+        <text class="btn-text">{{ loading ? t('login.waiting') : (mode === 'login' ? t('login.signInCta') : t('login.registerCta')) }}</text>
       </view>
 
       <view class="divider-row">
         <view class="divider-line"></view>
-        <text class="divider-text">Other methods</text>
+        <text class="divider-text">{{ t('login.otherMethods') }}</text>
         <view class="divider-line"></view>
       </view>
 
       <view class="social-row">
         <view class="btn-wechat" @click="wxLogin">
           <view class="wx-badge"><text class="wx-badge-text">W</text></view>
-          <text class="wx-text">WeChat Sign In</text>
+          <text class="wx-text">{{ t('login.wechatSignIn') }}</text>
         </view>
         <view class="btn-guest" @click="guestLogin">
-          <text class="guest-text">Guest Mode</text>
+          <text class="guest-text">{{ t('login.guestModeBtn') }}</text>
         </view>
       </view>
       <view class="bottom-safe"></view>
@@ -135,7 +135,7 @@
     <!-- ── Terms / Privacy Modal ── -->
     <view class="modal-mask" v-if="showAgreementModal" @tap="showAgreementModal = false">
       <view class="modal-card agreement-modal" @tap.stop>
-        <text class="modal-title">{{ agreementType === 'terms' ? 'Terms of Service' : 'Privacy Policy' }}</text>
+        <text class="modal-title">{{ agreementType === 'terms' ? t('login.termsTitle') : t('login.privacyTitle') }}</text>
         <scroll-view scroll-y class="agreement-scroll">
           <view v-if="agreementType === 'terms'">
             <text class="agreement-section-title">1. Acceptance of Terms</text>
@@ -175,7 +175,7 @@
           </view>
         </scroll-view>
         <view class="modal-actions">
-          <view class="modal-btn modal-btn-confirm" @click="showAgreementModal = false"><text>I Understand</text></view>
+          <view class="modal-btn modal-btn-confirm" @click="showAgreementModal = false"><text>{{ t('login.iUnderstand') }}</text></view>
         </view>
       </view>
     </view>
@@ -183,48 +183,48 @@
     <!-- ── Forgot Password Modal ── -->
     <view class="modal-mask" v-if="showForgotModal" @tap="closeForgotModal">
       <view class="modal-card" @tap.stop>
-        <text class="modal-title">Reset Password</text>
+        <text class="modal-title">{{ t('login.forgotPasswordTitle') }}</text>
 
         <view v-if="resetStep === 1">
-          <text class="modal-hint">Enter the email address of your account.</text>
+          <text class="modal-hint">{{ t('login.forgotPasswordHint') }}</text>
           <view class="field" style="margin-top:14px;">
-            <text class="field-label">Email</text>
+            <text class="field-label">{{ t('login.emailLabel') }}</text>
             <input class="field-input" :class="{ 'input-error': resetEmailError }"
-              v-model="resetEmail" placeholder="your@email.com" placeholder-class="ph"
+              v-model="resetEmail" :placeholder="t('login.emailPlaceholder')" placeholder-class="ph"
               maxlength="60" @blur="validateResetEmail" />
             <text class="field-hint-error" v-if="resetEmailError">{{ resetEmailError }}</text>
           </view>
           <view class="code-row" style="margin-top:12px;">
             <input class="field-input code-input" v-model="resetCode"
-              placeholder="6-digit code" placeholder-class="ph" maxlength="6" type="number" />
+              :placeholder="t('login.codePlaceholder')" placeholder-class="ph" maxlength="6" type="number" />
             <view class="btn-send-code" :class="{ 'is-disabled': resetCooldown > 0 || sendingReset }" @click="sendResetCode">
-              <text class="btn-send-text">{{ sendingReset ? '...' : (resetCooldown > 0 ? resetCooldown + 's' : 'Send Code') }}</text>
+              <text class="btn-send-text">{{ sendingReset ? '...' : (resetCooldown > 0 ? resetCooldown + 's' : t('login.sendCode')) }}</text>
             </view>
           </view>
           <view class="modal-actions">
-            <view class="modal-btn modal-btn-cancel" @click="closeForgotModal"><text>Cancel</text></view>
-            <view class="modal-btn modal-btn-confirm" @click="goResetStep2"><text>Next</text></view>
+            <view class="modal-btn modal-btn-cancel" @click="closeForgotModal"><text>{{ t('common.cancel') }}</text></view>
+            <view class="modal-btn modal-btn-confirm" @click="goResetStep2"><text>{{ t('login.nextBtn') }}</text></view>
           </view>
         </view>
 
         <view v-if="resetStep === 2">
           <text class="modal-hint">Set a new password for <text style="color:#2457d6;">{{ resetEmail }}</text></text>
           <view class="field" style="margin-top:14px;">
-            <text class="field-label">New Password</text>
+            <text class="field-label">{{ t('login.newPasswordLabel') }}</text>
             <input class="field-input" :class="{ 'input-error': resetNewPwd.length > 0 && resetNewPwd.length < 6 }"
-              v-model="resetNewPwd" type="password" placeholder="At least 6 characters" placeholder-class="ph" maxlength="32" />
-            <text class="field-hint-error" v-if="resetNewPwd.length > 0 && resetNewPwd.length < 6">At least 6 characters</text>
+              v-model="resetNewPwd" type="password" :placeholder="t('login.atLeast6Chars')" placeholder-class="ph" maxlength="32" />
+            <text class="field-hint-error" v-if="resetNewPwd.length > 0 && resetNewPwd.length < 6">{{ t('login.atLeast6Chars') }}</text>
           </view>
           <view class="field" style="margin-top:12px;">
-            <text class="field-label">Confirm New Password</text>
+            <text class="field-label">{{ t('login.confirmNewPasswordLabel') }}</text>
             <input class="field-input" :class="{ 'input-error': resetConfirmPwd.length > 0 && resetConfirmPwd !== resetNewPwd }"
-              v-model="resetConfirmPwd" type="password" placeholder="Repeat new password" placeholder-class="ph" maxlength="32" />
-            <text class="field-hint-error" v-if="resetConfirmPwd.length > 0 && resetConfirmPwd !== resetNewPwd">Passwords do not match</text>
+              v-model="resetConfirmPwd" type="password" :placeholder="t('login.confirmPasswordPlaceholder')" placeholder-class="ph" maxlength="32" />
+            <text class="field-hint-error" v-if="resetConfirmPwd.length > 0 && resetConfirmPwd !== resetNewPwd">{{ t('login.passwordsNoMatch') }}</text>
           </view>
           <view class="modal-actions">
-            <view class="modal-btn modal-btn-cancel" @click="resetStep = 1"><text>Back</text></view>
+            <view class="modal-btn modal-btn-cancel" @click="resetStep = 1"><text>{{ t('common.back') }}</text></view>
             <view class="modal-btn modal-btn-confirm" :class="{ 'is-loading': resetting }" @click="doResetPassword">
-              <text>{{ resetting ? 'Resetting...' : 'Reset Password' }}</text>
+              <text>{{ resetting ? t('login.resetting') : t('login.resetPasswordBtn') }}</text>
             </view>
           </view>
         </view>
@@ -236,11 +236,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getTopSafeHeight } from '@/utils/safeArea';
 import { sendCodeApi, resetPasswordApi, registerApi, loginApi, wechatLoginApi, checkEmailApi } from '@/api/user';
 import { enterGuestMode } from '@/utils/auth';
 import { useTheme } from '@/utils/theme';
 
+const { t } = useI18n();
 const statusTopPx = ref(52);
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 onMounted(() => {

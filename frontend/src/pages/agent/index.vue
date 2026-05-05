@@ -43,8 +43,8 @@
           <text class="hub-section-title">{{ t('agent.hub.todaySection') }}</text>
           <view class="hub-stage-pill"><text class="hub-stage-text">{{ stageLabel }}</text></view>
         </view>
-        <text class="hub-headline">{{ agentToday.headline }}</text>
-        <text class="hub-focus">{{ agentToday.todayFocus }}</text>
+        <text class="hub-headline">{{ agentToday.headlineKey ? t(agentToday.headlineKey) : agentToday.headline }}</text>
+        <text class="hub-focus">{{ agentToday.focusKey ? t(agentToday.focusKey) : agentToday.todayFocus }}</text>
         <view class="hub-progress-bar">
           <view class="hub-progress-fill" :style="{ width: agentToday.progressPercent + '%' }" />
         </view>
@@ -57,7 +57,7 @@
             :class="{ 'hub-action-primary': action.priority === 'HIGH' }"
             @click="navTo(action.target)"
           >
-            <text class="hub-action-text">{{ action.label }}</text>
+            <text class="hub-action-text">{{ action.labelKey ? t(action.labelKey) : action.label }}</text>
           </view>
         </view>
       </view>
@@ -135,16 +135,16 @@
             <text class="hub-risk-pill-text">{{ agentRisk.overallLevel }}</text>
           </view>
         </view>
-        <text class="hub-risk-primary">{{ agentRisk.primaryRiskTitle }}</text>
+        <text class="hub-risk-primary">{{ agentRisk.risks?.[0]?.titleKey ? t(agentRisk.risks[0].titleKey) : agentRisk.primaryRiskTitle }}</text>
         <text class="hub-risk-summary">{{ agentRisk.summary }}</text>
         <view class="hub-risks-list">
           <view v-for="r in agentRisk.risks" :key="r.code" class="hub-risk-row">
             <view class="hub-risk-row-left">
               <view class="hub-risk-dot" :class="'dot-' + r.level.toLowerCase()" />
-              <text class="hub-risk-row-title">{{ r.title }}</text>
+              <text class="hub-risk-row-title">{{ r.titleKey ? t(r.titleKey) : r.title }}</text>
             </view>
             <view class="hub-risk-row-right">
-              <text class="hub-risk-trend" :class="'trend-' + r.trend.toLowerCase()">{{ r.trend }}</text>
+              <text class="hub-risk-trend" :class="'trend-' + r.trend.toLowerCase()">{{ r.trend === 'RISING' ? t('home.riskTrendRising') : r.trend === 'DECREASING' ? t('home.riskTrendImproving') : t('home.riskTrendStable') }}</text>
               <text class="hub-risk-score">{{ r.score }}</text>
             </view>
           </view>
