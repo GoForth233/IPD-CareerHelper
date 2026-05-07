@@ -506,6 +506,12 @@ export default {
     weaknesses: 'Areas to Improve',
     suggestions: 'Suggestions',
     tailorBtn: 'Generate Tailored Resume',
+    tailorSuccessTitle: 'Tailored Resume Ready!',
+    tailorSuccessHint: 'Saved to your resume library — view or share it anytime',
+    viewPdf: 'View PDF',
+    gotoResumes: 'Go to Resume Library',
+    openingPdf: 'Opening PDF…',
+    pdfOpenFail: 'PDF preview is unavailable in the simulator. Please use a real device.',
   },
 
   market: {

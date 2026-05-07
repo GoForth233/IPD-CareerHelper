@@ -506,6 +506,12 @@ export default {
     weaknesses: '待改进',
     suggestions: '建议',
     tailorBtn: '生成定制简历',
+    tailorSuccessTitle: '定制简历已生成！',
+    tailorSuccessHint: '已保存到你的简历库，可直接查看或分享',
+    viewPdf: '查看 PDF',
+    gotoResumes: '前往简历库',
+    openingPdf: '正在打开 PDF…',
+    pdfOpenFail: '无法在模拟器中预览，请在真机上查看',
   },
 
   market: {
