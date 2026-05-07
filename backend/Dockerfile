@@ -27,6 +27,12 @@ RUN mvn -B -q clean package -DskipTests \
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
+# Install WQY MicroHei font for CJK (Chinese/Japanese/Korean) PDF rendering.
+# openhtmltopdf falls back to '#' glyphs when no CJK font is present.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fonts-wqy-microhei \
+ && rm -rf /var/lib/apt/lists/*
+
 # Run as a non-root user — limits blast radius if the JVM ever gets RCE'd.
 RUN groupadd --system careerloop && useradd --system --gid careerloop careerloop
 

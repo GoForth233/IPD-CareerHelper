@@ -140,11 +140,20 @@ public class ResumeGenController {
         return trimmed;
     }
 
+    /** WQY MicroHei supports both Latin and CJK; installed via Dockerfile apt step. */
+    private static final String WQY_FONT_PATH = "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc";
+    private static final String WQY_FONT_FAMILY = "WQY";
+
     private String htmlToPdfAndUpload(String htmlBody, String folder) {
-        // Wrap into a minimal valid XHTML doc for the renderer
+        // Use WQY as primary font so Chinese characters render correctly;
+        // fall back to Helvetica for environments without the font (local dev).
+        String fontFamily = new java.io.File(WQY_FONT_PATH).exists()
+                ? "'" + WQY_FONT_FAMILY + "', 'Helvetica', sans-serif"
+                : "'Helvetica', sans-serif";
+
         String wrapped = "<!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head>" +
                 "<meta charset=\"UTF-8\"/><style>" +
-                "body{font-family:'Helvetica',sans-serif;color:#222;line-height:1.45;font-size:11pt;margin:36pt}" +
+                "body{font-family:" + fontFamily + ";color:#222;line-height:1.45;font-size:11pt;margin:36pt}" +
                 "h1{font-size:20pt;margin:0 0 6pt;color:#1e3a8a}" +
                 "h2{font-size:13pt;margin:14pt 0 4pt;color:#1e40af;border-bottom:1pt solid #1e40af;padding-bottom:2pt}" +
                 "ul{margin:4pt 0 4pt 16pt;padding:0}li{margin:2pt 0}" +
@@ -154,6 +163,11 @@ public class ResumeGenController {
         try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
+            // Register CJK font if available (installed in production Docker image)
+            java.io.File wqyFont = new java.io.File(WQY_FONT_PATH);
+            if (wqyFont.exists()) {
+                builder.useFont(wqyFont, WQY_FONT_FAMILY);
+            }
             builder.withHtmlContent(wrapped, null);
             builder.toStream(bos);
             builder.run();
