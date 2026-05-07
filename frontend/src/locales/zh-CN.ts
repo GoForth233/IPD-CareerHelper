@@ -251,6 +251,10 @@ export default {
     endBtn: '结束',
     inputPlaceholder: '输入你的回答…',
     sendBtn: '发送',
+    sendFailed: '发送失败，请重试',
+    endTitle: '结束面试',
+    endConfirm: '确认结束本次面试？',
+    ended: '面试已结束',
   },
 
   interviewRoom: {
@@ -611,7 +615,11 @@ export default {
     planLoadingSub: '通常需要 15–30 秒，请稍候',
     planEmpty: '还没有 AI 职业规划',
     planEmptySub: 'AI 会根据你的测评、简历和历史记录，生成专属的职业发展路径',
+    planTargetRoleLabel: '你想从事什么职位？',
+    planTargetRolePlaceholder: '例如：产品经理、Java 后端工程师…',
     planGenerate: '✨ 立即生成',
+    horizonMonths: '{n}个月',
+    horizonYears: '{n}年',
     planTargetRole: '目标职位',
     planRegenerate: '重新生成',
     planWeeklyFocus: '📌 本周重点',

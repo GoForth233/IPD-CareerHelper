@@ -251,6 +251,10 @@ export default {
     endBtn: 'End',
     inputPlaceholder: 'Type your answer…',
     sendBtn: 'Send',
+    sendFailed: 'Send failed, please retry',
+    endTitle: 'End Interview',
+    endConfirm: 'Are you sure you want to end the interview?',
+    ended: 'Interview ended',
   },
 
   interviewRoom: {
@@ -610,7 +614,11 @@ export default {
     planLoadingSub: 'Usually takes 15–30 seconds, please wait',
     planEmpty: 'No AI career plan yet',
     planEmptySub: 'AI will generate a personalised career path based on your assessments, resume, and history',
+    planTargetRoleLabel: 'What role are you aiming for?',
+    planTargetRolePlaceholder: 'e.g. Product Manager, Java Backend Engineer…',
     planGenerate: '✨ Generate Now',
+    horizonMonths: '{n} months',
+    horizonYears: '{n} year(s)',
     planTargetRole: 'Target Position',
     planRegenerate: 'Regenerate',
     planWeeklyFocus: '📌 Weekly Focus',

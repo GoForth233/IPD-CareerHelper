@@ -74,6 +74,7 @@ const aiTyping = ref(false);
 const typingElapsed = ref(0);
 let typingTimer: any = null;
 const { t } = useI18n();
+const interviewLang = (uni.getStorageSync('interview_language') as string) || 'en';
 const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 
 const startTypingTimer = () => {
@@ -109,7 +110,7 @@ onMounted(async () => {
         aiTyping.value = true;
         startTypingTimer();
         try {
-          const greeting = await generateGreetingApi(interviewId.value);
+          const greeting = await generateGreetingApi(interviewId.value, interviewLang);
           if (greeting) messages.value = [greeting];
         } catch (greetErr: any) {
           uni.showToast({ title: greetErr?.message || 'AI service error', icon: 'none', duration: 3000 });
@@ -140,11 +141,11 @@ const sendMessage = async () => {
   startTypingTimer();
 
   try {
-    const response = await sendInterviewMessageApi(interviewId.value, text);
+    const response = await sendInterviewMessageApi(interviewId.value, text, interviewLang);
     messages.value.push({ interviewId: interviewId.value, role: 'AI', content: response.aiMessage });
   } catch (error) {
     console.error('Failed to send message:', error);
-    uni.showToast({ title: 'Send failed', icon: 'none' });
+    uni.showToast({ title: t('interviewChat.sendFailed'), icon: 'none' });
   } finally {
     aiTyping.value = false;
     stopTypingTimer();
@@ -153,15 +154,15 @@ const sendMessage = async () => {
 
 const endInterview = () => {
   uni.showModal({
-    title: 'End Interview',
-    content: 'Are you sure you want to end the interview?',
+    title: t('interviewChat.endTitle'),
+    content: t('interviewChat.endConfirm'),
     confirmColor: '#ef4444',
     success: async (res) => {
       if (res.confirm) {
         try {
           // Score is now produced by the AI report endpoint, not the client.
           await endInterviewApi(interviewId.value);
-          uni.showToast({ title: 'Interview ended', icon: 'success' });
+          uni.showToast({ title: t('interviewChat.ended'), icon: 'success' });
           // Jump straight to the report screen; it will trigger the AI
           // evaluation on first open and cache it on the interview row.
           setTimeout(() => {

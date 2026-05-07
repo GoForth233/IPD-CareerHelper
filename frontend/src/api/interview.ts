@@ -50,11 +50,11 @@ export const startInterviewApi = (data: {
 /**
  * Send message in interview (get AI response)
  */
-export const sendInterviewMessageApi = (interviewId: number, content: string) => {
+export const sendInterviewMessageApi = (interviewId: number, content: string, language = 'en') => {
   return request<MessageResponse>({
     url: `/api/interviews/${interviewId}/message`,
     method: 'POST',
-    data: { content },
+    data: { content, language },
   });
 };
 
@@ -83,10 +83,11 @@ export const endInterviewApi = (interviewId: number) => {
  * Trigger the AI interviewer's opening question. Idempotent: returns the
  * existing first message if the conversation is non-empty.
  */
-export const generateGreetingApi = (interviewId: number) => {
+export const generateGreetingApi = (interviewId: number, language = 'en') => {
   return request<InterviewMessage>({
     url: `/api/interviews/${interviewId}/greeting`,
     method: 'POST',
+    params: { language },
   });
 };
 
@@ -121,10 +122,11 @@ export interface VoiceTurnResponse {
  * question and return a freshly synthesized audio URL. Safe to call on
  * every entry to room.vue.
  */
-export const voiceGreetingApi = (interviewId: number) => {
+export const voiceGreetingApi = (interviewId: number, language = 'en') => {
   return request<VoiceTurnResponse>({
     url: `/api/interviews/${interviewId}/voice-greeting`,
     method: 'POST',
+    params: { language },
   });
 };
 
@@ -140,7 +142,8 @@ export const voiceGreetingApi = (interviewId: number) => {
 export const voiceTurnApi = (
   interviewId: number,
   filePath: string,
-  format: 'mp3' | 'aac' | 'wav' = 'mp3'
+  format: 'mp3' | 'aac' | 'wav' = 'mp3',
+  language = 'en'
 ): Promise<VoiceTurnResponse> => {
   return new Promise((resolve, reject) => {
     const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -149,7 +152,7 @@ export const voiceTurnApi = (
       url: `${BASE_URL}/api/interviews/${interviewId}/voice-turn`,
       filePath,
       name: 'audio',
-      formData: { format },
+      formData: { format, language },
       // ngrok-free.dev shows an HTML interstitial unless this header is
       // present (any value); without it the upload returns ngrok HTML and
       // our JSON parser throws "Invalid voice-turn response". Harmless on

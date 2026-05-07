@@ -4,6 +4,7 @@ import com.group1.career.common.Result;
 import com.group1.career.exception.BizException;
 import com.group1.career.model.dto.UserProfileSnapshot;
 import com.group1.career.model.entity.User;
+import com.group1.career.service.CareerPlanService;
 import com.group1.career.service.UserProfileSnapshotService;
 import com.group1.career.service.UserService;
 import com.group1.career.utils.SecurityUtil;
@@ -27,6 +28,7 @@ public class UserController {
 
     private final UserService userService;
     private final UserProfileSnapshotService snapshotService;
+    private final CareerPlanService careerPlanService;
 
     @Operation(summary = "Get user profile (presigned avatar URL hydrated)")
     @GetMapping("/{id}")
@@ -84,6 +86,11 @@ public class UserController {
                 .targetRole(dto.getTargetRole())
                 .interviewMode(dto.getInterviewMode())
                 .build());
+        // When the user sets a new target role, kick off an async plan regeneration
+        // so the AI career plan stays aligned without blocking this response.
+        if (dto.getTargetRole() != null && !dto.getTargetRole().isBlank()) {
+            careerPlanService.regenerateWithRoleAsync(uid, dto.getTargetRole());
+        }
         return Result.success(snapshotService.read(uid));
     }
 

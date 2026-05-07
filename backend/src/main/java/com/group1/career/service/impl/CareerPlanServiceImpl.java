@@ -94,6 +94,16 @@ public class CareerPlanServiceImpl implements CareerPlanService {
         }
     }
 
+    @Override
+    @Async
+    public void regenerateWithRoleAsync(Long userId, String targetRole) {
+        try {
+            generate(userId, targetRole);
+        } catch (Exception e) {
+            log.error("[F28c] async regeneration (new role) failed for user={}: {}", userId, e.getMessage());
+        }
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private UserCareerPlan persist(Long userId, String targetRole,
