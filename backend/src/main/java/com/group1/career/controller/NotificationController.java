@@ -49,4 +49,12 @@ public class NotificationController {
         int updated = notificationService.markAllRead(uid);
         return Result.success(Map.of("updated", updated));
     }
+
+    @Operation(summary = "Delete a single notification (ownership verified)")
+    @DeleteMapping("/{notificationId}")
+    public Result<String> delete(@PathVariable Long notificationId) {
+        Long uid = SecurityUtil.requireCurrentUserId();
+        notificationService.delete(notificationId, uid);
+        return Result.success("ok");
+    }
 }

@@ -18,4 +18,7 @@ public interface NotificationService {
 
     /** Mark every unread notification belonging to user as read. */
     int markAllRead(Long userId);
+
+    /** Delete a single notification; verifies ownership. */
+    void delete(Long notificationId, Long userId);
 }

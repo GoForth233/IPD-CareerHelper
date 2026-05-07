@@ -23,6 +23,21 @@
         </view>
       </view>
 
+      <!-- 测评推荐岗位 banner（有测评结果时才显示） -->
+      <view class="assessment-banner" v-if="assessmentRoles.length > 0">
+        <text class="ab-title">{{ t('resumeAi.assessmentBannerTitle') }}</text>
+        <text class="ab-body">{{ t('resumeAi.assessmentBannerBody') }}</text>
+        <view class="ab-chips">
+          <view
+            class="ab-chip"
+            v-for="role in assessmentRoles"
+            :key="role"
+          >
+            <text class="ab-chip-text">{{ role }}</text>
+          </view>
+        </view>
+      </view>
+
       <view class="section">
         <view class="jd-header">
           <text class="section-title">{{ t('resumeAi.jdLabel') }}</text>
@@ -87,7 +102,29 @@
         </view>
       </view>
 
-      <button class="btn-secondary" :loading="tailoring" @click="generateTailored">{{ t('resumeAi.tailorBtn') }}</button>
+      <!-- 生成定制简历按钮（成功后隐藏，换成结果卡） -->
+      <button
+        v-if="!tailorResult"
+        class="btn-secondary"
+        :loading="tailoring"
+        @click="generateTailored"
+      >{{ t('resumeAi.tailorBtn') }}</button>
+
+      <!-- 定制成功结果卡 -->
+      <view v-else class="tailor-success-card">
+        <text class="ts-icon">✅</text>
+        <text class="ts-title">{{ t('resumeAi.tailorSuccessTitle') }}</text>
+        <text class="ts-hint">{{ tailorResult.title }}</text>
+        <text class="ts-sub">{{ t('resumeAi.tailorSuccessHint') }}</text>
+        <view class="ts-actions">
+          <button class="ts-btn-primary" :loading="openingPdf" @click="viewTailoredPdf">
+            {{ t('resumeAi.viewPdf') }}
+          </button>
+          <button class="ts-btn-secondary" @click="gotoResumes">
+            {{ t('resumeAi.gotoResumes') }}
+          </button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -116,10 +153,15 @@ const { themeClass, fontClass, refresh: refreshTheme } = useTheme();
 const topSafeHeight = ref(44);
 const analyzing = ref(false);
 const tailoring = ref(false);
+const openingPdf = ref(false);
 const showResult = ref(false);
 const result = ref<DiagnosisResult | null>(null);
+const tailorResult = ref<Resume | null>(null);
 const loadingMessage = ref('Ready...');
 const loadingProgress = ref(0);
+
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE = /api\.careerloop\.top/i.test(RAW_BASE) ? 'http://43.138.240.228' : RAW_BASE;
 
 const scoreClass = computed(() => {
   const s = result.value?.overallScore ?? 0;
@@ -154,6 +196,8 @@ const applyPrefill = async () => {
   jdPlaceholder.value = t('resumeAi.jdPlaceholder');
   try {
     const snap = await getProfileSnapshotApi();
+
+    // 预选上次使用的简历
     const lastResumeId = snap?.resume?.lastResumeId;
     if (lastResumeId && !selectedResumeId.value) {
       const match = userResumes.value.find((r) => r.resumeId === lastResumeId);
@@ -162,12 +206,25 @@ const applyPrefill = async () => {
         selectedResume.value = match.title || `Resume #${match.resumeId}`;
       }
     }
+
+    // 从测评结果或偏好设置中读取推荐岗位，展示预填充 banner
+    const roles: string[] = [];
+    if (snap?.assessment?.suggestedRoles?.length) {
+      roles.push(...snap.assessment.suggestedRoles);
+    } else if (snap?.preferences?.targetRole) {
+      roles.push(snap.preferences.targetRole);
+    } else if (snap?.resume?.targetJob) {
+      roles.push(snap.resume.targetJob);
+    }
+    assessmentRoles.value = roles.slice(0, 3); // 最多显示 3 个
   } catch {
     // Snapshot is best-effort.
   }
 };
 
 const jdPlaceholder = ref('');
+// 测评推荐岗位列表（非空时展示预填充 banner）
+const assessmentRoles = ref<string[]>([]);
 
 const selectResume = () => {
   if (!userResumes.value.length) {
@@ -276,9 +333,10 @@ const generateTailored = async () => {
     return;
   }
   tailoring.value = true;
+  tailorResult.value = null;
   runTailorProgress();
   try {
-    await tailorResumeApi({
+    const res = await tailorResumeApi({
       userId,
       resumeId: selectedResumeId.value,
       jobDescription: jdText.value.trim(),
@@ -286,8 +344,7 @@ const generateTailored = async () => {
     clearProgressTimers();
     loadingProgress.value = 100;
     loadingMessage.value = t('common.success');
-    uni.showToast({ title: t('resumeAi.tailorComplete'), icon: 'success' });
-    setTimeout(() => uni.switchTab({ url: '/pages/resume/index' }), 900);
+    tailorResult.value = res;
   } catch (e: any) {
     uni.showToast({ title: t('resumeAi.tailorFailed'), icon: 'none' });
   } finally {
@@ -295,6 +352,51 @@ const generateTailored = async () => {
     tailoring.value = false;
   }
 };
+
+const viewTailoredPdf = () => {
+  const resumeId = tailorResult.value?.resumeId;
+  if (!resumeId) return;
+  const token = uni.getStorageSync('token');
+  openingPdf.value = true;
+  uni.showLoading({ title: t('resumeAi.openingPdf') });
+  uni.downloadFile({
+    url: `${API_BASE}/api/resumes/${resumeId}/download`,
+    header: {
+      'ngrok-skip-browser-warning': 'true',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    success: (dl) => {
+      if (dl.statusCode === 200) {
+        uni.openDocument({
+          filePath: dl.tempFilePath,
+          fileType: 'pdf',
+          showMenu: true,
+          success: () => { uni.hideLoading(); openingPdf.value = false; },
+          fail: () => {
+            uni.hideLoading();
+            openingPdf.value = false;
+            uni.showModal({
+              title: t('resumeAi.pdfOpenFail'),
+              content: 'PDF preview is not supported in the DevTools simulator. Please use the "Preview" button to test on a real phone.',
+              showCancel: false,
+            });
+          },
+        });
+      } else {
+        uni.hideLoading();
+        openingPdf.value = false;
+        uni.showToast({ title: `Download failed (${dl.statusCode})`, icon: 'none' });
+      }
+    },
+    fail: () => {
+      uni.hideLoading();
+      openingPdf.value = false;
+      uni.showToast({ title: t('resumeAi.tailorFailed'), icon: 'none' });
+    },
+  });
+};
+
+const gotoResumes = () => uni.switchTab({ url: '/pages/resume/index' });
 
 onMounted(async () => {
   refreshTheme();
@@ -531,6 +633,84 @@ onShow(() => {
 
 .btn-secondary::after { border: none; }
 .btn-secondary:active { background-color: #dbeafe !important; }
+
+/* 测评推荐岗位 banner */
+.assessment-banner {
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ab-title { font-size: 13px; font-weight: 700; color: #4338ca; }
+.ab-body  { font-size: 12px; color: #6366f1; }
+.ab-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ab-chip {
+  background: #ffffff;
+  border: 1px solid #a5b4fc;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.ab-chip-text { font-size: 13px; font-weight: 600; color: #4338ca; }
+
+.is-dark .assessment-banner {
+  background: linear-gradient(135deg, rgba(67,56,202,0.15), rgba(99,102,241,0.1));
+  border-color: rgba(99,102,241,0.4);
+}
+.is-dark .ab-title { color: #a5b4fc; }
+.is-dark .ab-body  { color: #818cf8; }
+.is-dark .ab-chip  { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); }
+.is-dark .ab-chip-text { color: #a5b4fc; }
+
+/* 定制简历成功卡片 */
+.tailor-success-card {
+  margin-top: 16px;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1.5px solid #86efac;
+  border-radius: 20px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.ts-icon  { font-size: 36px; }
+.ts-title { font-size: 18px; font-weight: 800; color: #15803d; }
+.ts-hint  { font-size: 14px; font-weight: 600; color: #166534; }
+.ts-sub   { font-size: 12px; color: #4ade80; text-align: center; line-height: 1.5; }
+.ts-actions {
+  display: flex; flex-direction: column; gap: 10px;
+  width: 100%; margin-top: 8px;
+}
+.ts-btn-primary {
+  background-color: #16a34a !important;
+  color: #ffffff !important;
+  font-size: 15px; font-weight: 700;
+  border-radius: 14px; height: 48px; line-height: 48px;
+  border: none; box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+}
+.ts-btn-primary::after { border: none; }
+.ts-btn-primary:active { opacity: 0.88; }
+.ts-btn-secondary {
+  background-color: rgba(22,163,74,0.1) !important;
+  color: #16a34a !important;
+  font-size: 14px; font-weight: 600;
+  border-radius: 14px; height: 44px; line-height: 44px;
+  border: none;
+}
+.ts-btn-secondary::after { border: none; }
+.ts-btn-secondary:active { background-color: rgba(22,163,74,0.2) !important; }
+
+.is-dark .tailor-success-card {
+  background: linear-gradient(135deg, #052e16, #14532d);
+  border-color: #166534;
+}
+.is-dark .ts-title { color: #4ade80; }
+.is-dark .ts-hint  { color: #86efac; }
+.is-dark .ts-sub   { color: #166534; }
 
 .loading-overlay {
   position: fixed;

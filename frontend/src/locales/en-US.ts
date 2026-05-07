@@ -457,6 +457,9 @@ export default {
     hubSubtitle: 'Manage your career assets',
     myResumes: 'My Resumes',
     filesCount: '{n} files · stored privately',
+    tailoredResumes: 'AI-Tailored Resumes',
+    tailoredCount: '{n} tailored',
+    tailoredHint: 'Resumes AI-crafted for specific job descriptions',
     addBtn: '+ Add',
     previewBtn: 'Preview',
     noResumesDesc2: 'Create one from the guided template or upload an existing PDF to start using diagnosis and interview features.',
@@ -506,6 +509,14 @@ export default {
     weaknesses: 'Areas to Improve',
     suggestions: 'Suggestions',
     tailorBtn: 'Generate Tailored Resume',
+    assessmentBannerTitle: '💡 From your assessment',
+    assessmentBannerBody: 'Recommended roles to target:',
+    tailorSuccessTitle: 'Tailored Resume Ready!',
+    tailorSuccessHint: 'Saved to your resume library — view or share it anytime',
+    viewPdf: 'View PDF',
+    gotoResumes: 'Go to Resume Library',
+    openingPdf: 'Opening PDF…',
+    pdfOpenFail: 'PDF preview is unavailable in the simulator. Please use a real device.',
   },
 
   market: {
@@ -614,6 +625,8 @@ export default {
   messages: {
     title: 'Notifications',
     markAllRead: 'Mark all read',
+    deleteBtn: 'Delete',
+    deleteFailed: 'Delete failed. Please try again.',
     tabAll: 'All',
     tabCareer: 'Career',
     tabSystem: 'System',

@@ -7,18 +7,7 @@
       <text class="page-subtitle">{{ t('resume.hubSubtitle') }}</text>
     </view>
 
-    <!-- Section header (compact, replaces oversized hero) -->
-    <view class="section-bar">
-      <view class="section-titles">
-        <text class="section-title">{{ t('resume.myResumes') }}</text>
-        <text class="section-sub">{{ t('resume.filesCount', { n: resumeList.length }) }}</text>
-      </view>
-      <view class="section-action" @click="handleUploadClick">
-        <text class="section-action-text">{{ t('resume.addBtn') }}</text>
-      </view>
-    </view>
-
-    <!-- Skeleton while the list is loading from the backend -->
+    <!-- Skeleton -->
     <view class="skeleton-list" v-if="isLoading && resumeList.length === 0">
       <view class="skel-card" v-for="i in 3" :key="i">
         <view class="skel-square"></view>
@@ -29,40 +18,86 @@
       </view>
     </view>
 
-    <view class="resume-list" v-else-if="resumeList.length > 0">
-      <view class="resume-card" v-for="(item, idx) in resumeList" :key="idx">
-        <view class="rc-icon-wrap">
-          <view class="rc-icon" :class="'rc-icon-' + (idx % 2)">
-            <text class="rc-icon-text">PDF</text>
-          </view>
+    <view v-else-if="resumeList.length > 0">
+      <!-- ── 我的简历 section ── -->
+      <view class="section-bar">
+        <view class="section-titles">
+          <text class="section-title">{{ t('resume.myResumes') }}</text>
+          <text class="section-sub">{{ t('resume.filesCount', { n: originalResumes.length }) }}</text>
         </view>
-        <view class="rc-body">
-          <text class="rc-name">{{ item.name }}</text>
-          <view class="rc-meta-row">
-            <text class="rc-time">{{ item.date }}</text>
-            <view class="rc-badge" :class="'badge-' + item.status">
-              <text class="rc-badge-text">{{ item.statusLabel }}</text>
+        <view class="section-action" @click="handleUploadClick">
+          <text class="section-action-text">{{ t('resume.addBtn') }}</text>
+        </view>
+      </view>
+      <view class="resume-list">
+        <view class="resume-card" v-for="(item, idx) in originalResumes" :key="item.resumeId">
+          <view class="rc-icon-wrap">
+            <view class="rc-icon" :class="'rc-icon-' + (idx % 2)">
+              <text class="rc-icon-text">PDF</text>
+            </view>
+          </view>
+          <view class="rc-body">
+            <text class="rc-name">{{ item.name }}</text>
+            <view class="rc-meta-row">
+              <text class="rc-time">{{ item.date }}</text>
+              <view class="rc-badge" :class="'badge-' + item.status">
+                <text class="rc-badge-text">{{ item.statusLabel }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="rc-actions">
+            <view class="rc-action-btn" @click="handlePreview(item)">
+              <text class="rc-action-text">{{ t('resume.previewBtn') }}</text>
+            </view>
+            <view class="rc-more" @click="handleMore(resumeList.indexOf(item))">
+              <text class="rc-more-dots">···</text>
             </view>
           </view>
         </view>
-        <view class="rc-actions">
-          <view class="rc-action-btn" @click="handlePreview(item)">
-            <text class="rc-action-text">{{ t('resume.previewBtn') }}</text>
-          </view>
-          <view class="rc-more" @click="handleMore(idx)">
-            <text class="rc-more-dots">···</text>
+        <!-- Add new resume -->
+        <view class="add-card" @click="handleUploadClick">
+          <view class="add-icon"><text class="add-plus">+</text></view>
+          <view class="add-info">
+            <text class="add-title">{{ t('resume.newResume') }}</text>
+            <text class="add-desc">{{ t('resume.newResumeDesc') }}</text>
           </view>
         </view>
       </view>
 
-      <!-- Add new resume (compact) -->
-      <view class="add-card" @click="handleUploadClick">
-        <view class="add-icon">
-          <text class="add-plus">+</text>
+      <!-- ── AI 定制简历 section（有时才显示）── -->
+      <view v-if="tailoredResumes.length > 0" class="section-bar section-bar-ai">
+        <view class="section-titles">
+          <view class="ai-section-label-row">
+            <text class="section-title">{{ t('resume.tailoredResumes') }}</text>
+            <view class="ai-badge"><text class="ai-badge-text">AI</text></view>
+          </view>
+          <text class="section-sub">{{ t('resume.tailoredHint') }}</text>
         </view>
-        <view class="add-info">
-          <text class="add-title">{{ t('resume.newResume') }}</text>
-          <text class="add-desc">{{ t('resume.newResumeDesc') }}</text>
+      </view>
+      <view class="resume-list" v-if="tailoredResumes.length > 0">
+        <view class="resume-card resume-card-ai" v-for="(item, idx) in tailoredResumes" :key="item.resumeId">
+          <view class="rc-icon-wrap">
+            <view class="rc-icon rc-icon-ai">
+              <text class="rc-icon-text">AI</text>
+            </view>
+          </view>
+          <view class="rc-body">
+            <text class="rc-name">{{ item.name }}</text>
+            <view class="rc-meta-row">
+              <text class="rc-time">{{ item.date }}</text>
+              <view class="rc-badge badge-ai">
+                <text class="rc-badge-text">{{ t('resume.tailoredResumes') }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="rc-actions">
+            <view class="rc-action-btn" @click="handlePreview(item)">
+              <text class="rc-action-text">{{ t('resume.previewBtn') }}</text>
+            </view>
+            <view class="rc-more" @click="handleMore(resumeList.indexOf(item))">
+              <text class="rc-more-dots">···</text>
+            </view>
+          </view>
         </view>
       </view>
     </view>
@@ -72,9 +107,7 @@
       <text class="empty-title">{{ t('resume.noResumes') }}</text>
       <text class="empty-desc">{{ t('resume.noResumesDesc2') }}</text>
       <view class="add-card" @click="handleUploadClick">
-        <view class="add-icon">
-          <text class="add-plus">+</text>
-        </view>
+        <view class="add-icon"><text class="add-plus">+</text></view>
         <view class="add-info">
           <text class="add-title">{{ t('resume.addFirst') }}</text>
           <text class="add-desc">{{ t('resume.addFirstDesc') }}</text>
@@ -111,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from '@/locales';
 import { onShow } from '@dcloudio/uni-app';
 import { getTopSafeHeight } from '@/utils/safeArea';
@@ -135,10 +168,14 @@ interface ResumeItem {
   fileUrl?: string;
   /** Short-lived signed URL provided by the backend; safe to share / open. */
   fileViewUrl?: string;
+  isTailored: boolean;
 }
 
 const resumeList = ref<ResumeItem[]>([]);
 const isLoading = ref(false);
+
+const originalResumes = computed(() => resumeList.value.filter((r) => !r.isTailored));
+const tailoredResumes = computed(() => resumeList.value.filter((r) => r.isTailored));
 
 /**
  * Render an absolute timestamp (e.g. "2026-04-30 01:00:21") as a friendly
@@ -177,15 +214,19 @@ const loadResumes = async () => {
     // Guard against the API returning a non-array (e.g. a paginated
     // wrapper object or a null body) to prevent ".map is not a function".
     const resumes: Resume[] = Array.isArray(raw) ? raw : [];
-    resumeList.value = resumes.map((r: Resume) => ({
-      resumeId: r.resumeId,
-      name: r.title || r.fileUrl?.split('/').pop() || 'Untitled.pdf',
-      date: formatRelative(r.updatedAt || r.createdAt),
-      status: 'recent' as const,
-      statusLabel: r.status || 'Active',
-      fileUrl: r.fileUrl,
-      fileViewUrl: r.fileViewUrl,
-    }));
+    resumeList.value = resumes.map((r: Resume) => {
+      const title = r.title || r.fileUrl?.split('/').pop() || 'Untitled.pdf';
+      return {
+        resumeId: r.resumeId,
+        name: title,
+        date: formatRelative(r.updatedAt || r.createdAt),
+        status: 'recent' as const,
+        statusLabel: r.status || 'Active',
+        fileUrl: r.fileUrl,
+        fileViewUrl: r.fileViewUrl,
+        isTailored: title.toLowerCase().includes('_tailored'),
+      };
+    });
   } catch (e: any) {
     // Surface the actual error instead of silently showing an empty hub.
     // Common causes: stale token after a rebuild (signature mismatch),
@@ -860,4 +901,25 @@ onShow(() => {
 }
 
 /* #endif */
+
+/* AI 定制简历分区样式 */
+.section-bar-ai { margin-top: 24px; }
+.ai-section-label-row { display: flex; align-items: center; gap: 6px; }
+.ai-badge {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  border-radius: 6px; padding: 2px 6px;
+}
+.ai-badge-text { font-size: 10px; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
+.rc-icon-ai {
+  background: linear-gradient(135deg, #ede9fe, #dbeafe) !important;
+}
+.rc-icon-ai .rc-icon-text { color: #7c3aed !important; font-size: 11px !important; }
+.resume-card-ai { border-left: 3px solid #7c3aed; }
+.badge-ai { background: #ede9fe !important; }
+.badge-ai .rc-badge-text { color: #7c3aed !important; font-size: 10px !important; }
+
+.resume-page.is-dark .resume-card-ai { border-left-color: #a78bfa; }
+.resume-page.is-dark .rc-icon-ai { background: rgba(124,58,237,0.2) !important; }
+.resume-page.is-dark .badge-ai { background: rgba(124,58,237,0.2) !important; }
+.resume-page.is-dark .badge-ai .rc-badge-text { color: #a78bfa !important; }
 </style>

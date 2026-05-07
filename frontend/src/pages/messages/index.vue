@@ -35,24 +35,37 @@
     <scroll-view class="msg-list" scroll-y>
       <view class="list-wrap">
         <view
-          class="msg-card"
-          :class="{ 'msg-unread': item.unread }"
+          class="swipe-row"
           v-for="(item, idx) in filteredMessages"
-          :key="idx"
-          @click="handleSystemClick(item)"
+          :key="item.notificationId"
         >
-          <view class="avatar-wrap">
-            <view class="msg-avatar sys-av" :class="'sys-' + (idx % 3)">
-              <text class="av-emoji">{{ item.icon }}</text>
+          <!-- 消息卡片（可左滑） -->
+          <view
+            class="msg-card"
+            :class="{ 'msg-unread': item.unread, 'msg-card-swiped': (swipeOffsets[item.notificationId] ?? 0) < 0 }"
+            :style="{ transform: `translateX(${swipeOffsets[item.notificationId] ?? 0}px)` }"
+            @click="handleSystemClick(item)"
+            @touchstart="onMsgTouchStart($event, item.notificationId)"
+            @touchmove="onMsgTouchMove($event, item.notificationId)"
+            @touchend="onMsgTouchEnd($event, item.notificationId)"
+          >
+            <view class="avatar-wrap">
+              <view class="msg-avatar sys-av" :class="'sys-' + (idx % 3)">
+                <text class="av-emoji">{{ item.icon }}</text>
+              </view>
+              <view class="unread-dot" v-if="item.unread"></view>
             </view>
-            <view class="unread-dot" v-if="item.unread"></view>
+            <view class="msg-body">
+              <view class="msg-top-row">
+                <text class="msg-name">{{ item.name }}</text>
+                <text class="msg-time">{{ item.time }}</text>
+              </view>
+              <text class="msg-preview">{{ item.preview }}</text>
+            </view>
           </view>
-          <view class="msg-body">
-            <view class="msg-top-row">
-              <text class="msg-name">{{ item.name }}</text>
-              <text class="msg-time">{{ item.time }}</text>
-            </view>
-            <text class="msg-preview">{{ item.preview }}</text>
+          <!-- 删除按钮（滑动后露出） -->
+          <view class="swipe-delete-btn" @click="deleteMessage(item)">
+            <text class="swipe-delete-text">{{ t('messages.deleteBtn') }}</text>
           </view>
         </view>
       </view>
@@ -80,6 +93,7 @@ import {
   listNotificationsApi,
   markReadApi,
   markAllReadApi,
+  deleteNotificationApi,
   type Notification,
 } from '@/api/notification';
 import { useTheme } from '@/utils/theme';
@@ -157,6 +171,70 @@ const systemMessages = ref<SystemMessageView[]>([]);
 const systemLoading = ref(false);
 const unreadCount = computed(() => systemMessages.value.filter((m) => m.unread).length);
 
+// ─── 滑动删除状态 ────────────────────────────────────────────────────────────
+// 每条消息的当前水平偏移量（px），负值表示向左滑动
+const swipeOffsets = ref<Record<number, number>>({});
+// 当前处于"展开"状态的消息 id（同时只允许一条展开）
+const activeSwipeId = ref<number | null>(null);
+let _touchStartX = 0;
+let _touchStartY = 0;
+let _touchBaseOffset = 0;
+let _dirLocked = false;
+let _isHorizontal = false;
+const DELETE_BTN_W = 80;
+
+const onMsgTouchStart = (e: any, id: number) => {
+  _touchStartX = e.touches[0].clientX;
+  _touchStartY = e.touches[0].clientY;
+  _touchBaseOffset = swipeOffsets.value[id] ?? 0;
+  _dirLocked = false;
+  _isHorizontal = false;
+  // 关闭其他展开的条目
+  if (activeSwipeId.value !== null && activeSwipeId.value !== id) {
+    swipeOffsets.value[activeSwipeId.value] = 0;
+    activeSwipeId.value = null;
+  }
+};
+const onMsgTouchMove = (e: any, id: number) => {
+  const dx = e.touches[0].clientX - _touchStartX;
+  const dy = e.touches[0].clientY - _touchStartY;
+  if (!_dirLocked && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+    _dirLocked = true;
+    _isHorizontal = Math.abs(dx) > Math.abs(dy);
+  }
+  if (!_isHorizontal) return;
+  swipeOffsets.value[id] = Math.max(-DELETE_BTN_W, Math.min(0, _touchBaseOffset + dx));
+};
+const onMsgTouchEnd = (_e: any, id: number) => {
+  if (!_isHorizontal) return;
+  const offset = swipeOffsets.value[id] ?? 0;
+  if (offset < -DELETE_BTN_W / 2) {
+    swipeOffsets.value[id] = -DELETE_BTN_W;
+    activeSwipeId.value = id;
+  } else {
+    swipeOffsets.value[id] = 0;
+    activeSwipeId.value = null;
+  }
+};
+const closeSwipe = (id: number) => {
+  swipeOffsets.value[id] = 0;
+  if (activeSwipeId.value === id) activeSwipeId.value = null;
+};
+
+const deleteMessage = async (item: SystemMessageView) => {
+  // 乐观 UI：先从列表移除，失败再恢复
+  const backup = [...systemMessages.value];
+  systemMessages.value = systemMessages.value.filter((m) => m.notificationId !== item.notificationId);
+  delete swipeOffsets.value[item.notificationId];
+  activeSwipeId.value = null;
+  try {
+    await deleteNotificationApi(item.notificationId);
+  } catch {
+    systemMessages.value = backup;
+    uni.showToast({ title: t('messages.deleteFailed'), icon: 'none' });
+  }
+};
+
 const filteredMessages = computed(() => {
   if (activeTab.value === 'ALL') return systemMessages.value;
   const allowed = TAB_TYPES[activeTab.value];
@@ -224,6 +302,11 @@ const markAllReadHandler = async () => {
 };
 
 const handleSystemClick = async (item: SystemMessageView) => {
+  // 如果卡片正处于滑开状态，先关闭，不执行跳转
+  if (activeSwipeId.value === item.notificationId) {
+    closeSwipe(item.notificationId);
+    return;
+  }
   if (item.unread) {
     item.unread = false;
     try { await markReadApi(item.notificationId); } catch { /* best-effort */ }
@@ -392,6 +475,14 @@ onShow(() => {
   height: calc(var(--tab-bar-height, 50px) + 20px);
 }
 
+/* 滑动删除容器 */
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  margin-bottom: 0;
+}
+
 .msg-card {
   display: flex;
   align-items: center;
@@ -400,11 +491,31 @@ onShow(() => {
   border-radius: var(--radius-md);
   border: 1px solid #b8c8d8;
   box-shadow: 0 3px 12px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
-  transition: transform 0.1s;
+  transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  z-index: 1;
+  will-change: transform;
 }
 
 .msg-card:active {
-  transform: scale(0.98);
+  opacity: 0.92;
+}
+
+.swipe-delete-btn {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 80px;
+  background: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  z-index: 0;
+}
+.swipe-delete-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .msg-unread {
