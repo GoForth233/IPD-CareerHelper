@@ -129,7 +129,16 @@
         <text class="plan-empty-icon">🗺</text>
         <text class="plan-empty-title">{{ t('map.planEmpty') }}</text>
         <text class="plan-empty-sub">{{ t('map.planEmptySub') }}</text>
-        <view class="plan-gen-btn" @click="handleGenerate()">
+        <view class="plan-role-input-wrap">
+          <text class="plan-role-input-label">{{ t('map.planTargetRoleLabel') }}</text>
+          <input
+            class="plan-role-input"
+            v-model="inputTargetRole"
+            :placeholder="t('map.planTargetRolePlaceholder')"
+            maxlength="60"
+          />
+        </view>
+        <view class="plan-gen-btn" :class="{ 'plan-gen-btn-dim': !inputTargetRole.trim() }" @click="handleGenerate(inputTargetRole.trim() || undefined)">
           <text class="plan-gen-btn-text">{{ t('map.planGenerate') }}</text>
         </view>
       </view>
@@ -222,6 +231,7 @@ import {
   type UserCareerPlan,
   type CareerMilestone,
 } from '@/api/career';
+import { getProfileSnapshotApi } from '@/api/user';
 import { useTheme } from '@/utils/theme';
 
 // ── shared ─────────────────────────────────────────────────────────────────────────────────
@@ -467,8 +477,9 @@ onShow(() => {
 });
 
 // ── F28c: AI career plan ──────────────────────────────────────────────────────
-const plan        = ref<UserCareerPlan | null>(null);
-const planLoading = ref(false);
+const plan           = ref<UserCareerPlan | null>(null);
+const planLoading    = ref(false);
+const inputTargetRole = ref('');
 const milestones  = computed<CareerMilestone[]>(() => {
   if (!plan.value?.milestonesJson) return [];
   try { return JSON.parse(plan.value.milestonesJson) as CareerMilestone[]; }
@@ -484,6 +495,17 @@ const loadPlan = async () => {
   try {
     plan.value = await getCurrentCareerPlanApi();
   } catch { /* silent — empty state handles it */ }
+  // Pre-fill the target role input from snapshot so the user can start
+  // generating immediately without retyping what they've already told us.
+  if (!inputTargetRole.value) {
+    try {
+      const snap = await getProfileSnapshotApi();
+      const role = snap?.preferences?.targetRole
+        || snap?.resume?.targetJob
+        || snap?.interview?.positionName;
+      if (role) inputTargetRole.value = role;
+    } catch { /* best-effort */ }
+  }
 };
 
 const handleGenerate = async (targetRole?: string) => {
@@ -499,7 +521,17 @@ const handleGenerate = async (targetRole?: string) => {
   }
 };
 
-const horizonLabel = (h: string) => h;
+/** Convert raw AI horizon values like "3m", "6m", "1y", "2y" to readable labels. */
+const horizonLabel = (h: string): string => {
+  if (!h) return h;
+  const m = h.match(/^(\d+)(m|y)$/i);
+  if (!m) return h;
+  const n = parseInt(m[1]);
+  const unit = m[2].toLowerCase();
+  return unit === 'm'
+    ? t('map.horizonMonths').replace('{n}', String(n))
+    : t('map.horizonYears').replace('{n}', String(n));
+};
 
 const formatDate = (iso?: string) => {
   if (!iso) return '';
@@ -847,7 +879,24 @@ const formatDate = (iso?: string) => {
 }
 .plan-empty-icon  { font-size: 52px; margin-bottom: 16px; }
 .plan-empty-title { font-size: 18px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 8px; }
-.plan-empty-sub   { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 28px; }
+.plan-empty-sub   { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 20px; }
+
+/* Target role input in empty state */
+.plan-role-input-wrap {
+  width: 100%; margin-bottom: 20px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+}
+.plan-role-input-label {
+  font-size: 13px; font-weight: 600; color: #475569;
+}
+.plan-role-input {
+  width: 100%; box-sizing: border-box;
+  border: 1.5px solid #e2e8f0; border-radius: 12px;
+  padding: 12px 14px; font-size: 14px; color: #0f172a;
+  background: #f8fafc;
+}
+.plan-role-input:focus { border-color: #2563eb; background: #ffffff; }
+
 .plan-gen-btn {
   background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
   border-radius: 14px; padding: 0 32px; height: 48px;
@@ -855,6 +904,7 @@ const formatDate = (iso?: string) => {
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 .plan-gen-btn:active { opacity: 0.85; }
+.plan-gen-btn-dim { opacity: 0.55; box-shadow: none; }
 .plan-gen-btn-text { color: #ffffff; font-size: 16px; font-weight: 700; }
 
 /* Hero card */

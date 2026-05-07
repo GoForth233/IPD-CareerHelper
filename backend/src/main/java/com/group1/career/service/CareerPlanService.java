@@ -35,4 +35,11 @@ public interface CareerPlanService {
      * changes so the plan stays current without blocking the caller).
      */
     void regenerateAsync(Long userId);
+
+    /**
+     * Asynchronously regenerate the plan with an explicit new target role.
+     * Called when the user updates their target role preference so the plan
+     * immediately reflects the new direction without blocking the API response.
+     */
+    void regenerateWithRoleAsync(Long userId, String targetRole);
 }
