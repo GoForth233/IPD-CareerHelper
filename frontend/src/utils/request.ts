@@ -86,9 +86,9 @@ const request = <T>(options: RequestOptions): Promise<T> => {
         if (statusCode >= 200 && statusCode < 300) {
           if (isResultEnvelope<T>(data)) {
             // Some backend handlers return HTTP 200 with business code 401.
-            // 只依赖精确的 code 字段判断，不用 message 正则（太宽泛，会误杀合法错误）
+            // silent:true 时完全不触发全局处理（不清 token、不跳转），由调用方 catch 处理。
             if (data.code === 401) {
-              handleUnauthorized(options.silent);
+              if (!options.silent) handleUnauthorized(false);
               reject(new Error('Unauthorized'));
               return;
             }
@@ -112,8 +112,9 @@ const request = <T>(options: RequestOptions): Promise<T> => {
         }
 
         // F21: 401 → session expired, redirect to login
+        // silent:true 时不触发全局重定向，由调用方 catch 处理
         if (statusCode === 401) {
-          handleUnauthorized(options.silent);
+          if (!options.silent) handleUnauthorized(false);
           reject(new Error('Unauthorized'));
           return;
         }

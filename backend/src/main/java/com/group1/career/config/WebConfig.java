@@ -31,7 +31,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/homepage/**",
                         "/api/assessments/scales",
                         "/api/assessments/scales/*/questions",
-                        "/api/careers/**",
+                        // plan 接口需要登录态（requireCurrentUserId），不排除
+                        "/api/careers/paths/**",
+                        "/api/careers/progress/**",
+                        "/api/careers/timeline",
+                        "/api/careers/initialize",
                         // Liveness/readiness probes used by Docker, nginx, uptime
                         // monitors -- and us, when proving the ngrok tunnel reaches
                         // the backend before pointing the mini-program at it.

@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayOutputStream;
@@ -38,7 +37,7 @@ public class ResumeGenController {
 
     @Operation(summary = "Generate a brand-new resume from template form data")
     @PostMapping("/from-template")
-    @Transactional
+    // 不加 @Transactional：同 tailor，AI 调用期间不应持有数据库事务
     public Result<Resume> fromTemplate(@RequestBody TemplateRequest req) {
         Long uid = SecurityUtil.requireCurrentUserId();
         if (req.getName() == null || req.getName().isBlank()) throw new BizException("name is required");
@@ -56,7 +55,8 @@ public class ResumeGenController {
 
     @Operation(summary = "Tailor an existing resume against a Job Description")
     @PostMapping("/tailor")
-    @Transactional
+    // 不加 @Transactional：AI rewrite + PDF render 耗时 30-90s，持有事务会耗尽连接池
+    // assertOwnership / createResume 各自在自己的短事务中完成
     public Result<Resume> tailor(@RequestBody TailorRequest req) {
         Long uid = SecurityUtil.requireCurrentUserId();
         if (req.getResumeId() == null) throw new BizException("resumeId is required");
