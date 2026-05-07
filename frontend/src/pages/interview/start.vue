@@ -101,7 +101,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
-import { useI18n } from '@/locales';
+import { useI18n, currentLocale } from '@/locales';
 import { onShow } from '@dcloudio/uni-app';
 import { startInterviewApi } from '@/api/interview';
 import { getProfileSnapshotApi, updatePreferencesApi } from '@/api/user';
@@ -250,6 +250,8 @@ const startInterview = async () => {
     });
 
     uni.setStorageSync('interview_mode', selectedMode.value);
+    // Persist current UI language so greeting/message/voice APIs can match it
+    uni.setStorageSync('interview_language', currentLocale() === 'zh-CN' ? 'zh' : 'en');
     // Mirror the choice into the cross-tool snapshot so the assistant
     // and the next session both know the user's preferred mode. Best-effort.
     updatePreferencesApi({

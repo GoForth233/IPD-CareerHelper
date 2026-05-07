@@ -251,6 +251,10 @@ export default {
     endBtn: 'End',
     inputPlaceholder: 'Type your answer…',
     sendBtn: 'Send',
+    sendFailed: 'Send failed, please retry',
+    endTitle: 'End Interview',
+    endConfirm: 'Are you sure you want to end the interview?',
+    ended: 'Interview ended',
   },
 
   interviewRoom: {

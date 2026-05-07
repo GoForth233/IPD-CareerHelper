@@ -251,6 +251,10 @@ export default {
     endBtn: '结束',
     inputPlaceholder: '输入你的回答…',
     sendBtn: '发送',
+    sendFailed: '发送失败，请重试',
+    endTitle: '结束面试',
+    endConfirm: '确认结束本次面试？',
+    ended: '面试已结束',
   },
 
   interviewRoom: {

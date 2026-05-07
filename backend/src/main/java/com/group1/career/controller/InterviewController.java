@@ -98,7 +98,9 @@ public class InterviewController {
     @Operation(summary = "Generate the AI interviewer's opening question. Idempotent: " +
             "returns the existing first message if the conversation is non-empty.")
     @PostMapping("/{interviewId}/greeting")
-    public Result<InterviewMessage> generateGreeting(@PathVariable Long interviewId) {
+    public Result<InterviewMessage> generateGreeting(
+            @PathVariable Long interviewId,
+            @RequestParam(required = false, defaultValue = "en") String language) {
         Long uid = SecurityUtil.requireCurrentUserId();
         Interview interview = interviewService.assertOwnership(interviewId, uid);
 
@@ -119,10 +121,11 @@ public class InterviewController {
                 "Greet the candidate briefly (one sentence) and ask your FIRST interview question, " +
                 "which must be specifically about: %s. " +
                 "Do NOT include explanations, evaluation criteria, or follow-ups. " +
-                "Always reply in English. Reply in plain text, no markdown.",
+                "%s Reply in plain text, no markdown.",
                 interview.getPositionName(),
                 interview.getDifficulty() == null ? "Normal" : interview.getDifficulty(),
-                angle
+                angle,
+                langInstruction(language)
         );
         String greeting = aiService.chat(prompt);
         if (greeting == null || greeting.isBlank()) {
@@ -155,9 +158,10 @@ public class InterviewController {
         systemMsg.put("content", String.format(
                 "You are a professional %s interviewer (difficulty: %s). Continue the interview by " +
                 "briefly evaluating the candidate's last answer and then asking the next focused " +
-                "question. Keep replies short (2-4 sentences). Always reply in English. Plain text only, no markdown.",
+                "question. Keep replies short (2-4 sentences). %s Plain text only, no markdown.",
                 interview.getPositionName(),
-                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty()
+                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty(),
+                langInstruction(request.getLanguage())
         ));
         messages.add(systemMsg);
 
@@ -180,7 +184,9 @@ public class InterviewController {
     @Operation(summary = "Voice greeting — synthesize the AI interviewer's opening question " +
             "as audio. Idempotent: reuses the existing greeting text if one was already saved.")
     @PostMapping("/{interviewId}/voice-greeting")
-    public Result<VoiceTurnResponse> voiceGreeting(@PathVariable Long interviewId) {
+    public Result<VoiceTurnResponse> voiceGreeting(
+            @PathVariable Long interviewId,
+            @RequestParam(required = false, defaultValue = "en") String language) {
         Long uid = SecurityUtil.requireCurrentUserId();
         Interview interview = interviewService.assertOwnership(interviewId, uid);
 
@@ -199,10 +205,11 @@ public class InterviewController {
             String prompt = String.format(
                     "You are a senior %s interviewer (difficulty: %s) speaking to a candidate by voice. " +
                     "Greet the candidate in ONE short sentence, then ask ONE interview question specifically about: %s. " +
-                    "Always speak in English. No filler, no markdown, plain spoken text. Total output under 60 words.",
+                    "%s No filler, no markdown, plain spoken text. Total output under 60 words.",
                     interview.getPositionName(),
                     interview.getDifficulty() == null ? "Normal" : interview.getDifficulty(),
-                    angle
+                    angle,
+                    langInstruction(language)
             );
             greeting = aiService.chat(prompt);
             if (greeting == null || greeting.isBlank()) {
@@ -239,7 +246,8 @@ public class InterviewController {
     public Result<VoiceTurnResponse> voiceTurn(
             @PathVariable Long interviewId,
             @RequestPart("audio") MultipartFile audio,
-            @RequestParam(value = "format", defaultValue = "mp3") String format
+            @RequestParam(value = "format", defaultValue = "mp3") String format,
+            @RequestParam(value = "language", defaultValue = "en") String language
     ) {
         Long uid = SecurityUtil.requireCurrentUserId();
         Interview interview = interviewService.assertOwnership(interviewId, uid);
@@ -278,9 +286,10 @@ public class InterviewController {
                 "You are a professional %s interviewer (difficulty: %s) speaking to a candidate via voice. " +
                 "Briefly evaluate the candidate's last answer and ask the next focused interview question. " +
                 "Keep replies short — 1 to 2 sentences total — suitable for spoken delivery. " +
-                "Always reply in English. Plain text only, no markdown, no lists, no emoji.",
+                "%s Plain text only, no markdown, no lists, no emoji.",
                 interview.getPositionName(),
-                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty()
+                interview.getDifficulty() == null ? "Normal" : interview.getDifficulty(),
+                langInstruction(language)
         ));
         messages.add(systemMsg);
 
@@ -355,6 +364,16 @@ public class InterviewController {
         return Result.success(interviewService.assertOwnership(interviewId, uid));
     }
 
+    /**
+     * Returns the language instruction appended to every AI interview prompt.
+     * "zh" → Chinese, anything else → English (safe default).
+     */
+    private static String langInstruction(String language) {
+        return "zh".equalsIgnoreCase(language)
+                ? "请全程使用中文进行面试，包括提问和反馈，不要使用英文。"
+                : "Always reply in English.";
+    }
+
     /** Remove common markdown artifacts that LLMs sometimes emit despite "plain text" instructions. */
     private static String stripMarkdown(String text) {
         if (text == null) return "";
@@ -383,6 +402,8 @@ public class InterviewController {
     @Data
     public static class SendMessageRequest {
         private String content;
+        /** "zh" for Chinese interview, anything else defaults to English. */
+        private String language;
     }
 
     @Data

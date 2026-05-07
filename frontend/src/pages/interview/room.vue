@@ -157,6 +157,7 @@ const { t } = useI18n();
 // ───────────────────────── State ─────────────────────────
 const statusTopPx = ref(52);
 const interviewId = ref<number>(0);
+const interviewLang = (uni.getStorageSync('interview_language') as string) || 'en';
 const interview = ref<Interview | null>(null);
 
 const isRecording = ref(false);
@@ -438,7 +439,7 @@ const cleanupRecording = () => {
 const fetchAndPlayGreeting = async () => {
   isThinking.value = true;
   try {
-    const res = await voiceGreetingApi(interviewId.value);
+    const res = await voiceGreetingApi(interviewId.value, interviewLang);
     applyVoiceResponse(res);
   } catch (e: any) {
     lastAiText.value = '语音合成暂时失败，请先切换到文字模式继续面试。';
@@ -451,7 +452,7 @@ const fetchAndPlayGreeting = async () => {
 const sendVoiceTurn = async (filePath: string) => {
   isThinking.value = true;
   try {
-    const res = await voiceTurnApi(interviewId.value, filePath, 'mp3');
+    const res = await voiceTurnApi(interviewId.value, filePath, 'mp3', interviewLang);
     applyVoiceResponse(res);
   } catch (e: any) {
     lastAiText.value = '语音合成暂时失败，请先切换到文字模式继续面试。';
