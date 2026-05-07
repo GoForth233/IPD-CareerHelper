@@ -49,7 +49,7 @@ public class ResumeGenController {
         String title = (req.getTargetRole() == null ? req.getName() : req.getName() + "_" + req.getTargetRole())
                 .replaceAll("\\s+", "_");
         Resume saved = resumeService.createResume(uid, title, req.getTargetRole(),
-                fileKey, stripTags(html));
+                fileKey, null);
         return Result.success(resumeService.hydrateUrl(saved));
     }
 
@@ -90,7 +90,7 @@ public class ResumeGenController {
         Resume saved = resumeService.createResume(uid, title,
                 req.getJobDescription() != null && req.getJobDescription().length() > 60
                         ? req.getJobDescription().substring(0, 60) : req.getJobDescription(),
-                fileKey, stripTags(html));
+                fileKey, null);
         log.info("[tailor] DONE total {} ms, resumeId={}", System.currentTimeMillis() - t0, saved.getResumeId());
         return Result.success(resumeService.hydrateUrl(saved));
     }
