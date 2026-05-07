@@ -38,3 +38,10 @@ export const markAllReadApi = () =>
     url: '/api/notifications/read-all',
     method: 'POST',
   });
+
+/** DELETE /api/notifications/{id} */
+export const deleteNotificationApi = (id: number) =>
+  request<string>({
+    url: `/api/notifications/${id}`,
+    method: 'DELETE',
+  });

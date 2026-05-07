@@ -74,4 +74,15 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.saveAll(unread);
         return unread.size();
     }
+
+    @Override
+    @Transactional
+    public void delete(Long notificationId, Long userId) {
+        Notification n = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new BizException("Notification not found"));
+        if (!n.getUserId().equals(userId)) {
+            throw new BizException("You don't own this notification");
+        }
+        notificationRepository.delete(n);
+    }
 }

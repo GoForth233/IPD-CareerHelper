@@ -23,6 +23,21 @@
         </view>
       </view>
 
+      <!-- 测评推荐岗位 banner（有测评结果时才显示） -->
+      <view class="assessment-banner" v-if="assessmentRoles.length > 0">
+        <text class="ab-title">{{ t('resumeAi.assessmentBannerTitle') }}</text>
+        <text class="ab-body">{{ t('resumeAi.assessmentBannerBody') }}</text>
+        <view class="ab-chips">
+          <view
+            class="ab-chip"
+            v-for="role in assessmentRoles"
+            :key="role"
+          >
+            <text class="ab-chip-text">{{ role }}</text>
+          </view>
+        </view>
+      </view>
+
       <view class="section">
         <view class="jd-header">
           <text class="section-title">{{ t('resumeAi.jdLabel') }}</text>
@@ -181,6 +196,8 @@ const applyPrefill = async () => {
   jdPlaceholder.value = t('resumeAi.jdPlaceholder');
   try {
     const snap = await getProfileSnapshotApi();
+
+    // 预选上次使用的简历
     const lastResumeId = snap?.resume?.lastResumeId;
     if (lastResumeId && !selectedResumeId.value) {
       const match = userResumes.value.find((r) => r.resumeId === lastResumeId);
@@ -189,12 +206,25 @@ const applyPrefill = async () => {
         selectedResume.value = match.title || `Resume #${match.resumeId}`;
       }
     }
+
+    // 从测评结果或偏好设置中读取推荐岗位，展示预填充 banner
+    const roles: string[] = [];
+    if (snap?.assessment?.suggestedRoles?.length) {
+      roles.push(...snap.assessment.suggestedRoles);
+    } else if (snap?.preferences?.targetRole) {
+      roles.push(snap.preferences.targetRole);
+    } else if (snap?.resume?.targetJob) {
+      roles.push(snap.resume.targetJob);
+    }
+    assessmentRoles.value = roles.slice(0, 3); // 最多显示 3 个
   } catch {
     // Snapshot is best-effort.
   }
 };
 
 const jdPlaceholder = ref('');
+// 测评推荐岗位列表（非空时展示预填充 banner）
+const assessmentRoles = ref<string[]>([]);
 
 const selectResume = () => {
   if (!userResumes.value.length) {
@@ -603,6 +633,37 @@ onShow(() => {
 
 .btn-secondary::after { border: none; }
 .btn-secondary:active { background-color: #dbeafe !important; }
+
+/* 测评推荐岗位 banner */
+.assessment-banner {
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ab-title { font-size: 13px; font-weight: 700; color: #4338ca; }
+.ab-body  { font-size: 12px; color: #6366f1; }
+.ab-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ab-chip {
+  background: #ffffff;
+  border: 1px solid #a5b4fc;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.ab-chip-text { font-size: 13px; font-weight: 600; color: #4338ca; }
+
+.is-dark .assessment-banner {
+  background: linear-gradient(135deg, rgba(67,56,202,0.15), rgba(99,102,241,0.1));
+  border-color: rgba(99,102,241,0.4);
+}
+.is-dark .ab-title { color: #a5b4fc; }
+.is-dark .ab-body  { color: #818cf8; }
+.is-dark .ab-chip  { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); }
+.is-dark .ab-chip-text { color: #a5b4fc; }
 
 /* 定制简历成功卡片 */
 .tailor-success-card {
