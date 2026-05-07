@@ -1,15 +1,14 @@
 package com.group1.career.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
 /**
  * Lightweight PDF utility for extracting plain text from raw PDF bytes.
- * Uses Apache PDFBox 3.x (Loader API). The bytes are typically obtained
- * via FileService.downloadBytes (authenticated OSS GET) since the bucket
- * is private and anonymous URL access returns AccessDenied.
+ * Uses Apache PDFBox 2.x API (PDDocument.load). The bytes are typically
+ * obtained via FileService.downloadBytes (authenticated OSS GET) since
+ * the bucket is private and anonymous URL access returns AccessDenied.
  */
 @Slf4j
 public final class PdfTextExtractor {
@@ -24,7 +23,7 @@ public final class PdfTextExtractor {
      */
     public static String extractFromBytes(byte[] pdfBytes) {
         if (pdfBytes == null || pdfBytes.length == 0) return "";
-        try (PDDocument doc = Loader.loadPDF(pdfBytes)) {
+        try (PDDocument doc = PDDocument.load(pdfBytes)) {
             String text = new PDFTextStripper().getText(doc);
             if (text == null) return "";
             if (text.length() > MAX_TEXT_CHARS) {
