@@ -16,9 +16,19 @@
 #   5. Auto-rolls back if health check fails within 90s
 set -euo pipefail
 
-SERVER_USER="${DEPLOY_USER:-ubuntu}"
-SERVER_HOST="${DEPLOY_HOST:-43.138.240.228}"
-SERVER_DIR="${DEPLOY_DIR:-/home/ubuntu/careerloop}"
+# Optional: source a local .env.deploy at the repo root for deploy-target
+# specific variables (DEPLOY_USER / DEPLOY_HOST / DEPLOY_DIR / DEPLOY_BRANCH).
+# .env.deploy is gitignored so each deploy target keeps its own config.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+if [ -f "${REPO_ROOT}/.env.deploy" ]; then
+  # shellcheck disable=SC1091
+  set -a; . "${REPO_ROOT}/.env.deploy"; set +a
+fi
+
+SERVER_USER="${DEPLOY_USER:?DEPLOY_USER must be set (export it or put in .env.deploy)}"
+SERVER_HOST="${DEPLOY_HOST:?DEPLOY_HOST must be set}"
+SERVER_DIR="${DEPLOY_DIR:?DEPLOY_DIR must be set}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-master}"
 
 echo "========================================"
